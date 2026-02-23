@@ -3,10 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 
+interface NavChild {
+  label: string;
+  href: string;
+  desc: string;
+}
+
 interface NavItem {
   label: string;
   href?: string;
-  children?: { label: string; href: string; desc: string }[];
+  children?: NavChild[];
 }
 
 const navItems: NavItem[] = [
@@ -52,8 +58,12 @@ export function NavMenu() {
               href={item.href}
               className="flex items-center gap-1 px-4 py-2 text-sm font-semibold tracking-wide transition-colors duration-150"
               style={{ color: "var(--color-cq-steel-300)" }}
-              onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "white")}
-              onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "var(--color-cq-steel-300)")}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLAnchorElement).style.color = "white";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLAnchorElement).style.color = "var(--color-cq-steel-300)";
+              }}
             >
               {item.label}
             </Link>
@@ -61,8 +71,12 @@ export function NavMenu() {
             <button
               className="flex items-center gap-1 px-4 py-2 text-sm font-semibold tracking-wide transition-colors duration-150"
               style={{ color: "var(--color-cq-steel-300)" }}
-              onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "white")}
-              onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "var(--color-cq-steel-300)")}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.color = "white";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-cq-steel-300)";
+              }}
             >
               {item.label}
               {item.children && (
@@ -73,8 +87,13 @@ export function NavMenu() {
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
-                  className="transition-transform duration-200"
-                  style={{ transform: activeDropdown === item.label ? "rotate(180deg)" : "rotate(0)" }}
+                  style={{
+                    transition: "transform 0.2s",
+                    transform:
+                      activeDropdown === item.label
+                        ? "rotate(180deg)"
+                        : "rotate(0deg)",
+                  }}
                 >
                   <path d="m6 9 6 6 6-6" />
                 </svg>
@@ -84,30 +103,34 @@ export function NavMenu() {
 
           {/* Dropdown */}
           {item.children && activeDropdown === item.label && (
-            <div
-              className="absolute top-full left-0 pt-2 min-w-[280px] z-50"
-            >
+            <div className="absolute top-full left-0 pt-2 min-w-64 z-50">
               <div
-                className="rounded-md overflow-hidden"
+                className="rounded-lg overflow-hidden"
                 style={{
                   background: "var(--color-cq-900)",
                   border: "1px solid var(--color-cq-800)",
-                  boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(30,77,183,0.15)",
+                  boxShadow:
+                    "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(30,77,183,0.15)",
                 }}
               >
                 {item.children.map((child, idx) => (
                   <Link
                     key={child.href}
                     href={child.href}
-                    className="flex flex-col px-4 py-3 transition-all duration-150 group"
+                    className="flex flex-col px-4 py-3 transition-all duration-150"
                     style={{
-                      borderBottom: idx < item.children!.length - 1 ? "1px solid var(--color-cq-800)" : "none",
+                      borderBottom:
+                        idx < (item.children?.length ?? 0) - 1
+                          ? "1px solid var(--color-cq-800)"
+                          : "none",
                     }}
                     onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.background = "var(--color-cq-800)";
+                      (e.currentTarget as HTMLAnchorElement).style.background =
+                        "var(--color-cq-800)";
                     }}
                     onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.background = "transparent";
+                      (e.currentTarget as HTMLAnchorElement).style.background =
+                        "transparent";
                     }}
                   >
                     <span
@@ -118,7 +141,10 @@ export function NavMenu() {
                     </span>
                     <span
                       className="text-xs mt-0.5"
-                      style={{ color: "var(--color-cq-steel-400)", fontFamily: "var(--font-jetbrains, monospace)" }}
+                      style={{
+                        fontFamily: "var(--font-jetbrains, monospace)",
+                        color: "var(--color-cq-steel-400)",
+                      }}
                     >
                       {child.desc}
                     </span>

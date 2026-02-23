@@ -1,7 +1,16 @@
-const values = [
+import type { ReactNode } from "react";
+
+interface Value {
+  icon: ReactNode;
+  title: string;
+  desc: string;
+  metric: string;
+}
+
+const values: Value[] = [
   {
     icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
         <polyline points="9 12 11 14 15 10" />
       </svg>
@@ -12,7 +21,7 @@ const values = [
   },
   {
     icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
         <circle cx="12" cy="12" r="10" />
         <polyline points="12 6 12 12 16 14" />
       </svg>
@@ -23,7 +32,7 @@ const values = [
   },
   {
     icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
         <circle cx="9" cy="7" r="4" />
         <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -36,7 +45,7 @@ const values = [
   },
   {
     icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
       </svg>
     ),
@@ -46,7 +55,7 @@ const values = [
   },
   {
     icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
         <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
         <line x1="8" y1="21" x2="16" y2="21" />
         <line x1="12" y1="17" x2="12" y2="21" />
@@ -58,7 +67,7 @@ const values = [
   },
   {
     icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
         <circle cx="12" cy="10" r="3" />
       </svg>
@@ -75,15 +84,14 @@ export function WhyCraftqubeSection() {
       className="py-24 relative overflow-hidden"
       style={{ background: "var(--color-cq-950)" }}
     >
-      {/* Top accent */}
       <div
         className="absolute top-0 left-0 right-0 h-px"
         style={{
-          background: "linear-gradient(90deg, transparent, var(--color-cq-700), transparent)",
+          background:
+            "linear-gradient(90deg, transparent, var(--color-cq-700), transparent)",
         }}
       />
 
-      {/* Background glow */}
       <div
         className="absolute pointer-events-none"
         style={{
@@ -93,18 +101,15 @@ export function WhyCraftqubeSection() {
           width: "600px",
           height: "600px",
           borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(23, 53, 128, 0.12) 0%, transparent 70%)",
+          background:
+            "radial-gradient(circle, rgba(23, 53, 128, 0.12) 0%, transparent 70%)",
           filter: "blur(60px)",
         }}
       />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6">
-
-        {/* Header */}
         <div className="text-center mb-16">
-          <p className="section-label justify-center">
-            ¿Por qué Craftqube?
-          </p>
+          <p className="section-label justify-center">¿Por qué Craftqube?</p>
           <h2
             className="text-display mx-auto"
             style={{
@@ -120,22 +125,22 @@ export function WhyCraftqubeSection() {
             className="mt-4 text-base max-w-xl mx-auto"
             style={{ color: "var(--color-cq-steel-400)" }}
           >
-            No solo vendemos perfiles. Somos su socio tecnológico para proyectos de ingeniería de precisión.
+            No solo vendemos perfiles. Somos su socio tecnológico para proyectos
+            de ingeniería de precisión.
           </p>
         </div>
 
-        {/* Values grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {values.map((val, idx) => (
+          {values.map((val) => (
             <div
               key={val.title}
               className="card-surface group p-6 transition-all duration-300 hover:-translate-y-1"
             >
-              {/* Icon + metric */}
               <div className="flex items-start justify-between mb-5">
                 <div
-                  className="w-12 h-12 rounded-md flex items-center justify-center"
+                  className="w-12 h-12 flex items-center justify-center"
                   style={{
+                    borderRadius: "8px",
                     background: "rgba(30, 77, 183, 0.15)",
                     border: "1px solid rgba(30, 77, 183, 0.3)",
                     color: "var(--color-cq-accent)",
@@ -144,8 +149,10 @@ export function WhyCraftqubeSection() {
                   {val.icon}
                 </div>
                 <span
-                  className="font-mono text-xs font-bold px-2 py-1 rounded-sm"
+                  className="text-xs font-bold px-2 py-1"
                   style={{
+                    fontFamily: "var(--font-mono)",
+                    borderRadius: "2px",
                     background: "rgba(0, 212, 255, 0.08)",
                     color: "var(--color-cq-accent)",
                     border: "1px solid rgba(0, 212, 255, 0.2)",
@@ -169,7 +176,6 @@ export function WhyCraftqubeSection() {
                 {val.desc}
               </p>
 
-              {/* Bottom accent */}
               <div
                 className="absolute bottom-0 left-0 h-0.5 w-0 group-hover:w-16 transition-all duration-500 rounded-r-full"
                 style={{ background: "var(--color-cq-accent)" }}

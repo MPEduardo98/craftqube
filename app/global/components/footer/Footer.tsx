@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { CraftqubeLogo } from "../header/CraftqubeLogo";
 
@@ -50,6 +52,38 @@ const certifications = [
   { label: "RoHS", desc: "Materiales" },
 ];
 
+const contactItems = [
+  {
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 11.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6.09 6.09l.97-.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+      </svg>
+    ),
+    label: "Teléfono",
+    value: "+52 (800) 123-4567",
+  },
+  {
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+        <polyline points="22,6 12,13 2,6" />
+      </svg>
+    ),
+    label: "Email",
+    value: "ventas@craftqube.mx",
+  },
+  {
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+      </svg>
+    ),
+    label: "Horario",
+    value: "Lun–Vie · 8:00 – 18:00 CST",
+  },
+];
+
 export function Footer() {
   return (
     <footer
@@ -62,19 +96,22 @@ export function Footer() {
       <div
         className="py-12 px-4 text-center relative overflow-hidden"
         style={{
-          background: "linear-gradient(135deg, var(--color-cq-900) 0%, var(--color-cq-800) 50%, var(--color-cq-900) 100%)",
+          background:
+            "linear-gradient(135deg, var(--color-cq-900) 0%, var(--color-cq-800) 50%, var(--color-cq-900) 100%)",
           borderBottom: "1px solid var(--color-cq-700)",
         }}
       >
-        {/* Grid background */}
         <div className="absolute inset-0 bg-grid-pattern opacity-50" />
         <div className="relative z-10 max-w-3xl mx-auto">
-          <p className="text-label mb-3">¿Tienes un proyecto?</p>
+          <p className="section-label justify-center">¿Tienes un proyecto?</p>
           <h3
             className="text-display text-3xl md:text-4xl mb-6"
             style={{ color: "white" }}
           >
-            Hablemos de tu <span style={{ color: "var(--color-cq-accent)" }}>solución industrial</span>
+            Hablemos de tu{" "}
+            <span style={{ color: "var(--color-cq-accent)" }}>
+              solución industrial
+            </span>
           </h3>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/cotizar" className="btn-primary">
@@ -87,10 +124,9 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Main footer content */}
+      {/* Main footer */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-12">
-
           {/* Brand column */}
           <div className="md:col-span-1">
             <CraftqubeLogo className="mb-6" />
@@ -98,11 +134,10 @@ export function Footer() {
               className="text-sm leading-relaxed mb-6"
               style={{ color: "var(--color-cq-steel-400)" }}
             >
-              Distribuidor premium de perfiles de aluminio y sistemas de automatización industrial.
-              Más de 10 años entregando precisión y calidad.
+              Distribuidor premium de perfiles de aluminio y sistemas de
+              automatización industrial. Más de 10 años entregando precisión y
+              calidad.
             </p>
-
-            {/* Certifications */}
             <div className="flex flex-col gap-2">
               {certifications.map((cert) => (
                 <div key={cert.label} className="flex items-center gap-2">
@@ -111,8 +146,11 @@ export function Footer() {
                     style={{ background: "var(--color-cq-accent)" }}
                   />
                   <span
-                    className="font-mono text-xs"
-                    style={{ color: "var(--color-cq-steel-300)" }}
+                    className="text-xs"
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      color: "var(--color-cq-steel-300)",
+                    }}
                   >
                     {cert.label}
                     <span style={{ color: "var(--color-cq-steel-500)" }}>
@@ -129,8 +167,11 @@ export function Footer() {
           {Object.values(footerLinks).map((section) => (
             <div key={section.title}>
               <h4
-                className="font-mono text-xs tracking-widest uppercase mb-5"
-                style={{ color: "var(--color-cq-accent)" }}
+                className="text-xs tracking-widest uppercase mb-5"
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  color: "var(--color-cq-accent)",
+                }}
               >
                 {section.title}
               </h4>
@@ -142,10 +183,12 @@ export function Footer() {
                       className="text-sm transition-colors duration-150"
                       style={{ color: "var(--color-cq-steel-400)" }}
                       onMouseEnter={(e) => {
-                        (e.target as HTMLElement).style.color = "var(--color-cq-200)";
+                        (e.currentTarget as HTMLAnchorElement).style.color =
+                          "var(--color-cq-200)";
                       }}
                       onMouseLeave={(e) => {
-                        (e.target as HTMLElement).style.color = "var(--color-cq-steel-400)";
+                        (e.currentTarget as HTMLAnchorElement).style.color =
+                          "var(--color-cq-steel-400)";
                       }}
                     >
                       {item.label}
@@ -162,45 +205,18 @@ export function Footer() {
           className="mt-12 pt-8 grid grid-cols-1 sm:grid-cols-3 gap-6"
           style={{ borderTop: "1px solid var(--color-cq-800)" }}
         >
-          {[
-            {
-              icon: (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 11.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6.09 6.09l.97-.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
-                </svg>
-              ),
-              label: "Teléfono",
-              value: "+52 (800) 123-4567",
-            },
-            {
-              icon: (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                  <polyline points="22,6 12,13 2,6" />
-                </svg>
-              ),
-              label: "Email",
-              value: "ventas@craftqube.mx",
-            },
-            {
-              icon: (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-              ),
-              label: "Horario",
-              value: "Lun–Vie · 8:00 – 18:00 CST",
-            },
-          ].map((item) => (
+          {contactItems.map((item) => (
             <div key={item.label} className="flex items-start gap-3">
               <span style={{ color: "var(--color-cq-accent)", marginTop: "2px" }}>
                 {item.icon}
               </span>
               <div>
                 <p
-                  className="font-mono text-xs tracking-wider uppercase mb-0.5"
-                  style={{ color: "var(--color-cq-steel-500)" }}
+                  className="text-xs tracking-wider uppercase mb-0.5"
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    color: "var(--color-cq-steel-500)",
+                  }}
                 >
                   {item.label}
                 </p>
@@ -221,20 +237,33 @@ export function Footer() {
           style={{ borderTop: "1px solid var(--color-cq-900)" }}
         >
           <p
-            className="font-mono text-xs"
-            style={{ color: "var(--color-cq-steel-500)" }}
+            className="text-xs"
+            style={{
+              fontFamily: "var(--font-mono)",
+              color: "var(--color-cq-steel-500)",
+            }}
           >
-            © {new Date().getFullYear()} Craftqube Industrial Tech S.A. de C.V. · Todos los derechos reservados.
+            © {new Date().getFullYear()} Craftqube Industrial Tech S.A. de C.V.
+            · Todos los derechos reservados.
           </p>
           <div className="flex items-center gap-6">
             {["Privacidad", "Términos", "Cookies"].map((item) => (
               <Link
                 key={item}
                 href={`/${item.toLowerCase()}`}
-                className="font-mono text-xs transition-colors duration-150"
-                style={{ color: "var(--color-cq-steel-500)" }}
-                onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "var(--color-cq-300)")}
-                onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "var(--color-cq-steel-500)")}
+                className="text-xs transition-colors duration-150"
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  color: "var(--color-cq-steel-500)",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.color =
+                    "var(--color-cq-300)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.color =
+                    "var(--color-cq-steel-500)";
+                }}
               >
                 {item}
               </Link>

@@ -1,6 +1,18 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
-const categories = [
+interface Category {
+  id: string;
+  label: string;
+  title: string;
+  desc: string;
+  href: string;
+  accent: string;
+  icon: ReactNode;
+  features: string[];
+}
+
+const categories: Category[] = [
   {
     id: "perfiles",
     label: "CAT·01",
@@ -9,7 +21,7 @@ const categories = [
     href: "/productos/perfiles",
     accent: "#2d6be4",
     icon: (
-      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full" aria-hidden="true">
         <rect x="8" y="8" width="20" height="48" rx="2" fill="currentColor" opacity="0.9" />
         <rect x="36" y="8" width="20" height="48" rx="2" fill="currentColor" opacity="0.6" />
         <rect x="6" y="26" width="52" height="12" rx="2" fill="currentColor" opacity="0.4" />
@@ -29,7 +41,7 @@ const categories = [
     href: "/productos/tornilleria",
     accent: "#00d4ff",
     icon: (
-      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full" aria-hidden="true">
         <circle cx="32" cy="32" r="20" stroke="currentColor" strokeWidth="3" fill="none" opacity="0.3" />
         <polygon points="32,8 38,20 26,20" fill="currentColor" opacity="0.8" />
         <polygon points="32,56 38,44 26,44" fill="currentColor" opacity="0.8" />
@@ -49,7 +61,7 @@ const categories = [
     href: "/productos/escuadras",
     accent: "#4d8ef5",
     icon: (
-      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full" aria-hidden="true">
         <path d="M12 52 L12 12 L52 12" stroke="currentColor" strokeWidth="6" strokeLinecap="round" fill="none" opacity="0.8" />
         <rect x="12" y="12" width="16" height="16" rx="2" fill="currentColor" opacity="0.5" />
         <path d="M28 28 L28 52 L52 52" stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.4" />
@@ -66,12 +78,10 @@ const categories = [
     href: "/automatizacion",
     accent: "#1e4db7",
     icon: (
-      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full" aria-hidden="true">
         <rect x="8" y="28" width="48" height="8" rx="2" fill="currentColor" opacity="0.7" />
         <rect x="20" y="20" width="24" height="24" rx="2" stroke="currentColor" strokeWidth="2" fill="none" opacity="0.4" />
         <circle cx="32" cy="32" r="6" fill="currentColor" opacity="0.9" />
-        <line x1="8" y1="32" x2="20" y2="32" stroke="currentColor" strokeWidth="3" opacity="0.5" />
-        <line x1="44" y1="32" x2="56" y2="32" stroke="currentColor" strokeWidth="3" opacity="0.5" />
         <circle cx="12" cy="32" r="4" fill="currentColor" opacity="0.6" />
         <circle cx="52" cy="32" r="4" fill="currentColor" opacity="0.6" />
       </svg>
@@ -84,7 +94,6 @@ export function CategoriesSection() {
   return (
     <section className="py-24 relative" style={{ background: "var(--color-cq-950)" }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-
         {/* Section header */}
         <div className="mb-16 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div>
@@ -97,42 +106,38 @@ export function CategoriesSection() {
               <span style={{ color: "var(--color-cq-accent)" }}>productos</span>
             </h2>
           </div>
-          <Link
-            href="/catalogo"
-            className="btn-ghost text-xs tracking-widest self-start sm:self-auto"
-          >
+          <Link href="/catalogo" className="btn-ghost self-start sm:self-auto">
             Ver catálogo completo →
           </Link>
         </div>
 
-        {/* Categories grid */}
+        {/* Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {categories.map((cat) => (
             <Link
               key={cat.id}
               href={cat.href}
-              className="group card-surface p-8 transition-all duration-300"
-              style={{
-                "--cat-accent": cat.accent,
-              } as React.CSSProperties}
+              className="group card-surface p-8 transition-all duration-300 block"
             >
               {/* Top row */}
               <div className="flex items-start justify-between mb-6">
                 <div>
                   <span
-                    className="font-mono text-xs tracking-widest block mb-3"
-                    style={{ color: "var(--color-cq-steel-500)" }}
+                    className="text-xs tracking-widest block mb-3"
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      color: "var(--color-cq-steel-500)",
+                    }}
                   >
                     {cat.label}
                   </span>
                   <h3
-                    className="text-display text-xl transition-colors duration-200"
+                    className="text-display text-xl"
                     style={{ color: "white" }}
                   >
                     {cat.title}
                   </h3>
                 </div>
-                {/* Icon */}
                 <div
                   className="w-14 h-14 flex-shrink-0 transition-transform duration-300 group-hover:scale-110"
                   style={{ color: cat.accent }}
@@ -154,11 +159,13 @@ export function CategoriesSection() {
                 {cat.features.map((feat) => (
                   <span
                     key={feat}
-                    className="font-mono text-xs px-3 py-1 rounded-sm"
+                    className="text-xs px-3 py-1"
                     style={{
-                      background: `${cat.accent}15`,
+                      fontFamily: "var(--font-mono)",
+                      background: `${cat.accent}20`,
                       color: cat.accent,
-                      border: `1px solid ${cat.accent}30`,
+                      border: `1px solid ${cat.accent}40`,
+                      borderRadius: "2px",
                     }}
                   >
                     {feat}
@@ -166,19 +173,23 @@ export function CategoriesSection() {
                 ))}
               </div>
 
-              {/* CTA arrow */}
-              <div className="flex items-center gap-2 text-sm font-semibold transition-all duration-200 group-hover:gap-4"
-                style={{ color: cat.accent }}>
+              {/* CTA */}
+              <div
+                className="flex items-center gap-2 text-sm font-semibold transition-all duration-200 group-hover:gap-4"
+                style={{ color: cat.accent }}
+              >
                 Explorar categoría
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </div>
 
-              {/* Hover accent line */}
+              {/* Bottom accent line */}
               <div
                 className="absolute bottom-0 left-0 h-0.5 w-0 group-hover:w-full transition-all duration-500"
-                style={{ background: `linear-gradient(90deg, ${cat.accent}, transparent)` }}
+                style={{
+                  background: `linear-gradient(90deg, ${cat.accent}, transparent)`,
+                }}
               />
             </Link>
           ))}

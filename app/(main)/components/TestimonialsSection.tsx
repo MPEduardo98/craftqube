@@ -33,23 +33,24 @@ const clients = [
 
 export function TestimonialsSection() {
   return (
-    <section
-      className="py-24 relative"
-      style={{ background: "var(--color-cq-950)" }}
-    >
+    <section className="py-24 relative" style={{ background: "var(--color-cq-950)" }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
 
-        {/* Client logos strip */}
+        {/* Client logos */}
         <div
-          className="mb-20 py-8 px-6 rounded-md"
+          className="mb-20 py-8 px-6"
           style={{
             background: "var(--color-cq-900)",
             border: "1px solid var(--color-cq-800)",
+            borderRadius: "8px",
           }}
         >
           <p
-            className="text-center font-mono text-xs tracking-widest uppercase mb-6"
-            style={{ color: "var(--color-cq-steel-500)" }}
+            className="text-center text-xs tracking-widest uppercase mb-6"
+            style={{
+              fontFamily: "var(--font-mono)",
+              color: "var(--color-cq-steel-500)",
+            }}
           >
             Empresas que confían en Craftqube
           </p>
@@ -57,10 +58,10 @@ export function TestimonialsSection() {
             {clients.map((client) => (
               <span
                 key={client}
-                className="font-display text-sm font-bold tracking-wider uppercase"
+                className="text-sm font-bold tracking-wider uppercase"
                 style={{
+                  fontFamily: "var(--font-display)",
                   color: "var(--color-cq-steel-400)",
-                  fontFamily: "var(--font-barlow, sans-serif)",
                 }}
               >
                 {client}
@@ -69,7 +70,7 @@ export function TestimonialsSection() {
           </div>
         </div>
 
-        {/* Testimonials */}
+        {/* Section header */}
         <div className="mb-12 text-center">
           <p className="section-label justify-center">Testimonios</p>
           <h2
@@ -77,7 +78,9 @@ export function TestimonialsSection() {
             style={{ fontSize: "clamp(2rem, 4vw, 3rem)", color: "white" }}
           >
             Lo que dicen{" "}
-            <span style={{ color: "var(--color-cq-accent)" }}>nuestros clientes</span>
+            <span style={{ color: "var(--color-cq-accent)" }}>
+              nuestros clientes
+            </span>
           </h2>
         </div>
 
@@ -85,15 +88,14 @@ export function TestimonialsSection() {
           {testimonials.map((t) => (
             <div key={t.name} className="card-surface p-6 flex flex-col">
               {/* Stars */}
-              <div className="flex items-center gap-1 mb-5">
+              <div className="flex items-center gap-1 mb-5" aria-label={`Calificación: ${t.rating} de 5 estrellas`}>
                 {Array.from({ length: t.rating }).map((_, i) => (
-                  <svg key={i} width="14" height="14" viewBox="0 0 24 24" fill="#facc15" stroke="none">
+                  <svg key={i} width="14" height="14" viewBox="0 0 24 24" fill="#facc15" stroke="none" aria-hidden="true">
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                   </svg>
                 ))}
               </div>
 
-              {/* Quote */}
               <blockquote
                 className="text-sm leading-relaxed flex-1 mb-6 italic"
                 style={{ color: "var(--color-cq-steel-300)" }}
@@ -101,14 +103,15 @@ export function TestimonialsSection() {
                 &ldquo;{t.text}&rdquo;
               </blockquote>
 
-              {/* Author */}
               <div className="flex items-center gap-3">
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
                   style={{
-                    background: "linear-gradient(135deg, var(--color-cq-700), var(--color-cq-500))",
+                    background:
+                      "linear-gradient(135deg, var(--color-cq-700), var(--color-cq-500))",
                     color: "white",
                   }}
+                  aria-hidden="true"
                 >
                   {t.name.charAt(0)}
                 </div>
@@ -120,8 +123,11 @@ export function TestimonialsSection() {
                     {t.name}
                   </p>
                   <p
-                    className="font-mono text-xs"
-                    style={{ color: "var(--color-cq-steel-500)" }}
+                    className="text-xs"
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      color: "var(--color-cq-steel-500)",
+                    }}
                   >
                     {t.role} · {t.company}
                   </p>

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Barlow_Condensed, DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/global/components/header/Header";
-import { Footer } from "@/global/components/footer/Footer";
+import { Header } from "./global/components/header/Header";
+import { Footer } from "./global/components/footer/Footer";
 
 const barlowCondensed = Barlow_Condensed({
   variable: "--font-barlow",
@@ -48,7 +48,7 @@ export default function RootLayout({
       <body
         className={`${barlowCondensed.variable} ${dmSans.variable} ${jetbrainsMono.variable} antialiased`}
         style={{
-          fontFamily: "var(--font-dm-sans), sans-serif",
+          fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
           backgroundColor: "var(--color-cq-950)",
           color: "var(--color-cq-100)",
         }}
