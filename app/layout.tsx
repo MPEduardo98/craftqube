@@ -49,8 +49,8 @@ export default function RootLayout({
         className={`${barlowCondensed.variable} ${dmSans.variable} ${jetbrainsMono.variable} antialiased`}
         style={{
           fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
-          backgroundColor: "var(--color-cq-950)",
-          color: "var(--color-cq-100)",
+          backgroundColor: "#FFFFFF",
+          color: "#1F2937",
         }}
       >
         <Header />

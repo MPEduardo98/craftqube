@@ -3,47 +3,48 @@
 /* ============================================
    CRAFTQUBE — Brand Design System
    Perfiles de Aluminio & Automatización Industrial
+   ACTUALIZADO: Paleta Clara con Blancos
    ============================================ */
 
 @theme inline {
-  /* Core Brand Colors — Craftqube Blue System */
-  --color-cq-950: #020b18;
-  --color-cq-900: #050f20;
-  --color-cq-800: #0a1a38;
-  --color-cq-700: #0f2558;
-  --color-cq-600: #173580;
-  --color-cq-500: #1e4db7;
-  --color-cq-400: #2d6be4;
-  --color-cq-300: #4d8ef5;
-  --color-cq-200: #93bcfa;
-  --color-cq-100: #dbeafe;
-  --color-cq-50:  #eff6ff;
+  /* Core Brand Colors — Craftqube Blue System (Reducido) */
+  --color-cq-950: #F8F9FA;  /* Gris muy claro (antes oscuro) */
+  --color-cq-900: #FFFFFF;  /* Blanco puro */
+  --color-cq-800: #E5E7EB;  /* Gris claro para bordes */
+  --color-cq-700: #D1D5DB;  /* Gris medio-claro */
+  --color-cq-600: #9CA3AF;  /* Gris medio */
+  --color-cq-500: #6B7280;  /* Gris medio-oscuro */
+  --color-cq-400: #2563EB;  /* Azul brillante del logo */
+  --color-cq-300: #3B82F6;  /* Azul medio */
+  --color-cq-200: #60A5FA;  /* Azul claro */
+  --color-cq-100: #1F2937;  /* Texto principal oscuro */
+  --color-cq-50:  #111827;  /* Texto más oscuro */
 
-  /* Accent — Electric Cyan */
-  --color-cq-accent:       #00d4ff;
-  --color-cq-accent-dim:   #0099cc;
-  --color-cq-accent-glow:  rgba(0, 212, 255, 0.25);
+  /* Accent — Azul del Logo */
+  --color-cq-accent:       #2563EB;
+  --color-cq-accent-dim:   #1D4ED8;
+  --color-cq-accent-glow:  rgba(37, 99, 235, 0.15);
 
-  /* Steel Neutrals */
-  --color-cq-steel-950: #0c0f14;
-  --color-cq-steel-900: #111520;
-  --color-cq-steel-800: #1c2333;
-  --color-cq-steel-700: #2a3348;
-  --color-cq-steel-600: #3d4f6e;
-  --color-cq-steel-500: #5a6e8a;
-  --color-cq-steel-400: #7d93b2;
-  --color-cq-steel-300: #a8bad4;
-  --color-cq-steel-200: #cdd9e8;
-  --color-cq-steel-100: #eaf0f9;
+  /* Steel Neutrals (Actualizados para tema claro) */
+  --color-cq-steel-950: #FFFFFF;
+  --color-cq-steel-900: #F9FAFB;
+  --color-cq-steel-800: #F3F4F6;
+  --color-cq-steel-700: #E5E7EB;
+  --color-cq-steel-600: #D1D5DB;
+  --color-cq-steel-500: #9CA3AF;
+  --color-cq-steel-400: #6B7280;
+  --color-cq-steel-300: #4B5563;
+  --color-cq-steel-200: #374151;
+  --color-cq-steel-100: #1F2937;
 
   /* Semantic */
-  --color-cq-bg:        var(--color-cq-950);
-  --color-cq-surface:   var(--color-cq-900);
-  --color-cq-border:    var(--color-cq-800);
-  --color-cq-text:      var(--color-cq-100);
-  --color-cq-muted:     var(--color-cq-steel-400);
-  --color-cq-primary:   var(--color-cq-500);
-  --color-cq-highlight: var(--color-cq-accent);
+  --color-cq-bg:        #FFFFFF;
+  --color-cq-surface:   #F9FAFB;
+  --color-cq-border:    #E5E7EB;
+  --color-cq-text:      #1F2937;
+  --color-cq-muted:     #6B7280;
+  --color-cq-primary:   #2563EB;
+  --color-cq-highlight: #2563EB;
 
   /* Typography — reference Next.js injected font CSS variables */
   --font-display: var(--font-barlow, 'Barlow Condensed', 'Arial Narrow', sans-serif);
@@ -52,9 +53,15 @@
   --font-sans:    var(--font-body);
 
   /* Shadows */
-  --shadow-glow:      0 0 20px rgba(45, 107, 228, 0.4);
-  --shadow-glow-cyan: 0 0 24px rgba(0, 212, 255, 0.35);
-  --shadow-card:      0 4px 32px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255,255,255,0.04) inset;
+  --shadow-glow:      0 2px 8px rgba(37, 99, 235, 0.15);
+  --shadow-glow-cyan: 0 2px 12px rgba(37, 99, 235, 0.2);
+  --shadow-card:      0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
 }
 
 /* ============================================
@@ -71,8 +78,8 @@ html {
 }
 
 body {
-  background-color: var(--color-cq-950);
-  color: var(--color-cq-100);
+  background-color: #FFFFFF;
+  color: var(--color-cq-text);
   font-family: var(--font-body);
   line-height: 1.6;
   overflow-x: hidden;
@@ -100,7 +107,7 @@ body {
 
 /* Glow text */
 .text-glow {
-  text-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+  color: var(--color-cq-accent);
 }
 
 /* ============================================
@@ -108,15 +115,15 @@ body {
    ============================================ */
 .bg-grid-pattern {
   background-image:
-    linear-gradient(rgba(45, 107, 228, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(45, 107, 228, 0.06) 1px, transparent 1px);
+    linear-gradient(rgba(37, 99, 235, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.04) 1px, transparent 1px);
   background-size: 48px 48px;
 }
 
 .bg-grid-pattern-sm {
   background-image:
-    linear-gradient(rgba(45, 107, 228, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(45, 107, 228, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(37, 99, 235, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.03) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
@@ -130,23 +137,23 @@ body {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  border-radius: 2px;
+  border-radius: 6px;
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 0.875rem;
   letter-spacing: 0.025em;
   transition: all 0.2s;
-  background: var(--color-cq-500);
+  background: var(--color-cq-accent);
   color: white;
-  border: 1px solid var(--color-cq-400);
+  border: 1px solid var(--color-cq-accent);
   box-shadow: var(--shadow-glow);
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
 }
 .btn-primary:hover {
-  background: var(--color-cq-400);
-  box-shadow: 0 0 30px rgba(45, 107, 228, 0.6);
+  background: #1D4ED8;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
   transform: translateY(-1px);
 }
 
@@ -155,23 +162,23 @@ body {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  border-radius: 2px;
+  border-radius: 6px;
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 0.875rem;
   letter-spacing: 0.025em;
   transition: all 0.2s;
-  background: transparent;
+  background: white;
   color: var(--color-cq-accent);
-  border: 1px solid var(--color-cq-accent-dim);
+  border: 1px solid var(--color-cq-border);
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
 }
 .btn-secondary:hover {
-  background: rgba(0, 212, 255, 0.08);
+  background: var(--color-cq-surface);
   border-color: var(--color-cq-accent);
-  box-shadow: var(--shadow-glow-cyan);
+  box-shadow: var(--shadow-glow);
 }
 
 .btn-ghost {
@@ -179,21 +186,21 @@ body {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  border-radius: 2px;
+  border-radius: 6px;
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 0.875rem;
   letter-spacing: 0.025em;
   transition: all 0.2s;
   background: transparent;
-  color: var(--color-cq-200);
-  border: 1px solid var(--color-cq-800);
+  color: var(--color-cq-text);
+  border: 1px solid var(--color-cq-border);
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
 }
 .btn-ghost:hover {
-  background: var(--color-cq-900);
+  background: var(--color-cq-surface);
   border-color: var(--color-cq-700);
 }
 
@@ -201,12 +208,13 @@ body {
   position: relative;
   overflow: hidden;
   border-radius: 8px;
-  background: var(--color-cq-900);
-  border: 1px solid var(--color-cq-800);
+  background: white;
+  border: 1px solid var(--color-cq-border);
   box-shadow: var(--shadow-card);
 }
 .card-surface:hover {
   border-color: var(--color-cq-700);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .badge {
@@ -219,9 +227,9 @@ body {
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  background: rgba(30, 77, 183, 0.2);
+  background: rgba(37, 99, 235, 0.1);
   color: var(--color-cq-accent);
-  border: 1px solid rgba(30, 77, 183, 0.4);
+  border: 1px solid rgba(37, 99, 235, 0.2);
 }
 
 .section-label {
@@ -249,11 +257,11 @@ body {
    SCROLLBAR & SELECTION
    ============================================ */
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--color-cq-950); }
-::-webkit-scrollbar-thumb { background: var(--color-cq-700); border-radius: 3px; }
+::-webkit-scrollbar-track { background: var(--color-cq-800); }
+::-webkit-scrollbar-thumb { background: var(--color-cq-600); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-cq-500); }
 
-::selection { background: rgba(30, 77, 183, 0.4); color: white; }
+::selection { background: rgba(37, 99, 235, 0.2); color: var(--color-cq-text); }
 :focus-visible { outline: 2px solid var(--color-cq-accent); outline-offset: 2px; }
 
 /* ============================================
@@ -268,8 +276,8 @@ body {
   50%       { transform: translateY(-8px); }
 }
 @keyframes pulse-border {
-  0%, 100% { border-color: rgba(0, 212, 255, 0.3); }
-  50%       { border-color: rgba(0, 212, 255, 0.8); }
+  0%, 100% { border-color: rgba(37, 99, 235, 0.2); }
+  50%       { border-color: rgba(37, 99, 235, 0.4); }
 }
 
 .animate-fade-up { animation: fadeUp 0.6s ease forwards; }

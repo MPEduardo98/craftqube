@@ -11,7 +11,7 @@ export function HeroSection() {
   return (
     <section
       className="relative min-h-screen flex items-center overflow-hidden"
-      style={{ paddingTop: "88px" }}
+      style={{ paddingTop: "88px", background: "#F8F9FA" }}
     >
       {/* Background */}
       <div className="absolute inset-0">
@@ -19,24 +19,24 @@ export function HeroSection() {
           className="absolute inset-0"
           style={{
             background:
-              "radial-gradient(ellipse 80% 60% at 60% 40%, rgba(23, 53, 128, 0.35) 0%, transparent 70%), radial-gradient(ellipse 40% 40% at 20% 80%, rgba(0, 212, 255, 0.08) 0%, transparent 60%), var(--color-cq-950)",
+              "radial-gradient(ellipse 80% 60% at 60% 40%, rgba(37, 99, 235, 0.08) 0%, transparent 70%), radial-gradient(ellipse 40% 40% at 20% 80%, rgba(37, 99, 235, 0.05) 0%, transparent 60%)",
           }}
         />
-        <div className="absolute inset-0 bg-grid-pattern opacity-60" />
+        <div className="absolute inset-0 bg-grid-pattern opacity-30" />
       </div>
 
       {/* Decorative right panel */}
       <div className="absolute right-0 top-0 bottom-0 w-1/2 pointer-events-none hidden lg:block overflow-hidden">
         <svg
           viewBox="0 0 600 800"
-          className="absolute right-0 top-0 h-full opacity-10"
+          className="absolute right-0 top-0 h-full opacity-5"
           xmlns="http://www.w3.org/2000/svg"
           aria-hidden="true"
         >
           <defs>
             <linearGradient id="heroProfileGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#2d6be4" />
-              <stop offset="100%" stopColor="#00d4ff" />
+              <stop offset="0%" stopColor="#2563EB" />
+              <stop offset="100%" stopColor="#3B82F6" />
             </linearGradient>
           </defs>
           <rect x="50" y="100" width="80" height="600" rx="4" fill="url(#heroProfileGrad)" />
@@ -45,11 +45,6 @@ export function HeroSection() {
           <rect x="30" y="450" width="220" height="80" rx="4" fill="url(#heroProfileGrad)" opacity="0.5" />
           <rect x="300" y="200" width="60" height="500" rx="3" fill="url(#heroProfileGrad)" opacity="0.4" />
           <rect x="380" y="300" width="60" height="350" rx="3" fill="url(#heroProfileGrad)" opacity="0.3" />
-          <circle cx="90" cy="300" r="8" fill="black" opacity="0.5" />
-          <circle cx="90" cy="400" r="8" fill="black" opacity="0.5" />
-          <circle cx="90" cy="500" r="8" fill="black" opacity="0.5" />
-          <circle cx="190" cy="300" r="8" fill="black" opacity="0.5" />
-          <circle cx="190" cy="400" r="8" fill="black" opacity="0.5" />
         </svg>
         <div
           className="absolute"
@@ -59,8 +54,8 @@ export function HeroSection() {
             width: "300px",
             height: "300px",
             borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(30, 77, 183, 0.3) 0%, transparent 70%)",
-            filter: "blur(40px)",
+            background: "radial-gradient(circle, rgba(37, 99, 235, 0.06) 0%, transparent 70%)",
+            filter: "blur(60px)",
           }}
         />
       </div>
@@ -77,7 +72,7 @@ export function HeroSection() {
             className="text-display opacity-0 animate-fade-up delay-100"
             style={{
               fontSize: "clamp(3rem, 7vw, 5.5rem)",
-              color: "white",
+              color: "#111827",
               marginBottom: "1.5rem",
             }}
           >
@@ -94,7 +89,7 @@ export function HeroSection() {
           {/* Subheadline */}
           <p
             className="text-lg leading-relaxed mb-10 max-w-xl opacity-0 animate-fade-up delay-200"
-            style={{ color: "var(--color-cq-steel-300)" }}
+            style={{ color: "#6B7280" }}
           >
             Proveedor líder de perfiles estructurales, tornillería especializada, escuadras
             y sistemas completos de automatización industrial. Precisión suiza, entrega inmediata.
@@ -131,7 +126,7 @@ export function HeroSection() {
                   className="text-xs tracking-wider uppercase mt-1"
                   style={{
                     fontFamily: "var(--font-mono)",
-                    color: "var(--color-cq-steel-400)",
+                    color: "#6B7280",
                   }}
                 >
                   {stat.label}
@@ -146,7 +141,7 @@ export function HeroSection() {
       <div
         className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none"
         style={{
-          background: "linear-gradient(to bottom, transparent, var(--color-cq-950))",
+          background: "linear-gradient(to bottom, transparent, #FFFFFF)",
         }}
       />
     </section>
