@@ -3,20 +3,18 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 import { CraftqubeLogo } from "../header/CraftqubeLogo";
 import { ThemeToggle } from "./ThemeToggle";
 
+interface CategoriaDB {
+  id: number;
+  nombre: string;
+  slug: string;
+  total_productos: number;
+}
+
 const footerLinks = {
-  productos: {
-    title: "Productos",
-    items: [
-      { label: "Perfiles de Aluminio",       href: "/productos/perfiles" },
-      { label: "Escuadras & Brackets",       href: "/productos/escuadras" },
-      { label: "Tornillería Especializada",  href: "/productos/tornilleria" },
-      { label: "Tapas & Accesorios",         href: "/productos/tapas" },
-      { label: "Catálogo Completo",          href: "/catalogo" },
-    ],
-  },
   empresa: {
     title: "Empresa",
     items: [
@@ -38,12 +36,6 @@ const footerLinks = {
     ],
   },
 };
-
-const certifications = [
-  { label: "ISO 9001:2015", desc: "Calidad certificada" },
-  { label: "RoHS",          desc: "Sin sustancias peligrosas" },
-  { label: "CE Mark",       desc: "Conformidad europea" },
-];
 
 const socialLinks = [
   {
@@ -70,77 +62,42 @@ const socialLinks = [
     label: "Instagram",
     href: "https://instagram.com",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="none" stroke="currentColor" strokeWidth="2" />
+        <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="2" />
+        <circle cx="17.5" cy="6.5" r="1.5" />
+      </svg>
+    ),
+  },
+  {
+    label: "TikTok",
+    href: "https://tiktok.com",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" />
       </svg>
     ),
   },
 ];
 
 export function Footer() {
+  const [categorias, setCategorias] = useState<CategoriaDB[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/categorias")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success && Array.isArray(json.data)) {
+          setCategorias(json.data.slice(0, 5));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <footer style={{ background: "#0A0A0A", color: "#fff" }}>
-
-      {/* CTA Banner */}
-      <div
-        className="relative overflow-hidden py-16 px-6"
-        style={{
-          background: "linear-gradient(135deg, #1D4ED8 0%, #1a3fa8 50%, #1638a0 100%)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-        }}
-      >
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
-            backgroundSize: "48px 48px",
-          }}
-        />
-        <div className="relative z-10 max-w-3xl mx-auto text-center">
-          <p
-            className="text-xs tracking-widest uppercase mb-3"
-            style={{ fontFamily: "var(--font-jetbrains, monospace)", color: "rgba(255,255,255,0.55)" }}
-          >
-            ¿Tienes un proyecto?
-          </p>
-          <h3
-            className="text-display text-3xl md:text-4xl mb-6"
-            style={{ color: "white" }}
-          >
-            Hablemos de tu{" "}
-            <span style={{ color: "rgba(255,255,255,0.65)", fontStyle: "italic" }}>
-              solución industrial
-            </span>
-          </h3>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-              <Link
-                href="/cotizar"
-                className="inline-flex items-center px-6 py-3 rounded-lg text-sm font-bold tracking-wide"
-                style={{ background: "rgba(255,255,255,0.95)", color: "#1D4ED8" }}
-              >
-                Solicitar cotización gratuita
-              </Link>
-            </motion.div>
-            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-              <Link
-                href="/contacto"
-                className="inline-flex items-center px-6 py-3 rounded-lg text-sm font-bold tracking-wide"
-                style={{
-                  background: "rgba(255,255,255,0.12)",
-                  color: "white",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                }}
-              >
-                Contactar a un asesor
-              </Link>
-            </motion.div>
-          </div>
-        </div>
-      </div>
 
       {/* Main footer */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
@@ -152,8 +109,8 @@ export function Footer() {
               <CraftqubeLogo />
             </div>
             <p className="text-sm leading-relaxed mb-6" style={{ color: "rgba(255,255,255,0.45)" }}>
-              Distribuidor premium de perfiles de aluminio y accesorios industriales.
-              Más de 10 años entregando precisión y calidad.
+              Perfiles de aluminio y accesorios industriales de alta calidad.
+              Soluciones innovadoras para tus proyectos.
             </p>
             <div className="flex gap-3 mb-6">
               {socialLinks.map((social) => (
@@ -176,20 +133,83 @@ export function Footer() {
                 </motion.a>
               ))}
             </div>
-            <div className="flex flex-col gap-2">
-              {certifications.map((cert) => (
-                <div key={cert.label} className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#3B82F6" }} />
-                  <span
-                    className="text-xs"
-                    style={{ fontFamily: "var(--font-jetbrains, monospace)", color: "rgba(255,255,255,0.45)" }}
-                  >
-                    {cert.label}
-                    <span style={{ color: "rgba(255,255,255,0.25)" }}> — {cert.desc}</span>
-                  </span>
-                </div>
-              ))}
-            </div>
+          </div>
+
+          {/* Productos - DINAMICO */}
+          <div>
+            <h4
+              className="text-xs tracking-widest uppercase mb-5"
+              style={{ fontFamily: "var(--font-jetbrains, monospace)", color: "#3B82F6" }}
+            >
+              Productos
+            </h4>
+            <ul className="flex flex-col gap-3">
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <li key={i}>
+                    <div
+                      className="h-4 rounded animate-pulse"
+                      style={{
+                        background: "rgba(255,255,255,0.08)",
+                        width: `${60 + Math.random() * 30}%`,
+                      }}
+                    />
+                  </li>
+                ))
+              ) : categorias.length > 0 ? (
+                <>
+                  {categorias.map((cat) => (
+                    <li key={cat.id}>
+                      <Link
+                        href={`/productos/${cat.slug}`}
+                        className="text-sm transition-colors duration-150"
+                        style={{ color: "rgba(255,255,255,0.45)", textDecoration: "none" }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.85)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.45)"; }}
+                      >
+                        {cat.nombre}
+                      </Link>
+                    </li>
+                  ))}
+                  <li>
+                    <Link
+                      href="/catalogo"
+                      className="text-sm font-semibold transition-colors duration-150"
+                      style={{ color: "#3B82F6", textDecoration: "none" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#60A5FA"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#3B82F6"; }}
+                    >
+                      Catálogo Completo →
+                    </Link>
+                  </li>
+                </>
+              ) : (
+                <>
+                  <li>
+                    <Link
+                      href="/productos"
+                      className="text-sm transition-colors duration-150"
+                      style={{ color: "rgba(255,255,255,0.45)", textDecoration: "none" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.85)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.45)"; }}
+                    >
+                      Ver Productos
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/catalogo"
+                      className="text-sm transition-colors duration-150"
+                      style={{ color: "rgba(255,255,255,0.45)", textDecoration: "none" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.85)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.45)"; }}
+                    >
+                      Catálogo Completo
+                    </Link>
+                  </li>
+                </>
+              )}
+            </ul>
           </div>
 
           {/* Link columns */}
@@ -221,19 +241,15 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Bottom bar — con ThemeToggle */}
+      {/* Bottom bar */}
       <div className="border-t px-4 sm:px-6 py-6" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-
-          {/* Copyright */}
           <p
             className="text-xs"
             style={{ fontFamily: "var(--font-jetbrains, monospace)", color: "rgba(255,255,255,0.25)" }}
           >
             © {new Date().getFullYear()} Craftqube S.A. de C.V. — Todos los derechos reservados.
           </p>
-
-          {/* Center: Legal links */}
           <div className="flex items-center gap-6">
             {["Privacidad", "Términos", "Cookies"].map((item) => (
               <Link
@@ -248,9 +264,20 @@ export function Footer() {
               </Link>
             ))}
           </div>
-
-          {/* Theme Toggle — siempre visible en el footer */}
-          <ThemeToggle />
+          <div className="flex items-center gap-4">
+            <a
+              href="https://instagram.com/eduardo_martinez66"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs transition-colors"
+              style={{ color: "rgba(255,255,255,0.25)", textDecoration: "none" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.55)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.25)"; }}
+            >
+              Designed by @eduardo_martinez66
+            </a>
+            <ThemeToggle />
+          </div>
         </div>
       </div>
     </footer>

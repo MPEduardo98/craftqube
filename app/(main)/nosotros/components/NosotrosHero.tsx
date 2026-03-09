@@ -1,4 +1,4 @@
-// app/nosotros/components/NosotrosHero.tsx
+// app/(main)/nosotros/components/NosotrosHero.tsx
 "use client";
 
 import { motion } from "framer-motion";
@@ -8,7 +8,7 @@ export function NosotrosHero() {
     <section
       className="relative overflow-hidden"
       style={{
-        background: "#1224a0",
+        background: "var(--color-cq-blue-900)",
         paddingTop: "96px",
         paddingBottom: "80px",
       }}
@@ -20,26 +20,32 @@ export function NosotrosHero() {
           backgroundImage:
             "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
           backgroundSize: "48px 48px",
+          opacity: "var(--grid-opacity, 0.04)",
         }}
       />
-      {/* Glow */}
+
+      {/* Glow radial */}
       <div
         className="absolute pointer-events-none"
         style={{
-          left: "50%", top: "50%",
+          left: "50%",
+          top: "50%",
           transform: "translate(-50%, -50%)",
-          width: "700px", height: "400px",
+          width: "700px",
+          height: "400px",
           borderRadius: "50%",
-          background: "radial-gradient(ellipse, rgba(59,130,246,0.18) 0%, transparent 70%)",
+          background:
+            "radial-gradient(ellipse, rgba(59,130,246,0.18) 0%, transparent 70%)",
           filter: "blur(60px)",
         }}
       />
 
       <div className="relative z-10 max-w-4xl mx-auto px-6 sm:px-8 text-center">
+        {/* Label mono */}
         <motion.p
           className="text-xs tracking-widest uppercase mb-4"
           style={{
-            fontFamily: "var(--font-jetbrains, monospace)",
+            fontFamily: "var(--font-mono, monospace)",
             color: "rgba(255,255,255,0.5)",
           }}
           initial={{ opacity: 0, y: 12 }}
@@ -49,6 +55,7 @@ export function NosotrosHero() {
           Quiénes somos
         </motion.p>
 
+        {/* Headline */}
         <motion.h1
           className="mb-6"
           style={{
@@ -65,9 +72,12 @@ export function NosotrosHero() {
           transition={{ duration: 0.55, delay: 0.08 }}
         >
           La ingeniería al{" "}
-          <span style={{ color: "#60A5FA" }}>alcance de todos</span>
+          <span style={{ color: "var(--color-cq-blue-300)" }}>
+            alcance de todos
+          </span>
         </motion.h1>
 
+        {/* Subheading */}
         <motion.p
           className="text-lg leading-relaxed mx-auto"
           style={{
@@ -82,6 +92,21 @@ export function NosotrosHero() {
           La primera tienda en línea en México abierta al público para
           perfiles de aluminio y componentes modulares de alta calidad.
         </motion.p>
+
+        {/* Divider pill */}
+        <motion.div
+          className="mx-auto mt-10"
+          style={{
+            width: "40px",
+            height: "3px",
+            borderRadius: "999px",
+            background: "var(--color-cq-blue-300)",
+            opacity: 0.6,
+          }}
+          initial={{ opacity: 0, scaleX: 0 }}
+          animate={{ opacity: 0.6, scaleX: 1 }}
+          transition={{ duration: 0.5, delay: 0.28 }}
+        />
       </div>
     </section>
   );

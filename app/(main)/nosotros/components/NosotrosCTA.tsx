@@ -1,4 +1,4 @@
-// app/nosotros/components/NosotrosCTA.tsx
+// app/(main)/nosotros/components/NosotrosCTA.tsx
 "use client";
 
 import Link from "next/link";
@@ -9,10 +9,11 @@ export function NosotrosCTA() {
     <section
       className="relative overflow-hidden py-24 px-6"
       style={{
-        background: "linear-gradient(135deg, #1224a0 0%, #1638a0 50%, #1D4ED8 100%)",
+        background:
+          "linear-gradient(135deg, var(--color-cq-blue-900) 0%, var(--color-cq-blue-800) 50%, var(--color-cq-blue-600) 100%)",
       }}
     >
-      {/* Grid */}
+      {/* Grid overlay */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -21,24 +22,30 @@ export function NosotrosCTA() {
           backgroundSize: "48px 48px",
         }}
       />
-      {/* Glow */}
+
+      {/* Center glow */}
       <div
         className="absolute pointer-events-none"
         style={{
-          left: "50%", top: "50%",
+          left: "50%",
+          top: "50%",
           transform: "translate(-50%, -50%)",
-          width: "600px", height: "300px",
+          width: "600px",
+          height: "300px",
           borderRadius: "50%",
-          background: "radial-gradient(ellipse, rgba(96,165,250,0.15) 0%, transparent 70%)",
+          background:
+            "radial-gradient(ellipse, rgba(96,165,250,0.15) 0%, transparent 70%)",
           filter: "blur(50px)",
         }}
       />
 
       <div className="relative z-10 max-w-3xl mx-auto text-center">
+
+        {/* Label */}
         <motion.p
           className="text-xs tracking-widest uppercase mb-4"
           style={{
-            fontFamily: "var(--font-jetbrains, monospace)",
+            fontFamily: "var(--font-mono, monospace)",
             color: "rgba(255,255,255,0.5)",
           }}
           initial={{ opacity: 0, y: 10 }}
@@ -49,6 +56,7 @@ export function NosotrosCTA() {
           ¿Listo para empezar?
         </motion.p>
 
+        {/* Headline */}
         <motion.h2
           className="mb-4"
           style={{
@@ -65,12 +73,17 @@ export function NosotrosCTA() {
           transition={{ duration: 0.45, delay: 0.06 }}
         >
           Explora nuestro{" "}
-          <span style={{ color: "#93C5FD" }}>catálogo</span>
+          <span style={{ color: "var(--color-cq-blue-200)" }}>catálogo</span>
         </motion.h2>
 
+        {/* Subtext */}
         <motion.p
           className="text-base leading-relaxed mb-10"
-          style={{ color: "rgba(255,255,255,0.6)", maxWidth: "520px", margin: "0 auto 2.5rem" }}
+          style={{
+            color: "rgba(255,255,255,0.6)",
+            maxWidth: "520px",
+            margin: "0 auto 2.5rem",
+          }}
           initial={{ opacity: 0, y: 12 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -80,6 +93,7 @@ export function NosotrosCTA() {
           Compra en línea y recibe en casa o en tu trabajo.
         </motion.p>
 
+        {/* CTAs */}
         <motion.div
           className="flex flex-col sm:flex-row gap-3 justify-center"
           initial={{ opacity: 0, y: 12 }}
@@ -87,13 +101,14 @@ export function NosotrosCTA() {
           viewport={{ once: true }}
           transition={{ duration: 0.45, delay: 0.18 }}
         >
+          {/* Primary */}
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
             <Link
               href="/catalogo"
               className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-bold tracking-wide"
               style={{
                 background: "rgba(255,255,255,0.95)",
-                color: "#1D4ED8",
+                color: "var(--color-cq-blue-600)",
                 textDecoration: "none",
                 fontFamily: "var(--font-display, sans-serif)",
                 letterSpacing: "0.06em",
@@ -101,12 +116,20 @@ export function NosotrosCTA() {
               }}
             >
               Ver catálogo
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </Link>
           </motion.div>
 
+          {/* Secondary */}
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
             <Link
               href="/contacto"

@@ -1,10 +1,10 @@
-// app/nosotros/page.tsx
+// app/(main)/nosotros/page.tsx
 import type { Metadata } from "next";
-import { NosotrosHero }        from "./components/NosotrosHero";
-import { NosotrosIntro }       from "./components/NosotrosIntro";
+import { NosotrosHero }         from "./components/NosotrosHero";
+import { NosotrosIntro }        from "./components/NosotrosIntro";
 import { NosotrosMisionVision } from "./components/NosotrosMisionVision";
-import { NosotrosValores }     from "./components/NosotrosValores";
-import { NosotrosCTA }         from "./components/NosotrosCTA";
+import { NosotrosValores }      from "./components/NosotrosValores";
+import { NosotrosCTA }          from "./components/NosotrosCTA";
 
 export const metadata: Metadata = {
   title: "Nosotros — CraftQube",
