@@ -1,8 +1,10 @@
+// app/layout.tsx
 import type { Metadata } from "next";
 import { Barlow_Condensed, DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "./global/components/header/Header";
 import { Footer } from "./global/components/footer/Footer";
+import { ThemeProvider } from "./global/context/ThemeContext";
 
 const barlowCondensed = Barlow_Condensed({
   variable: "--font-barlow",
@@ -47,15 +49,18 @@ export default function RootLayout({
     <html lang="es" className="scroll-smooth">
       <body
         className={`${barlowCondensed.variable} ${dmSans.variable} ${jetbrainsMono.variable} antialiased`}
-        style={{
-          fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
-          backgroundColor: "#FFFFFF",
-          color: "#1F2937",
-        }}
       >
-        <Header />
-        <main>{children}</main>
-        <Footer />
+        {/*
+          ThemeProvider es "use client" y maneja el data-theme en <html>.
+          Header y Footer están DENTRO del provider para poder usar useTheme()
+          si fuera necesario, pero sus estilos están hardcoded en azul/negro
+          por lo que NO se ven afectados por el tema.
+        */}
+        <ThemeProvider>
+          <Header />
+          <main>{children}</main>
+          <Footer />
+        </ThemeProvider>
       </body>
     </html>
   );

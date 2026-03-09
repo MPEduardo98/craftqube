@@ -1,17 +1,20 @@
+// app/(main)/components/WhyCraftqubeSection.tsx
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 
 const reasons = [
   {
     icon: (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+        <path d="M12 2L2 7l10 5 10-5-10-5z" />
+        <path d="M2 17l10 5 10-5" />
+        <path d="M2 12l10 5 10-5" />
       </svg>
     ),
-    title: "Calidad Certificada ISO",
-    desc: "Todos nuestros perfiles cumplen con la norma ISO 9001:2015. Trazabilidad completa de material y procesos.",
-    metric: "ISO 9001",
+    title: "Catálogo Completo",
+    desc: "Más de 2,500 SKUs disponibles en stock. Perfiles serie 20, 30, 40, 45 y 80, tornillería, escuadras y accesorios de instalación.",
+    metric: "+2,500 SKUs",
   },
   {
     icon: (
@@ -20,44 +23,45 @@ const reasons = [
         <polyline points="12 6 12 12 16 14" />
       </svg>
     ),
-    title: "Entrega en 48 Horas",
-    desc: "Stock permanente de más de 2,500 SKUs. Procesamos y enviamos el mismo día para pedidos antes de las 2 PM.",
-    metric: "48h max",
+    title: "Entrega Rápida",
+    desc: "Envíos en 24-48h a toda la República. Centro de distribución estratégico con cobertura nacional en los 32 estados.",
+    metric: "24-48h",
+  },
+  {
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+        <path d="M9 12l2 2 4-4" />
+        <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+      </svg>
+    ),
+    title: "Calidad Certificada",
+    desc: "Productos certificados ISO 9001:2015. Aluminio 6063-T5 de alta resistencia con tolerancias industriales estrictas.",
+    metric: "ISO 9001",
   },
   {
     icon: (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
         <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
       </svg>
     ),
-    title: "Soporte de Ingeniería",
-    desc: "Equipo de ingenieros mecánicos disponibles para asesoría técnica gratuita en selección de perfiles y diseño de estructuras.",
-    metric: "Ing. + Soporte",
+    title: "Asesoría Técnica",
+    desc: "Equipo de ingenieros especializados para ayudarte a seleccionar los componentes correctos y optimizar tu diseño.",
+    metric: "Soporte 24/7",
   },
   {
     icon: (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+        <rect x="2" y="3" width="20" height="14" rx="2" />
         <line x1="8" y1="21" x2="16" y2="21" />
         <line x1="12" y1="17" x2="12" y2="21" />
       </svg>
     ),
-    title: "Catálogo Digital",
-    desc: "Plataforma online con fichas técnicas, modelos CAD, simulador de estructuras y cotizador instantáneo.",
-    metric: "100% Digital",
-  },
-  {
-    icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-        <circle cx="12" cy="10" r="3" />
-      </svg>
-    ),
-    title: "Cobertura Nacional",
-    desc: "Oficinas en CDMX, Monterrey y Guadalajara. Red de distribución en 32 estados.",
-    metric: "32 estados",
+    title: "Plataforma Digital",
+    desc: "Catálogo online completo, cotizador inteligente, seguimiento de pedidos y descarga de CAD/planos técnicos.",
+    metric: "100% digital",
   },
   {
     icon: (
@@ -72,23 +76,26 @@ const reasons = [
   },
 ];
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.08 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
   },
 };
 
 export function WhyCraftqubeSection() {
   return (
-    <section className="py-24 relative overflow-hidden" style={{ background: "#FFFFFF" }}>
+    <section
+      className="py-24 relative overflow-hidden"
+      style={{ background: "var(--color-cq-surface)" }}
+    >
       {/* Top border accent */}
       <div
         className="absolute top-0 left-0 right-0 h-px"
@@ -120,16 +127,16 @@ export function WhyCraftqubeSection() {
             className="text-display mx-auto"
             style={{
               fontSize: "clamp(2rem, 4vw, 3rem)",
-              color: "#0F172A",
+              color: "var(--color-cq-text)",
               maxWidth: "600px",
             }}
           >
             La diferencia está en los{" "}
-            <span style={{ color: "#1D4ED8" }}>detalles</span>
+            <span style={{ color: "var(--color-cq-accent)" }}>detalles</span>
           </h2>
           <p
             className="mt-4 text-base max-w-xl mx-auto"
-            style={{ color: "#64748B" }}
+            style={{ color: "var(--color-cq-muted)" }}
           >
             No solo vendemos perfiles. Somos su socio tecnológico para proyectos
             de ingeniería de precisión.
@@ -148,25 +155,19 @@ export function WhyCraftqubeSection() {
             <motion.div
               key={r.title}
               variants={itemVariants}
-              className="group relative p-6 rounded-xl"
+              className="group relative p-6 rounded-xl cq-reason-card"
               style={{
-                background: "#F8FAFC",
-                border: "1px solid #E2E8F0",
-                transition: "all 0.2s ease",
+                background: "var(--color-cq-surface-2)",
               }}
-              whileHover={{
-                y: -4,
-                boxShadow: "0 8px 32px rgba(29, 78, 216, 0.1)",
-                borderColor: "rgba(37, 99, 235, 0.25)",
-              }}
+              whileHover={{ y: -4 }}
             >
               {/* Icon + metric */}
               <div className="flex items-start justify-between mb-4">
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center"
                   style={{
-                    background: "rgba(37, 99, 235, 0.08)",
-                    color: "#1D4ED8",
+                    background: "var(--color-cq-accent-glow)",
+                    color: "var(--color-cq-accent)",
                   }}
                 >
                   {r.icon}
@@ -174,8 +175,8 @@ export function WhyCraftqubeSection() {
                 <span
                   className="text-xs font-bold px-2.5 py-1 rounded-full"
                   style={{
-                    background: "rgba(37, 99, 235, 0.08)",
-                    color: "#1D4ED8",
+                    background: "var(--color-cq-accent-glow)",
+                    color: "var(--color-cq-accent)",
                     fontFamily: "var(--font-mono)",
                     border: "1px solid rgba(37, 99, 235, 0.15)",
                   }}
@@ -186,11 +187,15 @@ export function WhyCraftqubeSection() {
 
               <h3
                 className="text-base font-bold mb-2"
-                style={{ color: "#0F172A", fontFamily: "var(--font-display)", letterSpacing: "0.01em" }}
+                style={{
+                  color: "var(--color-cq-text)",
+                  fontFamily: "var(--font-display)",
+                  letterSpacing: "0.01em",
+                }}
               >
                 {r.title}
               </h3>
-              <p className="text-sm leading-relaxed" style={{ color: "#64748B" }}>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--color-cq-muted)" }}>
                 {r.desc}
               </p>
             </motion.div>

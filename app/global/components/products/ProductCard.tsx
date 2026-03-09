@@ -9,8 +9,7 @@ import type { Producto } from "@/app/global/types/product";
 
 /* ─── Fallback illustration por categoría ─────────────────── */
 function FallbackIllustration({ categoria }: { categoria: string | null }) {
-  const cat = (categoria ?? "").toLowerCase();
-  // Usamos id estático para el gradiente — sin Math.random (SSR safe)
+  const cat    = (categoria ?? "").toLowerCase();
   const gradId = `grad-fallback-${cat.slice(0, 6).replace(/\s/g, "")}`;
 
   return (
@@ -66,7 +65,6 @@ function FallbackIllustration({ categoria }: { categoria: string | null }) {
 /* ─── Props ───────────────────────────────────────────────── */
 interface ProductCardProps {
   producto: Producto;
-  /** Tamaños para el atributo sizes de Next Image. Default razonable ya incluido. */
   imageSizes?: string;
 }
 
@@ -74,13 +72,12 @@ interface ProductCardProps {
 export function ProductCard({ producto, imageSizes }: ProductCardProps) {
   const [imgError, setImgError] = useState(false);
 
-  const tieneStock    = (producto.stock ?? 0) > 0;
+  const tieneStock     = (producto.stock ?? 0) > 0;
   const tieneDescuento =
     producto.precio_original !== null &&
     producto.precio_original > 0 &&
     producto.precio_original > (producto.precio ?? 0);
 
-  // Construye la ruta de imagen: /uploads/productos/[id]/[nombre_archivo]
   const imageSrc =
     producto.imagen_nombre && !imgError
       ? `/productos/${producto.id}/${producto.imagen_nombre}`
@@ -92,15 +89,12 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
 
   return (
     <motion.article
-      className="group flex flex-col rounded-xl overflow-hidden"
+      className="group flex flex-col rounded-xl overflow-hidden cq-product-card"
       style={{
-        background: "#FFFFFF",
-        border: "1px solid #E2E8F0",
+        background: "var(--color-cq-surface)",
+        height: "100%",
       }}
-      whileHover={{
-        y: -3,
-        borderColor: "rgba(37,99,235,0.25)",
-      }}
+      whileHover={{ y: -3 }}
       transition={{ duration: 0.2 }}
     >
       {/* ── Imagen 1:1 ── */}
@@ -109,8 +103,8 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
         className="relative w-full overflow-hidden"
         style={{
           aspectRatio: "1 / 1",
-          background: "#F8FAFC",
-          borderBottom: "1px solid #E2E8F0",
+          background: "var(--color-cq-surface-2)",
+          borderBottom: "1px solid var(--color-cq-border)",
           display: "block",
         }}
         tabIndex={-1}
@@ -135,7 +129,7 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
           <span
             className="absolute top-2 left-2 text-xs font-bold px-2 py-0.5 rounded-md"
             style={{
-              background: "#1D4ED8",
+              background: "var(--color-cq-primary)",
               color: "white",
               fontFamily: "var(--font-mono, monospace)",
               fontSize: "0.6rem",
@@ -150,20 +144,19 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
         <span
           className="absolute top-2 right-2 w-2 h-2 rounded-full block"
           title={tieneStock ? "En stock" : "Stock limitado"}
-          style={{
-            background: tieneStock ? "#22c55e" : "#f59e0b",
-          }}
+          style={{ background: tieneStock ? "#22c55e" : "#f59e0b" }}
         />
       </Link>
 
       {/* ── Info ── */}
       <div className="flex flex-col flex-1 p-3.5 gap-1.5">
+
         {/* SKU */}
         {producto.sku && (
           <span
             style={{
               fontFamily: "var(--font-mono, monospace)",
-              color: "#94A3B8",
+              color: "var(--color-cq-muted-2)",
               fontSize: "0.6rem",
               letterSpacing: "0.06em",
             }}
@@ -175,15 +168,16 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
         {/* Título */}
         <Link href={`/productos/${producto.slug}`} style={{ textDecoration: "none" }}>
           <h3
-            className="text-sm font-bold leading-snug transition-colors group-hover:text-blue-600"
+            className="text-sm font-bold leading-snug transition-colors group-hover:text-blue-500"
             style={{
               fontFamily: "var(--font-display, sans-serif)",
-              color: "#0F172A",
+              color: "var(--color-cq-text)",
               letterSpacing: "0.01em",
               display: "-webkit-box",
               WebkitLineClamp: 2,
               WebkitBoxOrient: "vertical",
               overflow: "hidden",
+              minHeight: "2.6em", /* ← reserva siempre 2 líneas */
             }}
           >
             {producto.titulo}
@@ -198,9 +192,9 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
               fontFamily: "var(--font-mono, monospace)",
               fontSize: "0.58rem",
               letterSpacing: "0.04em",
-              background: "rgba(37,99,235,0.07)",
-              color: "#1D4ED8",
-              border: "1px solid rgba(37,99,235,0.12)",
+              background: "var(--color-cq-accent-glow)",
+              color: "var(--color-cq-accent)",
+              border: "1px solid rgba(37,99,235,0.15)",
             }}
           >
             {producto.categoria}
@@ -212,7 +206,7 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
           <p
             className="text-xs leading-relaxed"
             style={{
-              color: "#64748B",
+              color: "var(--color-cq-muted)",
               display: "-webkit-box",
               WebkitLineClamp: 2,
               WebkitBoxOrient: "vertical",
@@ -223,20 +217,19 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
           </p>
         )}
 
-        {/* Spacer */}
         <div className="flex-1" />
 
         {/* Precio + CTA */}
         <div
           className="flex flex-col gap-2 pt-2"
-          style={{ borderTop: "1px solid #F1F5F9" }}
+          style={{ borderTop: "1px solid var(--color-cq-border)" }}
         >
           {producto.precio !== null && producto.precio > 0 ? (
             <div className="flex items-baseline gap-1.5 flex-wrap">
               <span
                 className="font-bold"
                 style={{
-                  color: "#0F172A",
+                  color: "var(--color-cq-text)",
                   fontSize: "1rem",
                   fontFamily: "var(--font-display, sans-serif)",
                 }}
@@ -246,7 +239,7 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
               {tieneDescuento && (
                 <span
                   className="line-through text-xs"
-                  style={{ color: "#94A3B8" }}
+                  style={{ color: "var(--color-cq-muted-2)" }}
                 >
                   ${producto.precio_original!.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
                 </span>
@@ -256,7 +249,7 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
             <span
               style={{
                 fontSize: "0.7rem",
-                color: "#94A3B8",
+                color: "var(--color-cq-muted-2)",
                 fontFamily: "var(--font-mono, monospace)",
               }}
             >
@@ -268,8 +261,8 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
             href={`/productos/${producto.slug}`}
             className="w-full text-center text-xs font-bold py-2 rounded-lg transition-colors"
             style={{
-              background: "rgba(37,99,235,0.08)",
-              color: "#1D4ED8",
+              background: "var(--color-cq-accent-glow)",
+              color: "var(--color-cq-accent)",
               border: "1px solid rgba(37,99,235,0.15)",
               fontFamily: "var(--font-display, sans-serif)",
               letterSpacing: "0.06em",

@@ -27,7 +27,7 @@ export function HeroSection() {
     <section
       className="relative overflow-hidden"
       style={{
-        background: "#F8FAFC",
+        background: "var(--color-cq-bg)",
         minHeight: "100dvh",
         display: "grid",
         gridTemplateRows: "1fr auto",
@@ -67,18 +67,15 @@ export function HeroSection() {
       >
         {/* ── Columna izquierda — texto ── */}
         <div style={{ maxWidth: "560px" }}>
+
           {/* Badge */}
-          <motion.div
-            className="inline-flex mb-5"
-            initial={fadeUpHidden}
-            animate={fadeUpVisible(0)}
-          >
+          <motion.div className="inline-flex mb-5" initial={fadeUpHidden} animate={fadeUpVisible(0)}>
             <span
               className="flex items-center gap-2 px-3 py-1.5 rounded-full"
               style={{
                 background: "rgba(37,99,235,0.08)",
                 border: "1px solid rgba(37,99,235,0.18)",
-                color: "#1D4ED8",
+                color: "var(--color-cq-accent)",
                 fontFamily: "var(--font-mono, monospace)",
                 fontSize: "0.65rem",
                 fontWeight: 600,
@@ -87,109 +84,86 @@ export function HeroSection() {
               }}
             >
               <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: "#1D4ED8", animation: "pulse 2s infinite" }}
+                style={{
+                  width: "6px",
+                  height: "6px",
+                  borderRadius: "50%",
+                  background: "var(--color-cq-accent)",
+                  display: "inline-block",
+                  animation: "pulse-dot 2s ease-in-out infinite",
+                }}
               />
-              Distribución Industrial Premium
+              Distribución industrial · México
             </span>
           </motion.div>
 
-          {/* Headline */}
+          {/* Heading */}
           <motion.h1
+            className="text-display mb-5"
             style={{
-              fontSize: "clamp(2.6rem, 5vw, 4.5rem)",
-              fontFamily: "var(--font-display, sans-serif)",
-              fontWeight: 900,
-              color: "#0F172A",
-              lineHeight: 1.05,
-              letterSpacing: "-0.02em",
-              marginBottom: "1.25rem",
+              fontSize: "clamp(2.6rem, 6vw, 4.8rem)",
+              color: "var(--color-cq-text)",
+              maxWidth: "520px",
             }}
             initial={fadeUpHidden}
             animate={fadeUpVisible(1)}
           >
             Perfiles de{" "}
-            <span style={{ color: "#1D4ED8" }}>aluminio</span>
-            <br />
-            para construir
-            <br />
-            <span style={{ color: "#374151" }}>el futuro</span>
+            <span style={{ color: "var(--color-cq-accent)" }}>Aluminio</span>
+            {" "}Industrial
           </motion.h1>
 
-          {/* Sub */}
+          {/* Subtitle */}
           <motion.p
+            className="text-base leading-relaxed mb-8"
             style={{
-              fontSize: "1rem",
-              lineHeight: 1.7,
-              color: "#64748B",
-              marginBottom: "2rem",
-              maxWidth: "460px",
+              color: "var(--color-cq-muted)",
+              maxWidth: "440px",
             }}
             initial={fadeUpHidden}
             animate={fadeUpVisible(2)}
           >
-            Proveedor líder de perfiles estructurales, tornillería especializada y
-            sistemas de automatización industrial. Precisión suiza, entrega en 48h.
+            Distribuidor premium de perfiles estructurales, tornillería, escuadras
+            y sistemas de automatización. Más de 2,500 SKUs en stock inmediato.
           </motion.p>
 
           {/* CTAs */}
           <motion.div
-            className="flex flex-wrap gap-3"
-            style={{ marginBottom: "2.5rem" }}
+            className="flex flex-wrap gap-3 mb-10"
             initial={fadeUpHidden}
             animate={fadeUpVisible(3)}
           >
-            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-              <Link
-                href="/catalogo"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "0.75rem 1.75rem",
-                  borderRadius: "10px",
-                  background: "#1D4ED8",
-                  color: "white",
-                  fontFamily: "var(--font-display, sans-serif)",
-                  fontSize: "0.78rem",
-                  fontWeight: 700,
-                  letterSpacing: "0.07em",
-                  textTransform: "uppercase",
-                  textDecoration: "none",
-                  boxShadow: "0 4px 20px rgba(29,78,216,0.28)",
-                  transition: "box-shadow 0.2s",
-                }}
-              >
-                Ver catálogo
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </motion.div>
-
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
-              <Link
-                href="/contacto"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "0.75rem 1.75rem",
-                  borderRadius: "10px",
-                  background: "white",
-                  color: "#1E293B",
-                  fontFamily: "var(--font-display, sans-serif)",
-                  fontSize: "0.78rem",
-                  fontWeight: 700,
-                  letterSpacing: "0.07em",
-                  textTransform: "uppercase",
-                  textDecoration: "none",
-                  border: "1.5px solid #E2E8F0",
-                }}
-              >
-                Cotizar proyecto
-              </Link>
-            </motion.div>
+            <Link
+              href="/catalogo"
+              className="btn-primary"
+            >
+              Ver catálogo
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </Link>
+            <Link
+              href="/cotizar"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                padding: "0.75rem 1.5rem",
+                borderRadius: "var(--radius-md)",
+                fontFamily: "var(--font-display)",
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                letterSpacing: "0.07em",
+                textTransform: "uppercase",
+                textDecoration: "none",
+                color: "var(--color-cq-text)",
+                border: "1.5px solid var(--color-cq-border)",
+                background: "var(--color-cq-surface)",
+                transition: "all 0.2s ease",
+              }}
+            >
+              Cotizar proyecto
+            </Link>
           </motion.div>
 
           {/* Stats */}
@@ -208,16 +182,16 @@ export function HeroSection() {
                 style={{
                   padding: "0.875rem 0.75rem",
                   borderRadius: "12px",
-                  background: "white",
-                  border: "1px solid #E2E8F0",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                  background: "var(--color-cq-surface)",
+                  border: "1px solid var(--color-cq-border)",
+                  boxShadow: "var(--shadow-card)",
                 }}
               >
                 <p
                   style={{
                     fontSize: "1.35rem",
                     fontWeight: 900,
-                    color: "#1D4ED8",
+                    color: "var(--color-cq-accent)",
                     fontFamily: "var(--font-display, sans-serif)",
                     lineHeight: 1,
                     marginBottom: "4px",
@@ -228,7 +202,7 @@ export function HeroSection() {
                 <p
                   style={{
                     fontSize: "0.62rem",
-                    color: "#94A3B8",
+                    color: "var(--color-cq-muted-2)",
                     fontFamily: "var(--font-mono, monospace)",
                     letterSpacing: "0.06em",
                     lineHeight: 1.3,
@@ -242,61 +216,32 @@ export function HeroSection() {
         </div>
 
         {/* ── Columna derecha — imagen ── */}
-        <div
-          className="relative hidden lg:flex items-center justify-center"
-          style={{ height: "clamp(400px, 55vh, 620px)" }}
-        >
-          {/* Glow */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background:
-                "radial-gradient(ellipse 75% 65% at 55% 50%, rgba(37,99,235,0.09) 0%, transparent 70%)",
-              filter: "blur(30px)",
-            }}
-          />
-
-          {/* Imagen flotante */}
+        <div className="relative hidden lg:flex items-center justify-center">
           <motion.div
-            className="relative"
-            style={{ width: "92%", height: "92%", rotate: -5 }}
-            initial={{ opacity: 0, x: 50, rotate: -8 }}
-            animate={{ opacity: 1, x: 0, rotate: -5 }}
-            transition={{ duration: 1, ease: "easeOut", delay: 0.25 }}
+            initial={{ opacity: 0, scale: 0.92, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
+            style={{ position: "relative", width: "440px", aspectRatio: "1/1" }}
           >
-            <motion.div
-              className="relative w-full h-full"
-              animate={{ y: [0, -16, 0] }}
-              transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
-            >
-              {/* Sombra elíptica */}
-              <div
-                className="absolute"
-                style={{
-                  bottom: "-20px",
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  width: "55%",
-                  height: "28px",
-                  background: "radial-gradient(ellipse, rgba(29,78,216,0.2) 0%, transparent 70%)",
-                  filter: "blur(12px)",
-                  borderRadius: "50%",
-                }}
-              />
-
-              <Image
-                src="/imagenes/heros/hero_principal.png"
-                alt="Perfil de aluminio industrial — CraftQube"
-                fill
-                priority
-                className="object-contain select-none"
-                sizes="50vw"
-                style={{
-                  filter:
-                    "drop-shadow(0 30px 50px rgba(29,78,216,0.16)) drop-shadow(0 8px 18px rgba(0,0,0,0.12))",
-                }}
-              />
-            </motion.div>
+            {/* Glow bg */}
+            <div
+              style={{
+                position: "absolute",
+                inset: "-20%",
+                borderRadius: "50%",
+                background: "radial-gradient(circle, rgba(37,99,235,0.08) 0%, transparent 70%)",
+                filter: "blur(40px)",
+              }}
+            />
+            <Image
+              src="/imagenes/heros/hero_principal.png"
+              alt="Perfil de aluminio industrial — CraftQube"
+              fill
+              priority
+              className="object-contain"
+              sizes="440px"
+              style={{ filter: "drop-shadow(0 24px 40px rgba(29,78,216,0.18))" }}
+            />
           </motion.div>
         </div>
       </div>
@@ -338,14 +283,14 @@ export function HeroSection() {
             style={{
               fontSize: "0.58rem",
               letterSpacing: "0.18em",
-              color: "#CBD5E1",
+              color: "var(--color-cq-muted-2)",
               fontFamily: "var(--font-mono, monospace)",
               textTransform: "uppercase",
             }}
           >
             scroll
           </span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" strokeWidth="2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: "var(--color-cq-muted-2)" }}>
             <path d="M12 5v14M5 12l7 7 7-7" />
           </svg>
         </motion.div>

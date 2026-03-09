@@ -8,18 +8,16 @@ import { ProductCard } from "@/app/global/components/products/ProductCard";
 import { ProductCardSkeleton } from "@/app/global/components/products/ProductCardSkeleton";
 import type { Producto } from "@/app/global/types/product";
 
-/* ─── Animation variants ──────────────────────────────────── */
 const containerVariants: Variants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.07 } },
 };
 
 const cardVariants: Variants = {
-  hidden:   { opacity: 0, y: 20 },
-  visible:  { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" } },
+  hidden:  { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" } },
 };
 
-/* ─── Section ─────────────────────────────────────────────── */
 export function FeaturedProductsSection() {
   const [products, setProducts] = useState<Producto[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -37,7 +35,10 @@ export function FeaturedProductsSection() {
   }, []);
 
   return (
-    <section className="py-24 relative" style={{ background: "#FFFFFF" }}>
+    <section
+      className="py-24 relative"
+      style={{ background: "var(--color-cq-surface)" }}
+    >
       {/* Grid overlay */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -55,10 +56,10 @@ export function FeaturedProductsSection() {
             <p className="section-label">Productos destacados</p>
             <h2
               className="text-display"
-              style={{ fontSize: "clamp(2rem, 4vw, 3rem)", color: "#0F172A" }}
+              style={{ fontSize: "clamp(2rem, 4vw, 3rem)", color: "var(--color-cq-text)" }}
             >
               Los más{" "}
-              <span style={{ color: "#1D4ED8" }}>solicitados</span>
+              <span style={{ color: "var(--color-cq-accent)" }}>solicitados</span>
             </h2>
           </div>
           <Link href="/catalogo" className="btn-ghost self-start sm:self-auto">
@@ -70,7 +71,11 @@ export function FeaturedProductsSection() {
         {error && !loading && (
           <div
             className="flex items-center gap-3 p-4 rounded-xl mb-8"
-            style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#DC2626" }}
+            style={{
+              background: "rgba(220,38,38,0.08)",
+              border: "1px solid rgba(220,38,38,0.2)",
+              color: "#DC2626",
+            }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10" />
@@ -100,7 +105,7 @@ export function FeaturedProductsSection() {
             viewport={{ once: true, margin: "-60px" }}
           >
             {products.map((product) => (
-              <motion.div key={product.id} variants={cardVariants}>
+              <motion.div key={product.id} variants={cardVariants} style={{ height: "100%" }}>
                 <ProductCard
                   producto={product}
                   imageSizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
@@ -112,7 +117,7 @@ export function FeaturedProductsSection() {
 
         {/* Empty */}
         {!loading && !error && products.length === 0 && (
-          <p className="text-center py-16 text-sm" style={{ color: "#94A3B8" }}>
+          <p className="text-center py-16 text-sm" style={{ color: "var(--color-cq-muted-2)" }}>
             No hay productos disponibles en este momento.
           </p>
         )}

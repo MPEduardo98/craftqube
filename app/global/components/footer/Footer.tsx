@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { CraftqubeLogo } from "../header/CraftqubeLogo";
+import { ThemeToggle } from "./ThemeToggle";
 
 const footerLinks = {
   productos: {
@@ -220,15 +221,19 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Bottom bar */}
+      {/* Bottom bar — con ThemeToggle */}
       <div className="border-t px-4 sm:px-6 py-6" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+
+          {/* Copyright */}
           <p
             className="text-xs"
             style={{ fontFamily: "var(--font-jetbrains, monospace)", color: "rgba(255,255,255,0.25)" }}
           >
             © {new Date().getFullYear()} Craftqube S.A. de C.V. — Todos los derechos reservados.
           </p>
+
+          {/* Center: Legal links */}
           <div className="flex items-center gap-6">
             {["Privacidad", "Términos", "Cookies"].map((item) => (
               <Link
@@ -243,6 +248,9 @@ export function Footer() {
               </Link>
             ))}
           </div>
+
+          {/* Theme Toggle — siempre visible en el footer */}
+          <ThemeToggle />
         </div>
       </div>
     </footer>
