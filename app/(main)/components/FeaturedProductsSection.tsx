@@ -1,152 +1,135 @@
-import Link from "next/link";
+"use client";
 
-interface Product {
-  id: string;
-  sku: string;
-  name: string;
-  series: string;
-  price: number;
-  unit: string;
-  stock: "En stock" | "Bajo stock";
-  rating: number;
-  reviews: number;
-  tags: string[];
-  specs: string[];
+import Link from "next/link";
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import { motion, type Variants } from "framer-motion";
+
+interface ProductoDB {
+  id: number;
+  titulo: string;
+  descripcion_corta: string | null;
+  slug: string;
+  categoria: string | null;
+  categoria_slug: string | null;
+  marca: string | null;
+  sku: string | null;
+  precio: number | null;
+  precio_original: number | null;
+  stock: number | null;
+  imagen_url: string | null;
+  imagen_alt: string | null;
 }
 
-const products: Product[] = [
-  {
-    id: "p1",
-    sku: "CQ-AL-2020",
-    name: "Perfil Aluminio 20×20",
-    series: "Serie 20",
-    price: 145,
-    unit: "m",
-    stock: "En stock",
-    rating: 4.9,
-    reviews: 128,
-    tags: ["Más vendido"],
-    specs: ["20×20mm", "Ranura 6mm", "6063-T5"],
-  },
-  {
-    id: "p2",
-    sku: "CQ-AL-4040",
-    name: "Perfil Aluminio 40×40",
-    series: "Serie 40",
-    price: 285,
-    unit: "m",
-    stock: "En stock",
-    rating: 4.8,
-    reviews: 94,
-    tags: ["Premium"],
-    specs: ["40×40mm", "Ranura 8mm", "Anodizado"],
-  },
-  {
-    id: "p3",
-    sku: "CQ-TNT-M5",
-    name: "T-Nut M5 Deslizante",
-    series: "Tornillería",
-    price: 4.5,
-    unit: "pz",
-    stock: "En stock",
-    rating: 5.0,
-    reviews: 312,
-    tags: ["Top rated"],
-    specs: ["M5 Rosca", "Acero inox", "Ranura 6-8mm"],
-  },
-  {
-    id: "p4",
-    sku: "CQ-ESQ-90",
-    name: "Escuadra Interior 90°",
-    series: "Accesorios",
-    price: 38,
-    unit: "pz",
-    stock: "En stock",
-    rating: 4.7,
-    reviews: 67,
-    tags: [],
-    specs: ["Al-380", "4 orificios", "M5 compatible"],
-  },
-  {
-    id: "p5",
-    sku: "CQ-AL-3030L",
-    name: "Perfil Ligero 30×30",
-    series: "Serie 30",
-    price: 198,
-    unit: "m",
-    stock: "Bajo stock",
-    rating: 4.8,
-    reviews: 43,
-    tags: ["Nuevo"],
-    specs: ["30×30mm", "Doble ranura", "Ultraligero"],
-  },
-  {
-    id: "p6",
-    sku: "CQ-KIT-CNC3",
-    name: "Kit Marco CNC 3-Ejes",
-    series: "Automatización",
-    price: 4850,
-    unit: "kit",
-    stock: "Bajo stock",
-    rating: 4.9,
-    reviews: 21,
-    tags: ["Kit completo"],
-    specs: ["500×500mm", "Incluye hardware", "Manual técnico"],
-  },
-];
+function FallbackIllustration({ categoria }: { categoria: string | null }) {
+  const cat = (categoria ?? "").toLowerCase();
+  const gradId = `grad-${Math.random().toString(36).slice(2, 7)}`;
 
-function ProductIllustration({ product }: { product: Product }) {
-  const gradId = `g-${product.id}`;
   return (
-    <svg viewBox="0 0 200 140" className="w-full h-full" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <svg viewBox="0 0 160 160" className="w-full h-full" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#2d6be4" stopOpacity="0.6" />
-          <stop offset="100%" stopColor="#00d4ff" stopOpacity="0.3" />
+          <stop offset="0%" stopColor="#2563EB" stopOpacity="0.5" />
+          <stop offset="100%" stopColor="#60A5FA" stopOpacity="0.2" />
         </linearGradient>
       </defs>
-      {product.series.includes("Serie") && (
+      {cat.includes("perfil") ? (
         <>
-          <rect x="60" y="20" width="30" height="100" rx="2" fill={`url(#${gradId})`} />
-          <rect x="100" y="20" width="30" height="100" rx="2" fill={`url(#${gradId})`} opacity="0.7" />
-          <rect x="50" y="55" width="100" height="30" rx="2" fill={`url(#${gradId})`} opacity="0.4" />
+          <rect x="45" y="15" width="28" height="130" rx="3" fill={`url(#${gradId})`} />
+          <rect x="83" y="15" width="28" height="130" rx="3" fill={`url(#${gradId})`} opacity="0.7" />
+          <rect x="35" y="60" width="90" height="22" rx="3" fill={`url(#${gradId})`} opacity="0.3" />
+          <rect x="35" y="90" width="90" height="22" rx="3" fill={`url(#${gradId})`} opacity="0.2" />
         </>
-      )}
-      {product.series === "Tornillería" && (
+      ) : cat.includes("accesorio") ? (
         <>
-          <circle cx="100" cy="70" r="35" fill="none" stroke="#2d6be4" strokeWidth="3" opacity="0.5" />
-          <polygon points="100,20 112,55 88,55" fill="#2d6be4" opacity="0.7" />
-          <polygon points="100,120 112,85 88,85" fill="#2d6be4" opacity="0.7" />
-          <polygon points="55,70 78,58 78,82" fill="#2d6be4" opacity="0.7" />
-          <polygon points="145,70 122,58 122,82" fill="#2d6be4" opacity="0.7" />
-          <circle cx="100" cy="70" r="12" fill="#00d4ff" opacity="0.6" />
+          <path d="M80 130 L80 50 L130 50" stroke="#2563EB" strokeWidth="7" strokeLinecap="round" fill="none" opacity="0.6" />
+          <rect x="55" y="28" width="30" height="30" rx="3" fill={`url(#${gradId})`} opacity="0.5" />
+          <circle cx="80" cy="50" r="5" fill="#2563EB" opacity="0.7" />
+          <circle cx="80" cy="130" r="5" fill="#2563EB" opacity="0.7" />
+          <circle cx="130" cy="50" r="5" fill="#2563EB" opacity="0.7" />
         </>
-      )}
-      {product.series === "Accesorios" && (
+      ) : (
         <>
-          <path d="M60 110 L60 50 L120 50" stroke="#2d6be4" strokeWidth="8" strokeLinecap="round" fill="none" opacity="0.7" />
-          <rect x="60" y="50" width="25" height="25" rx="2" fill="#2d6be4" opacity="0.4" />
-        </>
-      )}
-      {product.series === "Automatización" && (
-        <>
-          <rect x="30" y="55" width="140" height="30" rx="3" fill={`url(#${gradId})`} opacity="0.6" />
-          <circle cx="50" cy="70" r="12" fill="#00d4ff" opacity="0.6" />
-          <circle cx="150" cy="70" r="12" fill="#00d4ff" opacity="0.6" />
-          <rect x="80" y="45" width="40" height="50" rx="2" stroke="#2d6be4" strokeWidth="2" fill="none" opacity="0.5" />
+          <circle cx="80" cy="80" r="42" fill="none" stroke="#2563EB" strokeWidth="2" opacity="0.25" />
+          <polygon points="80,22 93,56 68,56" fill="#2563EB" opacity="0.7" />
+          <polygon points="80,138 93,104 68,104" fill="#2563EB" opacity="0.7" />
+          <polygon points="22,80 52,67 52,93" fill="#2563EB" opacity="0.7" />
+          <polygon points="138,80 108,67 108,93" fill="#2563EB" opacity="0.7" />
+          <circle cx="80" cy="80" r="18" fill={`url(#${gradId})`} opacity="0.85" />
         </>
       )}
     </svg>
   );
 }
 
-export function FeaturedProductsSection() {
+function SkeletonCard() {
   return (
-    <section
-      className="py-24 relative"
-      style={{ background: "var(--color-cq-900)" }}
+    <div
+      className="flex flex-col rounded-xl overflow-hidden animate-pulse"
+      style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}
     >
-      <div className="absolute inset-0 bg-grid-pattern-sm opacity-30" />
+      <div className="aspect-square" style={{ background: "#F1F5F9" }} />
+      <div className="p-3.5 flex flex-col gap-2.5">
+        <div className="h-2.5 rounded" style={{ background: "#E2E8F0", width: "60%" }} />
+        <div className="h-4 rounded" style={{ background: "#E2E8F0", width: "85%" }} />
+        <div className="flex gap-1">
+          <div className="h-5 w-14 rounded-md" style={{ background: "#EFF6FF" }} />
+        </div>
+        <div className="h-3 rounded mt-2" style={{ background: "#E2E8F0", width: "40%" }} />
+        <div className="mt-2 pt-2 border-t" style={{ borderColor: "#F1F5F9" }}>
+          <div className="h-5 rounded mb-2" style={{ background: "#EFF6FF", width: "50%" }} />
+          <div className="h-8 rounded-lg" style={{ background: "#DBEAFE" }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const containerVariants: Variants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.07 },
+  },
+};
+
+const cardVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" },
+  },
+};
+
+export function FeaturedProductsSection() {
+  const [products, setProducts] = useState<ProductoDB[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/productos")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) {
+          setProducts(json.data);
+        } else {
+          setError("No se pudieron cargar los productos.");
+        }
+      })
+      .catch(() => setError("Error de conexión con el servidor."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <section className="py-24 relative" style={{ background: "#FFFFFF" }}>
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(37,99,235,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.025) 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
+        }}
+      />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6">
         {/* Header */}
@@ -155,10 +138,10 @@ export function FeaturedProductsSection() {
             <p className="section-label">Productos destacados</p>
             <h2
               className="text-display"
-              style={{ fontSize: "clamp(2rem, 4vw, 3rem)", color: "white" }}
+              style={{ fontSize: "clamp(2rem, 4vw, 3rem)", color: "#0F172A" }}
             >
               Los más{" "}
-              <span style={{ color: "var(--color-cq-accent)" }}>solicitados</span>
+              <span style={{ color: "#1D4ED8" }}>solicitados</span>
             </h2>
           </div>
           <Link href="/catalogo" className="btn-ghost self-start sm:self-auto">
@@ -166,173 +149,254 @@ export function FeaturedProductsSection() {
           </Link>
         </div>
 
-        {/* Products grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {products.map((product) => (
-            <article key={product.id} className="card-surface group transition-all duration-300">
-              {/* Image area */}
-              <div
-                className="relative h-48 overflow-hidden flex items-center justify-center"
-                style={{
-                  background:
-                    "linear-gradient(135deg, var(--color-cq-800) 0%, var(--color-cq-700) 100%)",
-                  borderBottom: "1px solid var(--color-cq-700)",
-                }}
-              >
-                <ProductIllustration product={product} />
+        {/* Error */}
+        {error && !loading && (
+          <div
+            className="flex items-center gap-3 p-4 rounded-xl mb-8"
+            style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#DC2626" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span className="text-sm font-medium">{error}</span>
+          </div>
+        )}
 
-                {/* Tags */}
-                {product.tags.length > 0 && (
-                  <div className="absolute top-3 left-3 flex gap-1">
-                    {product.tags.map((tag) => (
-                      <span key={tag} className="badge">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
+        {/* Skeletons */}
+        {loading && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)}
+          </div>
+        )}
 
-                {/* Stock */}
-                <div className="absolute top-3 right-3">
-                  <span
-                    className="text-xs px-2 py-1"
-                    style={{
-                      fontFamily: "var(--font-mono)",
-                      borderRadius: "2px",
-                      background:
-                        product.stock === "En stock"
-                          ? "rgba(34, 197, 94, 0.15)"
-                          : "rgba(234, 179, 8, 0.15)",
-                      color:
-                        product.stock === "En stock" ? "#4ade80" : "#facc15",
-                      border: `1px solid ${
-                        product.stock === "En stock"
-                          ? "rgba(34, 197, 94, 0.3)"
-                          : "rgba(234, 179, 8, 0.3)"
-                      }`,
-                    }}
-                  >
-                    {product.stock}
-                  </span>
-                </div>
-              </div>
+        {/* Grid — 5 por fila en desktop */}
+        {!loading && products.length > 0 && (
+          <motion.div
+            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-60px" }}
+          >
+            {products.map((product) => {
+              const tieneStock = (product.stock ?? 0) > 0;
+              const tieneDescuento =
+                product.precio_original &&
+                product.precio_original > 0 &&
+                product.precio_original > (product.precio ?? 0);
 
-              {/* Content */}
-              <div className="p-5">
-                <div className="flex items-center justify-between mb-2">
-                  <span
-                    className="text-xs"
-                    style={{
-                      fontFamily: "var(--font-mono)",
-                      color: "var(--color-cq-steel-500)",
-                    }}
-                  >
-                    {product.sku}
-                  </span>
-                  <span
-                    className="text-xs px-2 py-0.5"
-                    style={{
-                      fontFamily: "var(--font-mono)",
-                      borderRadius: "2px",
-                      background: "var(--color-cq-800)",
-                      color: "var(--color-cq-steel-300)",
-                    }}
-                  >
-                    {product.series}
-                  </span>
-                </div>
-
-                <h3
-                  className="text-lg font-bold mb-2"
+              return (
+                <motion.article
+                  key={product.id}
+                  variants={cardVariants}
+                  className="group flex flex-col rounded-xl overflow-hidden"
                   style={{
-                    fontFamily: "var(--font-display)",
-                    color: "white",
-                    letterSpacing: "0.01em",
+                    background: "#FFFFFF",
+                    border: "1px solid #E2E8F0",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
                   }}
+                  whileHover={{
+                    y: -4,
+                    boxShadow: "0 8px 28px rgba(29,78,216,0.1)",
+                    borderColor: "rgba(37,99,235,0.3)",
+                  }}
+                  transition={{ duration: 0.2 }}
                 >
-                  {product.name}
-                </h3>
-
-                {/* Specs */}
-                <div className="flex flex-wrap gap-1 mb-4">
-                  {product.specs.map((spec) => (
-                    <span
-                      key={spec}
-                      className="text-xs px-2 py-0.5"
-                      style={{
-                        fontFamily: "var(--font-mono)",
-                        borderRadius: "2px",
-                        background: "rgba(23, 53, 128, 0.15)",
-                        color: "var(--color-cq-300)",
-                        border: "1px solid rgba(23, 53, 128, 0.3)",
-                      }}
-                    >
-                      {spec}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Rating */}
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="flex items-center gap-0.5">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <svg
-                        key={i}
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill={i < Math.floor(product.rating) ? "#facc15" : "none"}
-                        stroke="#facc15"
-                        strokeWidth="2"
-                        aria-hidden="true"
-                      >
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                      </svg>
-                    ))}
-                  </div>
-                  <span
-                    className="text-xs"
+                  {/* Imagen */}
+                  <Link
+                    href={`/productos/${product.slug}`}
+                    className="relative w-full aspect-square flex items-center justify-center p-4"
                     style={{
-                      fontFamily: "var(--font-mono)",
-                      color: "var(--color-cq-steel-400)",
+                      background: "linear-gradient(135deg, #F0F7FF 0%, #EFF6FF 100%)",
+                      borderBottom: "1px solid #E2E8F0",
                     }}
                   >
-                    {product.rating} ({product.reviews})
-                  </span>
-                </div>
+                    {product.imagen_url ? (
+                      <Image
+                        src={product.imagen_url}
+                        alt={product.imagen_alt ?? product.titulo}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                      />
+                    ) : (
+                      <div className="w-full h-full max-w-[90px] max-h-[90px]">
+                        <FallbackIllustration categoria={product.categoria} />
+                      </div>
+                    )}
 
-                {/* Price + CTA */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span
-                      className="text-display text-2xl"
-                      style={{ color: "var(--color-cq-accent)" }}
-                    >
-                      ${product.price.toLocaleString("es-MX")}
-                    </span>
-                    <span
-                      className="text-xs ml-1"
-                      style={{
-                        fontFamily: "var(--font-mono)",
-                        color: "var(--color-cq-steel-500)",
-                      }}
-                    >
-                      MXN/{product.unit}
-                    </span>
+                    {/* Stock dot */}
+                    <div className="absolute top-2 right-2">
+                      <span
+                        className="w-2 h-2 rounded-full block"
+                        title={tieneStock ? "En stock" : "Sin stock"}
+                        style={{
+                          background: tieneStock ? "#22c55e" : "#f59e0b",
+                          boxShadow: tieneStock
+                            ? "0 0 6px rgba(34,197,94,0.5)"
+                            : "0 0 6px rgba(245,158,11,0.5)",
+                        }}
+                      />
+                    </div>
+
+                    {/* Descuento badge */}
+                    {tieneDescuento && (
+                      <div className="absolute top-2 left-2">
+                        <span
+                          className="text-xs px-1.5 py-0.5 rounded-full font-bold"
+                          style={{
+                            background: "#DC2626",
+                            color: "white",
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "0.6rem",
+                          }}
+                        >
+                          -{Math.round((1 - (product.precio ?? 0) / product.precio_original!) * 100)}%
+                        </span>
+                      </div>
+                    )}
+                  </Link>
+
+                  {/* Contenido */}
+                  <div className="flex flex-col flex-1 p-3.5 gap-2">
+                    {product.sku && (
+                      <span
+                        style={{
+                          fontFamily: "var(--font-jetbrains, monospace)",
+                          color: "#94A3B8",
+                          fontSize: "0.62rem",
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        {product.sku}
+                      </span>
+                    )}
+
+                    <Link href={`/productos/${product.slug}`}>
+                      <h3
+                        className="text-sm font-bold leading-snug hover:text-blue-600 transition-colors"
+                        style={{
+                          fontFamily: "var(--font-display)",
+                          color: "#0F172A",
+                          letterSpacing: "0.01em",
+                        }}
+                      >
+                        {product.titulo}
+                      </h3>
+                    </Link>
+
+                    {product.categoria && (
+                      <span
+                        className="self-start text-xs px-2 py-0.5 rounded-md"
+                        style={{
+                          fontFamily: "var(--font-jetbrains, monospace)",
+                          fontSize: "0.6rem",
+                          background: "rgba(37,99,235,0.07)",
+                          color: "#1D4ED8",
+                          border: "1px solid rgba(37,99,235,0.12)",
+                        }}
+                      >
+                        {product.categoria}
+                      </span>
+                    )}
+
+                    {product.descripcion_corta && (
+                      <p
+                        className="text-xs leading-relaxed line-clamp-2"
+                        style={{ color: "#64748B" }}
+                      >
+                        {product.descripcion_corta}
+                      </p>
+                    )}
+
+                    <div className="flex-1" />
+
+                    {/* Precio + CTA */}
+                    <div className="flex flex-col gap-2 pt-2" style={{ borderTop: "1px solid #F1F5F9" }}>
+                      {product.precio !== null ? (
+                        <div className="flex flex-col">
+                          {tieneDescuento && (
+                            <span
+                              className="text-xs line-through"
+                              style={{
+                                fontFamily: "var(--font-jetbrains, monospace)",
+                                color: "#94A3B8",
+                              }}
+                            >
+                              ${product.precio_original!.toLocaleString("es-MX")}
+                            </span>
+                          )}
+                          <div>
+                            <span
+                              className="font-bold"
+                              style={{
+                                fontFamily: "var(--font-display)",
+                                fontSize: "1.1rem",
+                                color: "#1D4ED8",
+                              }}
+                            >
+                              ${product.precio.toLocaleString("es-MX")}
+                            </span>
+                            <span
+                              className="text-xs ml-1"
+                              style={{
+                                fontFamily: "var(--font-jetbrains, monospace)",
+                                color: "#94A3B8",
+                              }}
+                            >
+                              MXN
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-xs" style={{ color: "#94A3B8", fontFamily: "var(--font-mono)" }}>
+                          Precio a consultar
+                        </span>
+                      )}
+
+                      <motion.button
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.96 }}
+                        disabled={!tieneStock}
+                        className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold"
+                        style={{
+                          background: tieneStock ? "#1D4ED8" : "#E2E8F0",
+                          color: tieneStock ? "white" : "#94A3B8",
+                          fontFamily: "var(--font-display)",
+                          letterSpacing: "0.06em",
+                          border: "none",
+                          cursor: tieneStock ? "pointer" : "not-allowed",
+                        }}
+                        aria-label={`Agregar ${product.titulo} al carrito`}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                          <line x1="3" y1="6" x2="21" y2="6" />
+                          <path d="M16 10a4 4 0 0 1-8 0" />
+                        </svg>
+                        {tieneStock ? "Agregar" : "Sin stock"}
+                      </motion.button>
+                    </div>
                   </div>
-                  <button className="btn-primary py-2 px-4 text-xs" aria-label={`Agregar ${product.name} al carrito`}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-                      <line x1="3" y1="6" x2="21" y2="6" />
-                      <path d="M16 10a4 4 0 0 1-8 0" />
-                    </svg>
-                    Agregar
-                  </button>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
+                </motion.article>
+              );
+            })}
+          </motion.div>
+        )}
+
+        {/* Empty state */}
+        {!loading && !error && products.length === 0 && (
+          <div
+            className="text-center py-20 rounded-xl"
+            style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}
+          >
+            <p className="text-sm" style={{ color: "#94A3B8", fontFamily: "var(--font-mono)" }}>
+              No hay productos disponibles en este momento.
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );

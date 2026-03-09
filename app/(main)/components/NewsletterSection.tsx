@@ -1,92 +1,118 @@
+"use client";
+
+import { useState } from "react";
+import { motion } from "framer-motion";
+
 export function NewsletterSection() {
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email) {
+      setSubmitted(true);
+    }
+  };
+
   return (
     <section
-      className="py-24 relative overflow-hidden"
-      style={{
-        background:
-          "linear-gradient(135deg, var(--color-cq-800) 0%, var(--color-cq-700) 50%, var(--color-cq-800) 100%)",
-      }}
+      className="py-20 relative overflow-hidden"
+      style={{ background: "#F1F5F9" }}
     >
-      <div className="absolute inset-0 bg-grid-pattern opacity-40" />
-
+      {/* Grid pattern */}
       <div
-        className="absolute pointer-events-none"
+        className="absolute inset-0"
         style={{
-          left: "50%",
-          top: "50%",
-          transform: "translate(-50%, -50%)",
-          width: "800px",
-          height: "400px",
-          borderRadius: "50%",
-          background:
-            "radial-gradient(ellipse, rgba(30, 77, 183, 0.3) 0%, transparent 70%)",
-          filter: "blur(80px)",
+          backgroundImage:
+            "linear-gradient(rgba(37, 99, 235, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(37, 99, 235, 0.03) 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
         }}
       />
 
-      <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 text-center">
-        <p className="section-label justify-center">Newsletter técnico</p>
-        <h2
-          className="text-display mb-4"
-          style={{ fontSize: "clamp(2rem, 4vw, 2.8rem)", color: "white" }}
+      <div className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          viewport={{ once: true }}
         >
-          Recibe novedades de{" "}
-          <span style={{ color: "var(--color-cq-accent)" }}>
-            ingeniería industrial
-          </span>
-        </h2>
-        <p
-          className="text-base mb-10"
-          style={{ color: "var(--color-cq-steel-300)" }}
-        >
-          Nuevos productos, guías técnicas, tutoriales de automatización y
-          ofertas exclusivas. Sin spam, solo contenido de valor para ingenieros.
-        </p>
+          <p className="section-label justify-center">Newsletter</p>
+          <h2
+            className="text-display mb-4"
+            style={{ fontSize: "clamp(1.75rem, 3.5vw, 2.5rem)", color: "#0F172A" }}
+          >
+            Actualizaciones técnicas y{" "}
+            <span style={{ color: "#1D4ED8" }}>novedades</span>
+          </h2>
+          <p className="text-sm mb-8 leading-relaxed" style={{ color: "#64748B" }}>
+            Recibe fichas técnicas, nuevos productos, guías de instalación y ofertas exclusivas
+            directamente en tu correo.
+          </p>
 
-        <div className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
-          <label htmlFor="newsletter-email" className="sr-only">
-            Correo electrónico
-          </label>
-          <input
-            id="newsletter-email"
-            type="email"
-            placeholder="tu@empresa.com"
-            className="flex-1 px-4 py-3 text-sm outline-none"
-            style={{
-              fontFamily: "var(--font-mono)",
-              borderRadius: "2px",
-              background: "rgba(2, 11, 24, 0.8)",
-              border: "1px solid var(--color-cq-600)",
-              color: "var(--color-cq-100)",
-              caretColor: "var(--color-cq-accent)",
-            }}
-          />
-          <button type="button" className="btn-primary">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
+          {!submitted ? (
+            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="tucorreo@empresa.com"
+                required
+                className="flex-1 px-4 py-3 rounded-lg text-sm outline-none"
+                style={{
+                  background: "white",
+                  border: "1.5px solid #E2E8F0",
+                  color: "#0F172A",
+                  fontFamily: "var(--font-body)",
+                  transition: "border-color 0.2s",
+                }}
+                onFocus={(e) => (e.target.style.borderColor = "#1D4ED8")}
+                onBlur={(e) => (e.target.style.borderColor = "#E2E8F0")}
+              />
+              <motion.button
+                type="submit"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="px-6 py-3 rounded-lg text-xs font-bold tracking-widest uppercase"
+                style={{
+                  background: "#1D4ED8",
+                  color: "white",
+                  fontFamily: "var(--font-display)",
+                  boxShadow: "0 4px 16px rgba(29, 78, 216, 0.25)",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Suscribirse
+              </motion.button>
+            </form>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex items-center justify-center gap-3 py-4 px-6 rounded-xl max-w-md mx-auto"
+              style={{
+                background: "rgba(37, 99, 235, 0.07)",
+                border: "1px solid rgba(37, 99, 235, 0.2)",
+              }}
             >
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-              <polyline points="22,6 12,13 2,6" />
-            </svg>
-            Suscribirse
-          </button>
-        </div>
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: "#1D4ED8" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+              <p className="text-sm font-semibold" style={{ color: "#1D4ED8" }}>
+                ¡Suscripción exitosa! Pronto recibirás novedades.
+              </p>
+            </motion.div>
+          )}
 
-        <p
-          className="mt-4 text-xs"
-          style={{
-            fontFamily: "var(--font-mono)",
-            color: "var(--color-cq-steel-500)",
-          }}
-        >
-          📧 +3,500 ingenieros ya suscritos · Baja cuando quieras
-        </p>
+          <p className="text-xs mt-4" style={{ color: "#94A3B8", fontFamily: "var(--font-mono)" }}>
+            Sin spam. Cancelación inmediata. Solo contenido técnico de valor.
+          </p>
+        </motion.div>
       </div>
     </section>
   );
