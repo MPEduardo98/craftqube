@@ -1,130 +1,171 @@
+// app/(main)/components/CategoriesSection.tsx
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
-import type { ReactNode } from "react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import { motion, type Variants } from "framer-motion";
 
-interface Category {
-  id: string;
-  label: string;
-  title: string;
-  desc: string;
-  href: string;
-  accent: string;
-  icon: ReactNode;
-  features: string[];
+/* ─── Types ───────────────────────────────────────────────── */
+interface CategoriaDB {
+  id: number;
+  nombre: string;
+  slug: string;
+  descripcion: string | null;
+  parent_id: number | null;
+  total_productos: number;
 }
 
-const categories: Category[] = [
-  {
-    id: "perfiles",
-    label: "CAT·01",
-    title: "Perfiles Estructurales",
-    desc: "Serie 20 · 30 · 40 · 45 · 80mm. Aluminio 6063-T5. Compatible con sistemas europeos.",
-    href: "/productos/perfiles",
-    accent: "#1D4ED8",
-    icon: (
-      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full" aria-hidden="true">
-        <rect x="8" y="8" width="20" height="48" rx="2" fill="currentColor" opacity="0.9" />
-        <rect x="36" y="8" width="20" height="48" rx="2" fill="currentColor" opacity="0.6" />
-        <rect x="6" y="26" width="52" height="12" rx="2" fill="currentColor" opacity="0.3" />
-        <circle cx="18" cy="18" r="3" fill="white" opacity="0.6" />
-        <circle cx="18" cy="46" r="3" fill="white" opacity="0.6" />
-        <circle cx="46" cy="18" r="3" fill="white" opacity="0.6" />
-        <circle cx="46" cy="46" r="3" fill="white" opacity="0.6" />
-      </svg>
-    ),
-    features: ["6063-T5 Aleación", "Anodizado natural", "Tolerancia ±0.1mm"],
-  },
-  {
-    id: "tornilleria",
-    label: "CAT·02",
-    title: "Tornillería Especializada",
-    desc: "T-nuts, cabeza martillo, hexagonal, tornillos de fijación. Acero inoxidable 304.",
-    href: "/productos/tornilleria",
-    accent: "#2563EB",
-    icon: (
-      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full" aria-hidden="true">
-        <circle cx="32" cy="32" r="20" stroke="currentColor" strokeWidth="3" fill="none" opacity="0.25" />
-        <polygon points="32,8 38,20 26,20" fill="currentColor" opacity="0.8" />
-        <polygon points="32,56 38,44 26,44" fill="currentColor" opacity="0.8" />
-        <polygon points="8,32 20,26 20,38" fill="currentColor" opacity="0.8" />
-        <polygon points="56,32 44,26 44,38" fill="currentColor" opacity="0.8" />
-        <circle cx="32" cy="32" r="8" fill="currentColor" opacity="0.9" />
-        <circle cx="32" cy="32" r="3" fill="white" opacity="0.6" />
-      </svg>
-    ),
-    features: ["Acero inox 304", "Zinc-níquel coating", "Métricas DIN/ISO"],
-  },
-  {
-    id: "escuadras",
-    label: "CAT·03",
-    title: "Escuadras & Brackets",
-    desc: "Internas, externas, de esquina. Fundición de aluminio de alta resistencia.",
-    href: "/productos/escuadras",
-    accent: "#3B82F6",
-    icon: (
-      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full" aria-hidden="true">
-        <path d="M12 52 L12 12 L52 12" stroke="currentColor" strokeWidth="6" strokeLinecap="round" fill="none" opacity="0.8" />
-        <rect x="12" y="12" width="16" height="16" rx="2" fill="currentColor" opacity="0.4" />
-        <path d="M28 28 L28 52 L52 52" stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.35" />
-        <circle cx="20" cy="20" r="3" fill="white" opacity="0.6" />
-      </svg>
-    ),
-    features: ["Fundición Al-380", "Pre-taladradas", "Compatibilidad universal"],
-  },
-  {
-    id: "automatizacion",
-    label: "CAT·04",
-    title: "Automatización Industrial",
-    desc: "Guías lineales, husillos de bola, estructuras CNC. Kits completos para proyectos.",
-    href: "/automatizacion",
-    accent: "#1D4ED8",
-    icon: (
-      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full" aria-hidden="true">
-        <rect x="8" y="28" width="48" height="8" rx="2" fill="currentColor" opacity="0.65" />
-        <rect x="20" y="20" width="24" height="24" rx="2" stroke="currentColor" strokeWidth="2" fill="none" opacity="0.35" />
-        <circle cx="32" cy="32" r="6" fill="currentColor" opacity="0.9" />
-        <circle cx="12" cy="32" r="4" fill="currentColor" opacity="0.55" />
-        <circle cx="52" cy="32" r="4" fill="currentColor" opacity="0.55" />
-      </svg>
-    ),
-    features: ["Precisión 0.01mm", "Kits plug & play", "Soporte de ingeniería"],
-  },
-];
+/* ─── Fallback SVG por slug ───────────────────────────────── */
+function FallbackIcon({ slug, accent }: { slug: string; accent: string }) {
+  const s = slug.toLowerCase();
 
-const containerVariants = {
+  if (s.includes("perfil") || s.includes("industrial") || s.includes("aluminio")) {
+    return (
+      <svg viewBox="0 0 80 80" fill="none" className="w-16 h-16" style={{ color: accent }} aria-hidden="true">
+        <rect x="10" y="8" width="22" height="64" rx="3" fill="currentColor" opacity="0.85" />
+        <rect x="40" y="8" width="22" height="64" rx="3" fill="currentColor" opacity="0.5" />
+        <rect x="6" y="32" width="68" height="16" rx="3" fill="currentColor" opacity="0.2" />
+        <circle cx="21" cy="20" r="4" fill="white" opacity="0.5" />
+        <circle cx="21" cy="60" r="4" fill="white" opacity="0.5" />
+        <circle cx="51" cy="20" r="4" fill="white" opacity="0.5" />
+        <circle cx="51" cy="60" r="4" fill="white" opacity="0.5" />
+      </svg>
+    );
+  }
+  if (s.includes("laptop") || s.includes("tech") || s.includes("computadora")) {
+    return (
+      <svg viewBox="0 0 80 80" fill="none" className="w-16 h-16" style={{ color: accent }} aria-hidden="true">
+        <rect x="10" y="12" width="60" height="40" rx="4" stroke="currentColor" strokeWidth="3" fill="none" opacity="0.8" />
+        <rect x="18" y="20" width="44" height="24" rx="2" fill="currentColor" opacity="0.18" />
+        <rect x="5" y="56" width="70" height="6" rx="3" fill="currentColor" opacity="0.3" />
+        <rect x="28" y="52" width="24" height="4" rx="2" fill="currentColor" opacity="0.45" />
+      </svg>
+    );
+  }
+  if (s.includes("accesorio") || s.includes("tornillo") || s.includes("escuadra")) {
+    return (
+      <svg viewBox="0 0 80 80" fill="none" className="w-16 h-16" style={{ color: accent }} aria-hidden="true">
+        <circle cx="40" cy="40" r="24" stroke="currentColor" strokeWidth="3" fill="none" opacity="0.2" />
+        <polygon points="40,10 47,24 33,24" fill="currentColor" opacity="0.85" />
+        <polygon points="40,70 47,56 33,56" fill="currentColor" opacity="0.85" />
+        <polygon points="10,40 24,33 24,47" fill="currentColor" opacity="0.85" />
+        <polygon points="70,40 56,33 56,47" fill="currentColor" opacity="0.85" />
+        <circle cx="40" cy="40" r="10" fill="currentColor" opacity="0.9" />
+        <circle cx="40" cy="40" r="4" fill="white" opacity="0.6" />
+      </svg>
+    );
+  }
+  // Default
+  return (
+    <svg viewBox="0 0 80 80" fill="none" className="w-16 h-16" style={{ color: accent }} aria-hidden="true">
+      <rect x="8" y="8" width="28" height="28" rx="4" fill="currentColor" opacity="0.8" />
+      <rect x="44" y="8" width="28" height="28" rx="4" fill="currentColor" opacity="0.5" />
+      <rect x="8" y="44" width="28" height="28" rx="4" fill="currentColor" opacity="0.5" />
+      <rect x="44" y="44" width="28" height="28" rx="4" fill="currentColor" opacity="0.25" />
+    </svg>
+  );
+}
+
+/* ─── Card image con fallback ─────────────────────────────── */
+function CategoryImage({ slug, nombre, accent }: { slug: string; nombre: string; accent: string }) {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <div
+        className="w-full h-full flex items-center justify-center"
+        style={{
+          background: `linear-gradient(135deg, ${accent}10 0%, ${accent}06 100%)`,
+        }}
+      >
+        <FallbackIcon slug={slug} accent={accent} />
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={`/imagenes/categorias/${slug}.webp`}
+      alt={nombre}
+      fill
+      className="object-cover transition-transform duration-500 group-hover:scale-105"
+      sizes="(max-width: 768px) 100vw, 50vw"
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
+/* ─── Paleta de accents ───────────────────────────────────── */
+const ACCENTS = ["#1D4ED8", "#2563EB", "#1E40AF", "#3B82F6", "#0EA5E9"];
+const getAccent = (i: number) => ACCENTS[i % ACCENTS.length];
+
+/* ─── Skeleton ────────────────────────────────────────────── */
+function SkeletonCard() {
+  return (
+    <div
+      className="rounded-2xl overflow-hidden animate-pulse"
+      style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}
+    >
+      <div style={{ aspectRatio: "1 / 1", background: "#F1F5F9" }} />
+      <div className="p-6 space-y-3">
+        <div className="h-2.5 rounded" style={{ background: "#E2E8F0", width: "25%" }} />
+        <div className="h-6 rounded" style={{ background: "#E2E8F0", width: "65%" }} />
+        <div className="h-3 rounded" style={{ background: "#F1F5F9", width: "90%" }} />
+        <div className="h-3 rounded" style={{ background: "#F1F5F9", width: "60%" }} />
+        <div className="flex justify-between items-center pt-2">
+          <div className="h-5 w-24 rounded-full" style={{ background: "#EFF6FF" }} />
+          <div className="h-5 w-16 rounded" style={{ background: "#E2E8F0" }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Variants ────────────────────────────────────────────── */
+const containerVariants: Variants = {
   hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.1 },
-  },
+  visible: { transition: { staggerChildren: 0.1 } },
 };
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 24 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
-  },
+const cardVariants: Variants = {
+  hidden: { opacity: 0, y: 32 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: "easeOut" } },
 };
 
+/* ─── Main ────────────────────────────────────────────────── */
 export function CategoriesSection() {
+  const [categorias, setCategorias] = useState<CategoriaDB[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/categorias")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success) setCategorias(json.data);
+        else setError("No se pudieron cargar las categorías.");
+      })
+      .catch(() => setError("Error de conexión con el servidor."))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <section className="py-24 relative" style={{ background: "#F1F5F9" }}>
-      {/* Subtle grid */}
+      {/* Grid overlay */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(37, 99, 235, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(37, 99, 235, 0.03) 1px, transparent 1px)",
+            "linear-gradient(rgba(37,99,235,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.03) 1px, transparent 1px)",
           backgroundSize: "48px 48px",
         }}
       />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6">
-        {/* Section header */}
-        <div className="mb-16 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+
+        {/* Header */}
+        <div className="mb-14 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div>
             <p className="section-label">Catálogo</p>
             <h2
@@ -140,91 +181,212 @@ export function CategoriesSection() {
           </Link>
         </div>
 
-        {/* Grid */}
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 gap-4"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-80px" }}
-        >
-          {categories.map((cat) => (
-            <motion.div key={cat.id} variants={cardVariants}>
-              <Link
-                href={cat.href}
-                className="group card-surface p-8 transition-all duration-300 block"
-              >
-                {/* Top row */}
-                <div className="flex items-start justify-between mb-6">
-                  <div>
-                    <span
-                      className="text-xs tracking-widest block mb-3"
-                      style={{
-                        fontFamily: "var(--font-mono)",
-                        color: "#94A3B8",
-                      }}
-                    >
-                      {cat.label}
-                    </span>
-                    <h3
-                      className="text-display text-xl"
-                      style={{ color: "#0F172A" }}
-                    >
-                      {cat.title}
-                    </h3>
-                  </div>
-                  <motion.div
-                    className="w-14 h-14 flex-shrink-0"
-                    style={{ color: cat.accent }}
-                    whileHover={{ scale: 1.1 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 20 }}
+        {/* Error */}
+        {error && !loading && (
+          <div
+            className="flex items-center gap-3 p-4 rounded-xl mb-10"
+            style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#DC2626" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span className="text-sm font-medium">{error}</span>
+          </div>
+        )}
+
+        {/* Skeletons */}
+        {loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
+          </div>
+        )}
+
+        {/* Grid dinámico */}
+        {!loading && categorias.length > 0 && (
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-60px" }}
+          >
+            {categorias.map((cat, index) => {
+              const accent = getAccent(index);
+              const label  = `CAT·${String(index + 1).padStart(2, "0")}`;
+              const href   = `/catalogo?categoria=${cat.slug}`;
+
+              return (
+                <motion.div key={cat.id} variants={cardVariants}>
+                  <Link
+                    href={href}
+                    className="group block rounded-2xl overflow-hidden"
+                    style={{
+                      background: "#FFFFFF",
+                      border: "1px solid #E2E8F0",
+                      textDecoration: "none",
+                      transition: "border-color 0.3s ease, transform 0.3s ease",
+                    }}
                   >
-                    {cat.icon}
-                  </motion.div>
-                </div>
-
-                {/* Description */}
-                <p
-                  className="text-sm leading-relaxed mb-6"
-                  style={{ color: "#64748B" }}
-                >
-                  {cat.desc}
-                </p>
-
-                {/* Features */}
-                <div className="flex flex-wrap gap-2">
-                  {cat.features.map((f) => (
-                    <span
-                      key={f}
-                      className="text-xs px-2.5 py-1 rounded-full"
-                      style={{
-                        fontFamily: "var(--font-mono)",
-                        background: "rgba(37, 99, 235, 0.07)",
-                        color: "#1D4ED8",
-                        border: "1px solid rgba(37, 99, 235, 0.15)",
-                      }}
+                    {/* ── Imagen 1:1 ── */}
+                    <div
+                      className="relative overflow-hidden"
+                      style={{ aspectRatio: "1 / 1" }}
                     >
-                      {f}
-                    </span>
-                  ))}
-                </div>
+                      <CategoryImage slug={cat.slug} nombre={cat.nombre} accent={accent} />
 
-                {/* Arrow */}
-                <div className="mt-6 flex items-center gap-1.5 text-xs font-semibold" style={{ color: "#1D4ED8" }}>
-                  <span style={{ fontFamily: "var(--font-mono)" }}>Ver productos</span>
-                  <motion.span
-                    className="inline-block"
-                    initial={{ x: 0 }}
-                    whileHover={{ x: 4 }}
-                    transition={{ type: "spring", stiffness: 400 }}
-                  >
-                    →
-                  </motion.span>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
-        </motion.div>
+                      {/* Overlay gradiente para legibilidad */}
+                      <div
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                          background:
+                            "linear-gradient(to top, rgba(15,23,42,0.55) 0%, rgba(15,23,42,0.10) 50%, transparent 100%)",
+                        }}
+                      />
+
+                      {/* Label flotante sobre imagen */}
+                      <div className="absolute top-3 left-3">
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "3px 10px",
+                            borderRadius: "99px",
+                            background: "rgba(255,255,255,0.15)",
+                            backdropFilter: "blur(8px)",
+                            border: "1px solid rgba(255,255,255,0.25)",
+                            color: "white",
+                            fontFamily: "var(--font-mono, monospace)",
+                            fontSize: "0.62rem",
+                            fontWeight: 600,
+                            letterSpacing: "0.14em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {label}
+                        </span>
+                      </div>
+
+                      {/* Conteo de productos sobre imagen */}
+                      <div className="absolute bottom-3 right-3">
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            padding: "4px 10px",
+                            borderRadius: "99px",
+                            background: `${accent}CC`,
+                            backdropFilter: "blur(6px)",
+                            color: "white",
+                            fontFamily: "var(--font-mono, monospace)",
+                            fontSize: "0.62rem",
+                            fontWeight: 700,
+                            letterSpacing: "0.06em",
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: "5px",
+                              height: "5px",
+                              borderRadius: "50%",
+                              background: "rgba(255,255,255,0.7)",
+                              display: "inline-block",
+                            }}
+                          />
+                          {cat.total_productos > 0
+                            ? `${cat.total_productos} producto${cat.total_productos !== 1 ? "s" : ""}`
+                            : "Ver productos"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* ── Info ── */}
+                    <div className="p-5">
+                      <h3
+                        className="text-display mb-2"
+                        style={{
+                          fontSize: "1.15rem",
+                          color: "#0F172A",
+                          letterSpacing: "-0.01em",
+                        }}
+                      >
+                        {cat.nombre}
+                      </h3>
+
+                      <p
+                        className="text-sm leading-relaxed mb-4 line-clamp-2"
+                        style={{ color: "#64748B", minHeight: "2.6rem" }}
+                      >
+                        {cat.descripcion ??
+                          `Explora nuestra selección de ${cat.nombre.toLowerCase()} con la mejor relación calidad‑precio.`}
+                      </p>
+
+                      {/* Footer */}
+                      <div
+                        className="flex items-center justify-between pt-4"
+                        style={{ borderTop: "1px solid #F1F5F9" }}
+                      >
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            fontSize: "0.7rem",
+                            fontFamily: "var(--font-mono, monospace)",
+                            color: "#94A3B8",
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: "6px",
+                              height: "6px",
+                              borderRadius: "50%",
+                              background: accent,
+                              display: "inline-block",
+                            }}
+                          />
+                          {cat.slug}
+                        </span>
+
+                        <motion.span
+                          className="flex items-center gap-1 text-sm font-semibold"
+                          style={{ color: accent }}
+                          whileHover={{ x: 3 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          Explorar
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            className="transition-transform duration-200 group-hover:translate-x-1"
+                          >
+                            <path d="M5 12h14M12 5l7 7-7 7" />
+                          </svg>
+                        </motion.span>
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+
+        {/* Empty */}
+        {!loading && !error && categorias.length === 0 && (
+          <div className="text-center py-20">
+            <p className="text-sm" style={{ color: "#94A3B8" }}>
+              No hay categorías disponibles en este momento.
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );

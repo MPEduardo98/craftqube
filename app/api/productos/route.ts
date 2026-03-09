@@ -1,3 +1,4 @@
+// app/api/productos/route.ts
 import { NextResponse } from "next/server";
 import mysql from "mysql2/promise";
 
@@ -21,16 +22,19 @@ export async function GET() {
         p.descripcion_corta,
         p.slug,
         p.estado,
-        c.nombre        AS categoria,
-        c.slug          AS categoria_slug,
-        m.nombre        AS marca,
+        -- MIN() para tomar la primera categoría si el producto tiene varias
+        MIN(c.nombre)                     AS categoria,
+        MIN(c.slug)                       AS categoria_slug,
+        m.nombre                          AS marca,
         v.sku,
-        v.precio_final  AS precio,
+        v.precio_final                    AS precio,
         v.precio_original,
         v.stock,
         v.es_default,
-        img.url         AS imagen_url,
-        img.alt         AS imagen_alt
+        SUBSTRING_INDEX(
+          MIN(img.url), '/', -1
+        )                                 AS imagen_nombre,
+        MIN(img.alt)                      AS imagen_alt
       FROM productos p
       LEFT JOIN producto_categorias pc  ON pc.producto_id  = p.id
       LEFT JOIN categorias c            ON c.id            = pc.categoria_id
@@ -38,13 +42,17 @@ export async function GET() {
       LEFT JOIN producto_variantes v    ON v.producto_id   = p.id AND v.es_default = 1
       LEFT JOIN producto_imagenes img   ON img.producto_id = p.id
                                         AND img.variante_id IS NULL
-                                        AND img.orden = (
-                                          SELECT MIN(orden)
+                                        AND img.id = (
+                                          SELECT MIN(id)
                                           FROM producto_imagenes
                                           WHERE producto_id = p.id AND variante_id IS NULL
                                         )
       WHERE p.estado = 'activo'
         AND p.deleted_at IS NULL
+      GROUP BY
+        p.id, p.titulo, p.descripcion_corta, p.slug, p.estado,
+        m.nombre, v.sku, v.precio_final, v.precio_original, v.stock,
+        v.es_default, p.created_at
       ORDER BY p.created_at DESC
     `);
 
