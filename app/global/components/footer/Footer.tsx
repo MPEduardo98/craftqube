@@ -1,3 +1,4 @@
+// app/global/components/footer/Footer.tsx
 "use client";
 
 import Link from "next/link";
@@ -8,49 +9,39 @@ const footerLinks = {
   productos: {
     title: "Productos",
     items: [
-      { label: "Perfiles de Aluminio", href: "/productos/perfiles" },
-      { label: "Escuadras & Brackets", href: "/productos/escuadras" },
-      { label: "Tornillería Especializada", href: "/productos/tornilleria" },
-      { label: "Tapas & Accesorios", href: "/productos/tapas" },
-      { label: "Catálogo Completo", href: "/catalogo" },
-    ],
-  },
-  automatizacion: {
-    title: "Automatización",
-    items: [
-      { label: "Estructuras CNC", href: "/automatizacion/cnc" },
-      { label: "Guías Lineales", href: "/automatizacion/guias" },
-      { label: "Husillos de Bola", href: "/automatizacion/husillos" },
-      { label: "Kits de Proyectos", href: "/automatizacion/kits" },
-      { label: "Asesoría Técnica", href: "/asesoria" },
+      { label: "Perfiles de Aluminio",       href: "/productos/perfiles" },
+      { label: "Escuadras & Brackets",       href: "/productos/escuadras" },
+      { label: "Tornillería Especializada",  href: "/productos/tornilleria" },
+      { label: "Tapas & Accesorios",         href: "/productos/tapas" },
+      { label: "Catálogo Completo",          href: "/catalogo" },
     ],
   },
   empresa: {
     title: "Empresa",
     items: [
-      { label: "Quiénes Somos", href: "/nosotros" },
-      { label: "Proyectos", href: "/proyectos" },
-      { label: "Certificaciones", href: "/certificaciones" },
-      { label: "Blog Técnico", href: "/blog" },
-      { label: "Contacto", href: "/contacto" },
+      { label: "Quiénes Somos",    href: "/nosotros" },
+      { label: "Proyectos",        href: "/proyectos" },
+      { label: "Certificaciones",  href: "/certificaciones" },
+      { label: "Blog Técnico",     href: "/blog" },
+      { label: "Contacto",         href: "/contacto" },
     ],
   },
   soporte: {
     title: "Soporte",
     items: [
-      { label: "Guías de Instalación", href: "/guias" },
-      { label: "Descarga de CAD", href: "/cad" },
-      { label: "Solicitar Cotización", href: "/cotizar" },
-      { label: "Preguntas Frecuentes", href: "/faq" },
-      { label: "Política de Envíos", href: "/envios" },
+      { label: "Guías de Instalación",  href: "/guias" },
+      { label: "Descarga de CAD",       href: "/cad" },
+      { label: "Solicitar Cotización",  href: "/cotizar" },
+      { label: "Preguntas Frecuentes",  href: "/faq" },
+      { label: "Política de Envíos",    href: "/envios" },
     ],
   },
 };
 
 const certifications = [
   { label: "ISO 9001:2015", desc: "Calidad certificada" },
-  { label: "RoHS", desc: "Sin sustancias peligrosas" },
-  { label: "CE Mark", desc: "Conformidad europea" },
+  { label: "RoHS",          desc: "Sin sustancias peligrosas" },
+  { label: "CE Mark",       desc: "Conformidad europea" },
 ];
 
 const socialLinks = [
@@ -90,6 +81,7 @@ const socialLinks = [
 export function Footer() {
   return (
     <footer style={{ background: "#0A0A0A", color: "#fff" }}>
+
       {/* CTA Banner */}
       <div
         className="relative overflow-hidden py-16 px-6"
@@ -98,7 +90,6 @@ export function Footer() {
           borderBottom: "1px solid rgba(255,255,255,0.06)",
         }}
       >
-        {/* Subtle grid pattern */}
         <div
           className="absolute inset-0"
           style={{
@@ -110,10 +101,7 @@ export function Footer() {
         <div className="relative z-10 max-w-3xl mx-auto text-center">
           <p
             className="text-xs tracking-widest uppercase mb-3"
-            style={{
-              fontFamily: "var(--font-jetbrains, monospace)",
-              color: "rgba(255,255,255,0.55)",
-            }}
+            style={{ fontFamily: "var(--font-jetbrains, monospace)", color: "rgba(255,255,255,0.55)" }}
           >
             ¿Tienes un proyecto?
           </p>
@@ -131,10 +119,7 @@ export function Footer() {
               <Link
                 href="/cotizar"
                 className="inline-flex items-center px-6 py-3 rounded-lg text-sm font-bold tracking-wide"
-                style={{
-                  background: "rgba(255,255,255,0.95)",
-                  color: "#1D4ED8",
-                }}
+                style={{ background: "rgba(255,255,255,0.95)", color: "#1D4ED8" }}
               >
                 Solicitar cotización gratuita
               </Link>
@@ -149,7 +134,7 @@ export function Footer() {
                   border: "1px solid rgba(255,255,255,0.2)",
                 }}
               >
-                Contactar a un ingeniero
+                Contactar a un asesor
               </Link>
             </motion.div>
           </div>
@@ -158,21 +143,17 @@ export function Footer() {
 
       {/* Main footer */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
+
           {/* Brand column */}
           <div className="md:col-span-1">
             <div className="mb-6 opacity-90">
-              <CraftqubeLogo className="brightness-0 invert" />
+              <CraftqubeLogo />
             </div>
-            <p
-              className="text-sm leading-relaxed mb-6"
-              style={{ color: "rgba(255,255,255,0.45)" }}
-            >
-              Distribuidor premium de perfiles de aluminio y sistemas de
-              automatización industrial. Más de 10 años entregando precisión y
-              calidad.
+            <p className="text-sm leading-relaxed mb-6" style={{ color: "rgba(255,255,255,0.45)" }}>
+              Distribuidor premium de perfiles de aluminio y accesorios industriales.
+              Más de 10 años entregando precisión y calidad.
             </p>
-            {/* Social links */}
             <div className="flex gap-3 mb-6">
               {socialLinks.map((social) => (
                 <motion.a
@@ -197,21 +178,13 @@ export function Footer() {
             <div className="flex flex-col gap-2">
               {certifications.map((cert) => (
                 <div key={cert.label} className="flex items-center gap-2">
-                  <div
-                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ background: "#3B82F6" }}
-                  />
+                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#3B82F6" }} />
                   <span
                     className="text-xs"
-                    style={{
-                      fontFamily: "var(--font-jetbrains, monospace)",
-                      color: "rgba(255,255,255,0.45)",
-                    }}
+                    style={{ fontFamily: "var(--font-jetbrains, monospace)", color: "rgba(255,255,255,0.45)" }}
                   >
                     {cert.label}
-                    <span style={{ color: "rgba(255,255,255,0.25)" }}>
-                      {" "}— {cert.desc}
-                    </span>
+                    <span style={{ color: "rgba(255,255,255,0.25)" }}> — {cert.desc}</span>
                   </span>
                 </div>
               ))}
@@ -223,10 +196,7 @@ export function Footer() {
             <div key={section.title}>
               <h4
                 className="text-xs tracking-widest uppercase mb-5"
-                style={{
-                  fontFamily: "var(--font-jetbrains, monospace)",
-                  color: "#3B82F6",
-                }}
+                style={{ fontFamily: "var(--font-jetbrains, monospace)", color: "#3B82F6" }}
               >
                 {section.title}
               </h4>
@@ -236,13 +206,9 @@ export function Footer() {
                     <Link
                       href={item.href}
                       className="text-sm transition-colors duration-150"
-                      style={{ color: "rgba(255,255,255,0.45)" }}
-                      onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.85)";
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.45)";
-                      }}
+                      style={{ color: "rgba(255,255,255,0.45)", textDecoration: "none" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.85)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.45)"; }}
                     >
                       {item.label}
                     </Link>
@@ -255,17 +221,11 @@ export function Footer() {
       </div>
 
       {/* Bottom bar */}
-      <div
-        className="border-t px-4 sm:px-6 py-6"
-        style={{ borderColor: "rgba(255,255,255,0.06)" }}
-      >
+      <div className="border-t px-4 sm:px-6 py-6" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p
             className="text-xs"
-            style={{
-              fontFamily: "var(--font-jetbrains, monospace)",
-              color: "rgba(255,255,255,0.25)",
-            }}
+            style={{ fontFamily: "var(--font-jetbrains, monospace)", color: "rgba(255,255,255,0.25)" }}
           >
             © {new Date().getFullYear()} Craftqube S.A. de C.V. — Todos los derechos reservados.
           </p>
@@ -275,13 +235,9 @@ export function Footer() {
                 key={item}
                 href={`/${item.toLowerCase()}`}
                 className="text-xs transition-colors"
-                style={{ color: "rgba(255,255,255,0.25)" }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.55)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.25)";
-                }}
+                style={{ color: "rgba(255,255,255,0.25)", textDecoration: "none" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.55)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.25)"; }}
               >
                 {item}
               </Link>

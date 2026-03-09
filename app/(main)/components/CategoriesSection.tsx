@@ -236,14 +236,7 @@ export function CategoriesSection() {
                     >
                       <CategoryImage slug={cat.slug} nombre={cat.nombre} accent={accent} />
 
-                      {/* Overlay gradiente para legibilidad */}
-                      <div
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                          background:
-                            "linear-gradient(to top, rgba(15,23,42,0.55) 0%, rgba(15,23,42,0.10) 50%, transparent 100%)",
-                        }}
-                      />
+
 
                       {/* Label flotante sobre imagen */}
                       <div className="absolute top-3 left-3">

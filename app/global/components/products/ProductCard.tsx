@@ -109,7 +109,7 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
         className="relative w-full overflow-hidden"
         style={{
           aspectRatio: "1 / 1",
-          background: "linear-gradient(135deg, #F0F7FF 0%, #EFF6FF 100%)",
+          background: "#F8FAFC",
           borderBottom: "1px solid #E2E8F0",
           display: "block",
         }}

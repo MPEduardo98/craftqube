@@ -1,3 +1,4 @@
+// app/global/components/header/Header.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -8,19 +9,18 @@ import { CartButton } from "./CartButton";
 import { CraftqubeLogo } from "./CraftqubeLogo";
 
 const mobileLinks = [
-  { label: "Perfiles", href: "/productos/perfiles" },
-  { label: "Accesorios", href: "/productos/accesorios" },
+  { label: "Perfiles",    href: "/productos/perfiles" },
+  { label: "Accesorios",  href: "/productos/accesorios" },
   { label: "Tornillería", href: "/productos/tornilleria" },
-  { label: "Automatización", href: "/automatizacion" },
-  { label: "Proyectos", href: "/proyectos" },
-  { label: "Nosotros", href: "/nosotros" },
-  { label: "Contacto", href: "/contacto" },
+  { label: "Proyectos",   href: "/proyectos" },
+  { label: "Nosotros",    href: "/nosotros" },
+  { label: "Contacto",    href: "/contacto" },
 ];
 
 export function Header() {
-  const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [scrolled, setScrolled]       = useState(false);
+  const [mobileOpen, setMobileOpen]   = useState(false);
+  const [searchOpen, setSearchOpen]   = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -30,15 +30,11 @@ export function Header() {
   }, []);
 
   useEffect(() => {
-    if (searchOpen) {
-      setTimeout(() => searchInputRef.current?.focus(), 50);
-    }
+    if (searchOpen) setTimeout(() => searchInputRef.current?.focus(), 50);
   }, [searchOpen]);
 
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSearchOpen(false);
-    };
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSearchOpen(false); };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, []);
@@ -52,8 +48,8 @@ export function Header() {
       style={{
         backgroundColor: scrolled ? "#1a3fa8" : "#1D4ED8",
         boxShadow: scrolled
-          ? "0 4px 32px rgba(29, 78, 216, 0.35)"
-          : "0 2px 12px rgba(29, 78, 216, 0.2)",
+          ? "0 4px 32px rgba(29,78,216,0.35)"
+          : "0 2px 12px rgba(29,78,216,0.2)",
         transition: "background-color 0.3s ease, box-shadow 0.3s ease",
       }}
     >
@@ -80,62 +76,37 @@ export function Header() {
               onClick={() => setSearchOpen((v) => !v)}
               className="flex items-center justify-center w-9 h-9 rounded-lg transition-colors"
               style={{
-                background: searchOpen
-                  ? "rgba(255,255,255,0.22)"
-                  : "rgba(255,255,255,0.1)",
-                border: "1px solid rgba(255,255,255,0.18)",
+                background: searchOpen ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.1)",
+                border: "1px solid rgba(255,255,255,0.15)",
                 color: "white",
+                cursor: "pointer",
               }}
-              aria-label={searchOpen ? "Cerrar búsqueda" : "Abrir búsqueda"}
-              aria-expanded={searchOpen}
+              aria-label="Buscar"
             >
-              <AnimatePresence mode="wait" initial={false}>
-                {searchOpen ? (
-                  <motion.svg
-                    key="close"
-                    width="16" height="16" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" strokeWidth="2"
-                    initial={{ opacity: 0, rotate: -90 }}
-                    animate={{ opacity: 1, rotate: 0 }}
-                    exit={{ opacity: 0, rotate: 90 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    <path d="M18 6 6 18M6 6l12 12" />
-                  </motion.svg>
-                ) : (
-                  <motion.svg
-                    key="search"
-                    width="16" height="16" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" strokeWidth="2"
-                    initial={{ opacity: 0, rotate: 90 }}
-                    animate={{ opacity: 1, rotate: 0 }}
-                    exit={{ opacity: 0, rotate: -90 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    <circle cx="11" cy="11" r="8" />
-                    <path d="m21 21-4.35-4.35" />
-                  </motion.svg>
-                )}
-              </AnimatePresence>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
             </motion.button>
 
             {/* Cart */}
             <CartButton />
 
-            {/* Mobile burger */}
+            {/* Mobile hamburger */}
             <motion.button
-              whileTap={{ scale: 0.9 }}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              onClick={() => setMobileOpen((v) => !v)}
               className="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg"
               style={{
                 background: "rgba(255,255,255,0.1)",
-                border: "1px solid rgba(255,255,255,0.2)",
+                border: "1px solid rgba(255,255,255,0.15)",
                 color: "white",
+                cursor: "pointer",
               }}
-              onClick={() => setMobileOpen(!mobileOpen)}
               aria-label="Menú"
-              aria-expanded={mobileOpen}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 {mobileOpen ? (
                   <path d="M18 6 6 18M6 6l12 12" />
                 ) : (
@@ -147,7 +118,7 @@ export function Header() {
         </div>
       </div>
 
-      {/* Search bar expandible */}
+      {/* Search bar */}
       <AnimatePresence>
         {searchOpen && (
           <motion.div
@@ -178,10 +149,7 @@ export function Header() {
                   type="text"
                   placeholder="Buscar perfiles, tornillería, accesorios..."
                   className="flex-1 bg-transparent outline-none text-sm"
-                  style={{
-                    color: "white",
-                    fontFamily: "var(--font-body)",
-                  }}
+                  style={{ color: "white", fontFamily: "var(--font-body)" }}
                 />
                 <span
                   className="text-xs px-2 py-0.5 rounded-md flex-shrink-0 hidden sm:block"
@@ -214,26 +182,25 @@ export function Header() {
               overflow: "hidden",
             }}
           >
-            <div className="max-w-7xl mx-auto px-4 py-5 flex flex-col gap-1">
-              {mobileLinks.map((item, i) => (
-                <motion.div
-                  key={item.href}
-                  initial={{ opacity: 0, x: -12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.04, duration: 0.2 }}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col gap-1">
+              {mobileLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="px-4 py-3 rounded-lg text-sm font-semibold transition-colors"
+                  style={{ color: "rgba(255,255,255,0.85)", textDecoration: "none" }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.1)";
+                    (e.currentTarget as HTMLAnchorElement).style.color = "white";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
+                    (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.85)";
+                  }}
                 >
-                  <Link
-                    href={item.href}
-                    onClick={() => setMobileOpen(false)}
-                    className="flex items-center px-4 py-3 rounded-md text-sm font-semibold tracking-wide"
-                    style={{
-                      color: "rgba(255,255,255,0.85)",
-                      borderBottom: "1px solid rgba(255,255,255,0.07)",
-                    }}
-                  >
-                    {item.label}
-                  </Link>
-                </motion.div>
+                  {link.label}
+                </Link>
               ))}
             </div>
           </motion.div>
