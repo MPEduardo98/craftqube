@@ -7,6 +7,15 @@ import { useState } from "react";
 import { motion }   from "framer-motion";
 import type { Producto } from "@/app/global/types/product";
 
+/* ─── Formato de precio MXN ──────────────────────────────── */
+function formatPrice(n: number): string {
+  return new Intl.NumberFormat("es-MX", {
+    style:                "currency",
+    currency:             "MXN",
+    maximumFractionDigits: 0,
+  }).format(n) + " MXN";
+}
+
 /* ─── Fallback illustration ──────────────────────────────── */
 function FallbackIllustration({ categoria }: { categoria: string | null }) {
   const cat    = (categoria ?? "").toLowerCase();
@@ -59,7 +68,7 @@ function FallbackIllustration({ categoria }: { categoria: string | null }) {
 
 /* ─── Props ──────────────────────────────────────────────── */
 interface ProductCardProps {
-  producto:   Producto;
+  producto:    Producto;
   imageSizes?: string;
 }
 
@@ -94,10 +103,10 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
         href={`/productos/${producto.slug}`}
         className="relative w-full overflow-hidden shrink-0"
         style={{
-          aspectRatio: "1 / 1",
-          background: "var(--color-cq-surface-2)",
+          aspectRatio:  "1 / 1",
+          background:   "var(--color-cq-surface-2)",
           borderBottom: "1px solid var(--color-cq-border)",
-          display: "block",
+          display:      "block",
         }}
         tabIndex={-1}
       >
@@ -122,9 +131,9 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
             className="absolute top-2 left-2 font-bold px-2 py-0.5 rounded-md"
             style={{
               background: "var(--color-cq-primary)",
-              color: "white",
+              color:      "white",
               fontFamily: "var(--font-mono, monospace)",
-              fontSize: "0.58rem",
+              fontSize:   "0.58rem",
               letterSpacing: "0.04em",
             }}
           >
@@ -169,7 +178,6 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
               fontWeight:        700,
               letterSpacing:     "0.01em",
               lineHeight:        1.3,
-              /* Bloque de exactamente 2 líneas */
               display:           "-webkit-box",
               WebkitLineClamp:   2,
               WebkitBoxOrient:   "vertical",
@@ -215,25 +223,25 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
             {producto.precio !== null && producto.precio > 0 ? (
               <>
                 <span style={{
-                  color:         "var(--color-cq-text)",
-                  fontSize:      "1rem",
-                  fontWeight:    700,
-                  fontFamily:    "var(--font-display, sans-serif)",
-                  lineHeight:    1,
+                  color:      "var(--color-cq-text)",
+                  fontSize:   "0.88rem",
+                  fontWeight: 700,
+                  fontFamily: "var(--font-display, sans-serif)",
+                  lineHeight: 1,
                 }}>
-                  ${producto.precio.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                  {formatPrice(producto.precio)}
                 </span>
                 {tieneDescuento && (
-                  <span className="line-through" style={{ color: "var(--color-cq-muted-2)", fontSize: "0.7rem" }}>
-                    ${producto.precio_original!.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                  <span className="line-through" style={{ color: "var(--color-cq-muted-2)", fontSize: "0.68rem" }}>
+                    {formatPrice(producto.precio_original!)}
                   </span>
                 )}
               </>
             ) : (
               <span style={{
-                fontSize:      "0.7rem",
-                color:         "var(--color-cq-muted-2)",
-                fontFamily:    "var(--font-mono, monospace)",
+                fontSize:   "0.7rem",
+                color:      "var(--color-cq-muted-2)",
+                fontFamily: "var(--font-mono, monospace)",
               }}>
                 Consultar precio
               </span>

@@ -67,7 +67,7 @@ export default async function ProductoPage({ params }: PageProps) {
               categoriaSlug={categoriaSlug}
               productoSlug={slug}
               titulo="También te puede interesar"
-              limit={6}
+              limit={5}
               layout="scroll"
             />
           </div>

@@ -500,3 +500,15 @@ header *,
 footer * {
   transition: none !important;
 }
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scrollbar-width: none;       /* Firefox */
+  -ms-overflow-style: none;    /* IE / Edge legacy */
+}
+
+html::-webkit-scrollbar {
+  display: none;               /* Chrome / Safari / Opera */
+}

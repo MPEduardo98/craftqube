@@ -2,9 +2,11 @@
 import type { Metadata } from "next";
 import { Barlow_Condensed, DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { Header } from "./global/components/header/Header";
-import { Footer } from "./global/components/footer/Footer";
+import { Header }       from "./global/components/header/Header";
+import { Footer }       from "./global/components/footer/Footer";
+import { CartDrawer }   from "./global/components/cart/CartDrawer";
 import { ThemeProvider } from "./global/context/ThemeContext";
+import { CartProvider }  from "./global/context/CartContext";
 
 const barlowCondensed = Barlow_Condensed({
   variable: "--font-barlow",
@@ -50,16 +52,13 @@ export default function RootLayout({
       <body
         className={`${barlowCondensed.variable} ${dmSans.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        {/*
-          ThemeProvider es "use client" y maneja el data-theme en <html>.
-          Header y Footer están DENTRO del provider para poder usar useTheme()
-          si fuera necesario, pero sus estilos están hardcoded en azul/negro
-          por lo que NO se ven afectados por el tema.
-        */}
         <ThemeProvider>
-          <Header />
-          <main>{children}</main>
-          <Footer />
+          <CartProvider>
+            <Header />
+            <CartDrawer />
+            <main>{children}</main>
+            <Footer />
+          </CartProvider>
         </ThemeProvider>
       </body>
     </html>
