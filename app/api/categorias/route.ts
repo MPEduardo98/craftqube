@@ -21,13 +21,14 @@ export async function GET() {
         c.nombre,
         c.slug,
         c.descripcion,
+        c.imagen,
         c.parent_id,
         COUNT(DISTINCT CASE WHEN p.estado = 'activo' AND p.deleted_at IS NULL THEN p.id END) AS total_productos
       FROM categorias c
       LEFT JOIN producto_categorias pc ON pc.categoria_id = c.id
       LEFT JOIN productos p            ON p.id = pc.producto_id
       WHERE c.parent_id IS NULL
-      GROUP BY c.id, c.nombre, c.slug, c.descripcion, c.parent_id
+      GROUP BY c.id, c.nombre, c.slug, c.descripcion, c.imagen, c.parent_id
       ORDER BY c.id ASC
     `);
 
