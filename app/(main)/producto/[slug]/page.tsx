@@ -3,42 +3,24 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProductDetailClient } from "./components/ProductDetailClient";
 import { RelatedProducts }     from "@/app/global/components/products/RelatedProducts";
-import type { ProductoDetalle } from "@/app/global/types/product-detail";
+import { getProductoBySlug }   from "@/app/global/lib/db/getProductoBySlug";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-async function fetchProducto(slug: string): Promise<ProductoDetalle | null> {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-    const res = await fetch(`${baseUrl}/api/productos/${slug}`, {
-      next: { revalidate: 60 },
-    });
-
-    if (!res.ok) return null;
-
-    const json = await res.json();
-    return json.success ? json.data : null;
-  } catch {
-    return null;
-  }
-}
-
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const producto = await fetchProducto(slug);
+  const producto = await getProductoBySlug(slug);
 
-  if (!producto) {
-    return { title: "Producto no encontrado — Craftqube" };
-  }
+  if (!producto) return { title: "Producto no encontrado — Craftqube" };
 
   return {
-    title:       producto.meta_titulo       ?? `${producto.titulo} — Craftqube`,
-    description: producto.meta_descripcion  ?? producto.descripcion_corta ?? undefined,
+    title:       producto.meta_titulo      ?? `${producto.titulo} — Craftqube`,
+    description: producto.meta_descripcion ?? producto.descripcion_corta ?? undefined,
     openGraph: {
-      title:       producto.meta_titulo       ?? producto.titulo,
-      description: producto.meta_descripcion  ?? producto.descripcion_corta ?? undefined,
+      title:       producto.meta_titulo      ?? producto.titulo,
+      description: producto.meta_descripcion ?? producto.descripcion_corta ?? undefined,
       type:        "website",
     },
   };
@@ -46,7 +28,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ProductoPage({ params }: PageProps) {
   const { slug } = await params;
-  const producto = await fetchProducto(slug);
+  const producto = await getProductoBySlug(slug);
 
   if (!producto) notFound();
 
@@ -56,7 +38,6 @@ export default async function ProductoPage({ params }: PageProps) {
     <>
       <ProductDetailClient producto={producto} />
 
-      {/* Productos relacionados — solo si tiene categoría */}
       {categoriaSlug && (
         <div
           className="relative"
