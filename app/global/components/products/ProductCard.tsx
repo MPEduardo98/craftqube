@@ -1,24 +1,19 @@
 // app/global/components/products/ProductCard.tsx
 "use client";
 
-import Link from "next/link";
-import Image from "next/image";
+import Link   from "next/link";
+import Image  from "next/image";
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion }   from "framer-motion";
 import type { Producto } from "@/app/global/types/product";
 
-/* ─── Fallback illustration por categoría ─────────────────── */
+/* ─── Fallback illustration ──────────────────────────────── */
 function FallbackIllustration({ categoria }: { categoria: string | null }) {
   const cat    = (categoria ?? "").toLowerCase();
-  const gradId = `grad-fallback-${cat.slice(0, 6).replace(/\s/g, "")}`;
+  const gradId = `grad-fb-${cat.slice(0, 6).replace(/\s/g, "")}`;
 
   return (
-    <svg
-      viewBox="0 0 160 160"
-      className="w-full h-full"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
+    <svg viewBox="0 0 160 160" className="w-full h-full" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%"   stopColor="#2563EB" stopOpacity="0.45" />
@@ -51,9 +46,9 @@ function FallbackIllustration({ categoria }: { categoria: string | null }) {
       ) : (
         <>
           <circle cx="80" cy="80" r="40" fill="none" stroke="#2563EB" strokeWidth="2" opacity="0.2" />
-          <polygon points="80,22 92,54 68,54" fill="#2563EB" opacity="0.65" />
+          <polygon points="80,22 92,54 68,54"   fill="#2563EB" opacity="0.65" />
           <polygon points="80,138 92,106 68,106" fill="#2563EB" opacity="0.65" />
-          <polygon points="22,80 54,68 54,92" fill="#2563EB" opacity="0.65" />
+          <polygon points="22,80 54,68 54,92"   fill="#2563EB" opacity="0.65" />
           <polygon points="138,80 106,68 106,92" fill="#2563EB" opacity="0.65" />
           <circle cx="80" cy="80" r="16" fill={`url(#${gradId})`} opacity="0.85" />
         </>
@@ -62,9 +57,9 @@ function FallbackIllustration({ categoria }: { categoria: string | null }) {
   );
 }
 
-/* ─── Props ───────────────────────────────────────────────── */
+/* ─── Props ──────────────────────────────────────────────── */
 interface ProductCardProps {
-  producto: Producto;
+  producto:   Producto;
   imageSizes?: string;
 }
 
@@ -90,17 +85,14 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
   return (
     <motion.article
       className="group flex flex-col rounded-xl overflow-hidden cq-product-card"
-      style={{
-        background: "var(--color-cq-surface)",
-        height: "100%",
-      }}
+      style={{ background: "var(--color-cq-surface)", height: "100%", width: "100%" }}
       whileHover={{ y: -3 }}
       transition={{ duration: 0.2 }}
     >
       {/* ── Imagen 1:1 ── */}
       <Link
         href={`/productos/${producto.slug}`}
-        className="relative w-full overflow-hidden"
+        className="relative w-full overflow-hidden shrink-0"
         style={{
           aspectRatio: "1 / 1",
           background: "var(--color-cq-surface-2)",
@@ -127,12 +119,12 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
         {/* Descuento badge */}
         {tieneDescuento && (
           <span
-            className="absolute top-2 left-2 text-xs font-bold px-2 py-0.5 rounded-md"
+            className="absolute top-2 left-2 font-bold px-2 py-0.5 rounded-md"
             style={{
               background: "var(--color-cq-primary)",
               color: "white",
               fontFamily: "var(--font-mono, monospace)",
-              fontSize: "0.6rem",
+              fontSize: "0.58rem",
               letterSpacing: "0.04em",
             }}
           >
@@ -140,7 +132,7 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
           </span>
         )}
 
-        {/* Stock indicator */}
+        {/* Stock dot */}
         <span
           className="absolute top-2 right-2 w-2 h-2 rounded-full block"
           title={tieneStock ? "En stock" : "Stock limitado"}
@@ -148,125 +140,120 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
         />
       </Link>
 
-      {/* ── Info ── */}
-      <div className="flex flex-col flex-1 p-3.5 gap-1.5">
+      {/* ── Info — altura fija por zonas ── */}
+      <div className="flex flex-col flex-1 p-3.5">
 
-        {/* SKU */}
-        {producto.sku && (
-          <span
-            style={{
-              fontFamily: "var(--font-mono, monospace)",
-              color: "var(--color-cq-muted-2)",
-              fontSize: "0.6rem",
+        {/* Zona 1: SKU — altura fija 16px */}
+        <div style={{ height: "16px", marginBottom: "4px" }}>
+          {producto.sku && (
+            <span style={{
+              fontFamily:    "var(--font-mono, monospace)",
+              color:         "var(--color-cq-muted-2)",
+              fontSize:      "0.58rem",
               letterSpacing: "0.06em",
-            }}
-          >
-            {producto.sku}
-          </span>
-        )}
+              lineHeight:    1,
+            }}>
+              {producto.sku}
+            </span>
+          )}
+        </div>
 
-        {/* Título */}
+        {/* Zona 2: Título — siempre 2 líneas exactas */}
         <Link href={`/productos/${producto.slug}`} style={{ textDecoration: "none" }}>
           <h3
-            className="text-sm font-bold leading-snug transition-colors group-hover:text-blue-500"
+            className="transition-colors group-hover:text-blue-500"
             style={{
-              fontFamily: "var(--font-display, sans-serif)",
-              color: "var(--color-cq-text)",
-              letterSpacing: "0.01em",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-              minHeight: "2.6em", /* ← reserva siempre 2 líneas */
+              fontFamily:        "var(--font-display, sans-serif)",
+              color:             "var(--color-cq-text)",
+              fontSize:          "0.8rem",
+              fontWeight:        700,
+              letterSpacing:     "0.01em",
+              lineHeight:        1.3,
+              /* Bloque de exactamente 2 líneas */
+              display:           "-webkit-box",
+              WebkitLineClamp:   2,
+              WebkitBoxOrient:   "vertical",
+              overflow:          "hidden",
+              height:            "2.6em",
+              marginBottom:      "6px",
             }}
           >
             {producto.titulo}
           </h3>
         </Link>
 
-        {/* Categoría */}
-        {producto.categoria && (
-          <span
-            className="self-start px-2 py-0.5 rounded-md"
-            style={{
-              fontFamily: "var(--font-mono, monospace)",
-              fontSize: "0.58rem",
-              letterSpacing: "0.04em",
-              background: "var(--color-cq-accent-glow)",
-              color: "var(--color-cq-accent)",
-              border: "1px solid rgba(37,99,235,0.15)",
-            }}
-          >
-            {producto.categoria}
-          </span>
-        )}
+        {/* Zona 3: Categoría — altura fija 22px */}
+        <div style={{ height: "22px", marginBottom: "6px" }}>
+          {producto.categoria && (
+            <span
+              className="inline-block px-2 py-0.5 rounded-md"
+              style={{
+                fontFamily:    "var(--font-mono, monospace)",
+                fontSize:      "0.56rem",
+                letterSpacing: "0.04em",
+                background:    "var(--color-cq-accent-glow)",
+                color:         "var(--color-cq-accent)",
+                border:        "1px solid rgba(37,99,235,0.15)",
+                whiteSpace:    "nowrap",
+              }}
+            >
+              {producto.categoria}
+            </span>
+          )}
+        </div>
 
-        {/* Descripción corta */}
-        {producto.descripcion_corta && (
-          <p
-            className="text-xs leading-relaxed"
-            style={{
-              color: "var(--color-cq-muted)",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
-            {producto.descripcion_corta}
-          </p>
-        )}
-
+        {/* Spacer — empuja precio al fondo */}
         <div className="flex-1" />
 
-        {/* Precio + CTA */}
+        {/* Zona 4: Precio + CTA — siempre al fondo */}
         <div
           className="flex flex-col gap-2 pt-2"
           style={{ borderTop: "1px solid var(--color-cq-border)" }}
         >
-          {producto.precio !== null && producto.precio > 0 ? (
-            <div className="flex items-baseline gap-1.5 flex-wrap">
-              <span
-                className="font-bold"
-                style={{
-                  color: "var(--color-cq-text)",
-                  fontSize: "1rem",
-                  fontFamily: "var(--font-display, sans-serif)",
-                }}
-              >
-                ${producto.precio.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
-              </span>
-              {tieneDescuento && (
-                <span
-                  className="line-through text-xs"
-                  style={{ color: "var(--color-cq-muted-2)" }}
-                >
-                  ${producto.precio_original!.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+          {/* Precio */}
+          <div style={{ height: "24px", display: "flex", alignItems: "center", gap: "6px" }}>
+            {producto.precio !== null && producto.precio > 0 ? (
+              <>
+                <span style={{
+                  color:         "var(--color-cq-text)",
+                  fontSize:      "1rem",
+                  fontWeight:    700,
+                  fontFamily:    "var(--font-display, sans-serif)",
+                  lineHeight:    1,
+                }}>
+                  ${producto.precio.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
                 </span>
-              )}
-            </div>
-          ) : (
-            <span
-              style={{
-                fontSize: "0.7rem",
-                color: "var(--color-cq-muted-2)",
-                fontFamily: "var(--font-mono, monospace)",
-              }}
-            >
-              Consultar precio
-            </span>
-          )}
+                {tieneDescuento && (
+                  <span className="line-through" style={{ color: "var(--color-cq-muted-2)", fontSize: "0.7rem" }}>
+                    ${producto.precio_original!.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span style={{
+                fontSize:      "0.7rem",
+                color:         "var(--color-cq-muted-2)",
+                fontFamily:    "var(--font-mono, monospace)",
+              }}>
+                Consultar precio
+              </span>
+            )}
+          </div>
 
+          {/* CTA */}
           <Link
             href={`/productos/${producto.slug}`}
-            className="w-full text-center text-xs font-bold py-2 rounded-lg transition-colors"
+            className="w-full text-center font-bold rounded-lg transition-colors"
             style={{
-              background: "var(--color-cq-accent-glow)",
-              color: "var(--color-cq-accent)",
-              border: "1px solid rgba(37,99,235,0.15)",
-              fontFamily: "var(--font-display, sans-serif)",
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
+              display:        "block",
+              padding:        "0.5rem 0",
+              background:     "var(--color-cq-accent-glow)",
+              color:          "var(--color-cq-accent)",
+              border:         "1px solid rgba(37,99,235,0.15)",
+              fontFamily:     "var(--font-display, sans-serif)",
+              fontSize:       "0.65rem",
+              letterSpacing:  "0.08em",
+              textTransform:  "uppercase",
               textDecoration: "none",
             }}
           >
