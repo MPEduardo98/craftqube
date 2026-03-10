@@ -2,11 +2,12 @@
 import type { Metadata } from "next";
 import { Barlow_Condensed, DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { Header }       from "./global/components/header/Header";
-import { Footer }       from "./global/components/footer/Footer";
-import { CartDrawer }   from "./global/components/cart/CartDrawer";
-import { ThemeProvider } from "./global/context/ThemeContext";
-import { CartProvider }  from "./global/context/CartContext";
+import { Header }           from "./global/components/header/Header";
+import { Footer }           from "./global/components/footer/Footer";
+import { CartDrawer }       from "./global/components/cart/CartDrawer";
+import { ThemeProvider }    from "./global/context/ThemeContext";
+import { CartProvider }     from "./global/context/CartContext";
+import { WishlistProvider } from "./global/context/WishlistContext";
 
 const barlowCondensed = Barlow_Condensed({
   variable: "--font-barlow",
@@ -54,10 +55,12 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <CartProvider>
-            <Header />
-            <CartDrawer />
-            <main>{children}</main>
-            <Footer />
+            <WishlistProvider>
+              <Header />
+              <CartDrawer />
+              <main>{children}</main>
+              <Footer />
+            </WishlistProvider>
           </CartProvider>
         </ThemeProvider>
       </body>

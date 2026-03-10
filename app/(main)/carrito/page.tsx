@@ -15,12 +15,25 @@ function formatPrice(n: number) {
   );
 }
 
+/* Filtra atributos genéricos residuales de Shopify/imports */
+function esAtributoVisible(atributo: string, valor: string): boolean {
+  const a = atributo.toLowerCase().trim();
+  const v = valor.toLowerCase().trim();
+  if (a === "title" || a === "titulo" || a === "default") return false;
+  if (v === "default title" || v === "default") return false;
+  return true;
+}
+
 /* ─── Fila de item ───────────────────────────────────────── */
 function CartRow({ item }: { item: ReturnType<typeof useCart>["items"][number] }) {
   const { removeItem, updateQty } = useCart();
   const imageSrc = item.imagenNombre
     ? `/productos/${item.productoId}/${item.imagenNombre}`
     : null;
+
+  const atributosVisibles = item.atributos.filter((a) =>
+    esAtributoVisible(a.atributo, a.valor)
+  );
 
   return (
     <motion.tr
@@ -32,10 +45,10 @@ function CartRow({ item }: { item: ReturnType<typeof useCart>["items"][number] }
       style={{ borderBottom: "1px solid var(--color-cq-border)" }}
     >
       {/* Producto */}
-      <td className="py-5 pr-4">
+      <td className="py-5 px-4">
         <div className="flex items-center gap-4">
           <Link
-            href={`/productos/${item.slug}`}
+            href={`/producto/${item.slug}`}
             className="relative shrink-0 rounded-xl overflow-hidden"
             style={{ width: 80, height: 80, background: "var(--color-cq-surface-2)", border: "1px solid var(--color-cq-border)" }}
           >
@@ -56,15 +69,15 @@ function CartRow({ item }: { item: ReturnType<typeof useCart>["items"][number] }
               {item.sku}
             </span>
             <Link
-              href={`/productos/${item.slug}`}
+              href={`/producto/${item.slug}`}
               className="font-bold leading-tight hover:text-blue-500 transition-colors line-clamp-2"
               style={{ fontFamily: "var(--font-display)", fontSize: "0.9rem", color: "var(--color-cq-text)", textDecoration: "none", letterSpacing: "0.01em" }}
             >
               {item.titulo}
             </Link>
-            {item.atributos.length > 0 && (
+            {atributosVisibles.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-0.5">
-                {item.atributos.map((a) => (
+                {atributosVisibles.map((a) => (
                   <span key={a.atributo}
                     className="px-1.5 py-0.5 rounded text-xs"
                     style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", letterSpacing: "0.04em", background: "var(--color-cq-accent-glow)", color: "var(--color-cq-accent)", border: "1px solid rgba(37,99,235,0.15)" }}>
@@ -120,7 +133,7 @@ function CartRow({ item }: { item: ReturnType<typeof useCart>["items"][number] }
       </td>
 
       {/* Eliminar */}
-      <td className="py-5 pl-4">
+      <td className="py-5 px-4">
         <button
           onClick={() => removeItem(item.varianteId)}
           className="flex items-center justify-center rounded-lg transition-colors hover:bg-red-500/10 hover:text-red-500"
@@ -137,7 +150,7 @@ function CartRow({ item }: { item: ReturnType<typeof useCart>["items"][number] }
 export default function CarritoPage() {
   const { items, totalItems, totalPrecio, clearCart } = useCart();
 
-  const envio      = 0; // Gratis o calcular
+  const envio      = 0;
   const totalFinal = totalPrecio + envio;
 
   return (
@@ -153,7 +166,8 @@ export default function CarritoPage() {
         }}
       />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-10 lg:py-16">
+      {/* ↓ pt-20/pt-24 para clearar el header fijo */}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-20 pb-10 lg:pt-24 lg:pb-16">
 
         {/* Encabezado */}
         <motion.div
@@ -268,9 +282,7 @@ export default function CarritoPage() {
               <div className="px-5 py-5 flex flex-col gap-3">
                 {/* Subtotal */}
                 <div className="flex items-center justify-between">
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.7rem", letterSpacing: "0.06em", color: "var(--color-cq-muted)" }}>
-                    Subtotal
-                  </span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.7rem", letterSpacing: "0.06em", color: "var(--color-cq-muted)" }}>Subtotal</span>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.85rem", color: "var(--color-cq-text)", fontWeight: 600 }}>
                     {formatPrice(totalPrecio)}
                   </span>
@@ -278,9 +290,7 @@ export default function CarritoPage() {
 
                 {/* Envío */}
                 <div className="flex items-center justify-between">
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.7rem", letterSpacing: "0.06em", color: "var(--color-cq-muted)" }}>
-                    Envío
-                  </span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.7rem", letterSpacing: "0.06em", color: "var(--color-cq-muted)" }}>Envío</span>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem", color: "#22C55E", fontWeight: 600 }}>
                     {envio === 0 ? "Por cotizar" : formatPrice(envio)}
                   </span>
@@ -291,9 +301,7 @@ export default function CarritoPage() {
 
                 {/* Total */}
                 <div className="flex items-center justify-between">
-                  <span className="text-display" style={{ fontSize: "0.85rem", color: "var(--color-cq-text)" }}>
-                    Total
-                  </span>
+                  <span className="text-display" style={{ fontSize: "0.85rem", color: "var(--color-cq-text)" }}>Total</span>
                   <span className="text-display" style={{ fontSize: "1.3rem", color: "var(--color-cq-accent)" }}>
                     {formatPrice(totalFinal)}
                   </span>
@@ -310,14 +318,9 @@ export default function CarritoPage() {
                   href="/checkout"
                   className="w-full flex items-center justify-center gap-2 rounded-xl font-bold"
                   style={{
-                    height: 50,
-                    background: "var(--color-cq-primary)",
-                    color: "white",
-                    textDecoration: "none",
-                    fontFamily: "var(--font-display)",
-                    fontSize: "0.8rem",
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
+                    height: 50, background: "var(--color-cq-primary)", color: "white",
+                    textDecoration: "none", fontFamily: "var(--font-display)",
+                    fontSize: "0.8rem", letterSpacing: "0.1em", textTransform: "uppercase",
                     boxShadow: "0 4px 20px rgba(29,78,216,0.3)",
                   }}
                 >
@@ -329,14 +332,9 @@ export default function CarritoPage() {
                   href="/catalogo"
                   className="w-full flex items-center justify-center gap-2 rounded-xl transition-colors"
                   style={{
-                    height: 42,
-                    background: "transparent",
-                    color: "var(--color-cq-muted)",
-                    textDecoration: "none",
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "0.65rem",
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
+                    height: 42, background: "transparent", color: "var(--color-cq-muted)",
+                    textDecoration: "none", fontFamily: "var(--font-mono)",
+                    fontSize: "0.65rem", letterSpacing: "0.08em", textTransform: "uppercase",
                     border: "1px solid var(--color-cq-border)",
                   }}
                 >

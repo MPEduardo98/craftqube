@@ -3,11 +3,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ProductGallery }         from "./ProductGallery";
 import { ProductVariantSelector } from "./ProductVariantSelector";
 import { ProductSpecs }           from "./ProductSpecs";
 import { useCart }                from "@/app/global/context/CartContext";
+import { useWishlist }            from "@/app/global/context/WishlistContext";
 import type { ProductoDetalle, ProductoVariante } from "@/app/global/types/product-detail";
 
 const FaIcons = {
@@ -36,11 +37,6 @@ const FaIcons = {
       <path d="M438.6 105.4c12.5 12.5 12.5 32.8 0 45.3l-256 256c-12.5 12.5-32.8 12.5-45.3 0l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L160 338.7 393.4 105.4c12.5-12.5 32.8-12.5 45.3 0z"/>
     </svg>
   ),
-  heart: (
-    <svg viewBox="0 0 512 512" fill="none" stroke="currentColor" strokeWidth="32" width="16" height="16">
-      <path d="M47.6 300.4L228.3 469.1c7.5 7 17.4 10.9 27.7 10.9s20.2-3.9 27.7-10.9L464.4 300.4c30.4-28.3 47.6-68 47.6-109.5v-5.8c0-69.9-50.5-129.5-119.4-141C347 36.5 300.6 51.4 268 84L256 96 244 84c-32.6-32.6-79-47.5-124.6-39.9C50.5 55.6 0 115.2 0 185.1v5.8c0 41.5 17.2 81.2 47.6 109.5z"/>
-    </svg>
-  ),
   arrowLeft: (
     <svg viewBox="0 0 448 512" fill="currentColor" width="12" height="14">
       <path d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.2 288 416 288c17.7 0 32-14.3 32-32s-14.3-32-32-32l-306.7 0L214.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/>
@@ -57,6 +53,19 @@ const FaIcons = {
     </svg>
   ),
 };
+
+/* ── Corazón SVG — outline / filled ─────────────────────── */
+function HeartIcon({ filled }: { filled: boolean }) {
+  return filled ? (
+    <svg viewBox="0 0 512 512" fill="#EF4444" width="17" height="17">
+      <path d="M47.6 300.4L228.3 469.1c7.5 7 17.4 10.9 27.7 10.9s20.2-3.9 27.7-10.9L464.4 300.4c30.4-28.3 47.6-68 47.6-109.5v-5.8c0-69.9-50.5-129.5-119.4-141C347 36.5 300.6 51.4 268 84L256 96 244 84c-32.6-32.6-79-47.5-124.6-39.9C50.5 55.6 0 115.2 0 185.1v5.8c0 41.5 17.2 81.2 47.6 109.5z"/>
+    </svg>
+  ) : (
+    <svg viewBox="0 0 512 512" fill="none" stroke="currentColor" strokeWidth="32" width="17" height="17">
+      <path d="M47.6 300.4L228.3 469.1c7.5 7 17.4 10.9 27.7 10.9s20.2-3.9 27.7-10.9L464.4 300.4c30.4-28.3 47.6-68 47.6-109.5v-5.8c0-69.9-50.5-129.5-119.4-141C347 36.5 300.6 51.4 268 84L256 96 244 84c-32.6-32.6-79-47.5-124.6-39.9C50.5 55.6 0 115.2 0 185.1v5.8c0 41.5 17.2 81.2 47.6 109.5z"/>
+    </svg>
+  );
+}
 
 function fadeUp(delay: number) {
   return {
@@ -79,7 +88,8 @@ interface Props {
 }
 
 export function ProductDetailClient({ producto }: Props) {
-  const { addItem } = useCart();
+  const { addItem }              = useCart();
+  const { toggleItem, isWished } = useWishlist();
 
   const defaultVariante =
     producto.variantes.find((v) => v.es_default === 1) ??
@@ -100,6 +110,8 @@ export function ProductDetailClient({ producto }: Props) {
   const descuento      = tieneDescuento
     ? Math.round((1 - precio / precioOriginal) * 100)
     : 0;
+
+  const wished = isWished(producto.id);
 
   const imagenesVariante = selectedVariante
     ? producto.imagenes.filter((img) => img.variante_id === selectedVariante.id)
@@ -129,6 +141,18 @@ export function ProductDetailClient({ producto }: Props) {
     setTimeout(() => setAdded(false), 2000);
   };
 
+  const handleWishlistToggle = () => {
+    toggleItem({
+      productoId:   producto.id,
+      slug:         producto.slug,
+      titulo:       producto.titulo,
+      precio,
+      imagenNombre: imagenPrincipal ? imagenPrincipal.url.split("/").pop() ?? null : null,
+      imagenAlt:    imagenPrincipal?.alt ?? producto.titulo,
+      marca:        producto.marca ?? null,
+    });
+  };
+
   const handleCantidadChange = (val: string) => {
     const n = parseInt(val, 10);
     if (!isNaN(n) && n >= 1) setCantidad(n);
@@ -155,7 +179,7 @@ export function ProductDetailClient({ producto }: Props) {
         }}
       />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-8 lg:py-14">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-20 pb-8 lg:pt-24 lg:pb-14">
 
         {/* Breadcrumb */}
         <motion.nav
@@ -309,11 +333,38 @@ export function ProductDetailClient({ producto }: Props) {
                   {added ? <>{FaIcons.check} Agregado</> : <>{FaIcons.cartShopping} {tieneStock ? "Agregar al carrito" : "Sin stock"}</>}
                 </motion.button>
 
+                {/* ── Botón Wishlist ── */}
                 <motion.button
-                  whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
-                  className="flex items-center justify-center rounded-xl shrink-0"
-                  style={{ width: "52px", height: "52px", border: "1.5px solid var(--color-cq-border)", background: "var(--color-cq-surface)", color: "var(--color-cq-muted)", cursor: "pointer" }}>
-                  {FaIcons.heart}
+                  onClick={handleWishlistToggle}
+                  whileHover={{ scale: 1.06 }}
+                  whileTap={{ scale: 0.88 }}
+                  title={wished ? "Quitar de favoritos" : "Guardar en favoritos"}
+                  className="flex items-center justify-center rounded-xl shrink-0 relative overflow-hidden"
+                  style={{
+                    width: "52px", height: "52px",
+                    border: wished
+                      ? "1.5px solid rgba(239,68,68,0.35)"
+                      : "1.5px solid var(--color-cq-border)",
+                    background: wished
+                      ? "rgba(239,68,68,0.07)"
+                      : "var(--color-cq-surface)",
+                    color: wished ? "#EF4444" : "var(--color-cq-muted)",
+                    cursor: "pointer",
+                    transition: "background 0.2s ease, border-color 0.2s ease, color 0.2s ease",
+                  }}
+                >
+                  <AnimatePresence mode="wait">
+                    <motion.span
+                      key={wished ? "filled" : "outline"}
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.5, opacity: 0 }}
+                      transition={{ duration: 0.18, ease: "easeOut" }}
+                      className="flex items-center justify-center"
+                    >
+                      <HeartIcon filled={wished} />
+                    </motion.span>
+                  </AnimatePresence>
                 </motion.button>
               </div>
             </motion.div>

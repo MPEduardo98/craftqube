@@ -1,10 +1,12 @@
 // app/global/components/products/ProductCard.tsx
+// ZOOM via Framer Motion (onHoverStart/End + motion.div) para animación suave
 "use client";
 
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useWishlist } from "@/app/global/context/WishlistContext";
 import type { Producto } from "@/app/global/types/product";
 
 /* ─── Fallback illustration ──────────────────────────────── */
@@ -66,6 +68,8 @@ interface ProductCardProps {
 /* ─── Componente ─────────────────────────────────────────── */
 export function ProductCard({ producto, imageSizes }: ProductCardProps) {
   const [imgError, setImgError] = useState(false);
+  const [hovered, setHovered]   = useState(false);
+  const { toggleItem, isWished } = useWishlist();
 
   const tieneStock     = (producto.stock ?? 0) > 0;
   const tieneDescuento =
@@ -73,7 +77,6 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
     producto.precio_original > 0 &&
     producto.precio_original > (producto.precio ?? 0);
 
-  /* Ruta de imagen física — /productos/{id}/... no es ruta de navegación */
   const imageSrc =
     producto.imagen_nombre && !imgError
       ? `/productos/${producto.id}/${producto.imagen_nombre}`
@@ -83,44 +86,76 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
     ? Math.round(((producto.precio_original! - producto.precio!) / producto.precio_original!) * 100)
     : 0;
 
+  const wished = isWished(producto.id);
+
+  const handleWishlistToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleItem({
+      productoId:   producto.id,
+      slug:         producto.slug,
+      titulo:       producto.titulo,
+      precio:       producto.precio ?? 0,
+      imagenNombre: producto.imagen_nombre ?? null,
+      imagenAlt:    producto.imagen_alt ?? null,
+      marca:        producto.marca ?? null,
+    });
+  };
+
   return (
     <motion.article
       className="flex flex-col rounded-xl overflow-hidden cq-product-card"
       style={{ background: "var(--color-cq-surface)", height: "100%", width: "100%" }}
+      onHoverStart={() => setHovered(true)}
+      onHoverEnd={() => setHovered(false)}
     >
       {/* ── Imagen 1:1 ── */}
-      <Link
-        href={`/producto/${producto.slug}`}
+      <div
         className="relative w-full overflow-hidden shrink-0"
         style={{
           aspectRatio:  "1 / 1",
           background:   "var(--color-cq-surface-2)",
           borderBottom: "1px solid var(--color-cq-border)",
-          display:      "block",
         }}
-        tabIndex={-1}
       >
-        {imageSrc ? (
-          <div className="group absolute inset-0 overflow-hidden">
-            <Image
-              src={imageSrc}
-              alt={producto.imagen_alt ?? producto.titulo}
-              fill
-              className="object-contain p-3 transition-transform duration-500 ease-out group-hover:scale-110"
-              sizes={imageSizes ?? "(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"}
-              onError={() => setImgError(true)}
-            />
-          </div>
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center p-6">
-            <FallbackIllustration categoria={producto.categoria} />
-          </div>
-        )}
+        <Link
+          href={`/producto/${producto.slug}`}
+          className="absolute inset-0"
+          tabIndex={-1}
+        >
+          {imageSrc ? (
+            <div className="absolute inset-0 overflow-hidden">
+              <motion.div
+                className="absolute inset-0"
+                animate={{ scale: hovered ? 1.1 : 1 }}
+                transition={{ duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] }}
+              >
+                <Image
+                  src={imageSrc}
+                  alt={producto.imagen_alt ?? producto.titulo}
+                  fill
+                  className="object-contain p-3"
+                  sizes={imageSizes ?? "(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"}
+                  onError={() => setImgError(true)}
+                />
+              </motion.div>
+            </div>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center p-6">
+              <motion.div
+                animate={{ scale: hovered ? 1.06 : 1 }}
+                transition={{ duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] }}
+              >
+                <FallbackIllustration categoria={producto.categoria} />
+              </motion.div>
+            </div>
+          )}
+        </Link>
 
         {/* Badge descuento */}
         {tieneDescuento && (
           <span
-            className="absolute top-2 left-2 font-bold px-2 py-0.5 rounded-md"
+            className="absolute top-2 left-2 font-bold px-2 py-0.5 rounded-md pointer-events-none"
             style={{
               background:    "var(--color-cq-primary)",
               color:         "white",
@@ -136,7 +171,7 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
         {/* Badge marca */}
         {producto.marca && (
           <span
-            className="absolute top-2 right-2"
+            className="absolute top-2 right-2 pointer-events-none"
             style={{
               display:       "inline-block",
               padding:       "3px 8px",
@@ -155,18 +190,62 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
           </span>
         )}
 
+        {/* ── Botón Wishlist ── */}
+        <motion.button
+          onClick={handleWishlistToggle}
+          whileHover={{ scale: 1.12 }}
+          whileTap={{ scale: 0.85 }}
+          title={wished ? "Quitar de favoritos" : "Guardar en favoritos"}
+          className="absolute bottom-2 left-2 flex items-center justify-center rounded-lg z-10"
+          style={{
+            width:   "28px",
+            height:  "28px",
+            background: wished
+              ? "rgba(239,68,68,0.12)"
+              : "var(--color-cq-surface)",
+            border: wished
+              ? "1px solid rgba(239,68,68,0.3)"
+              : "1px solid var(--color-cq-border)",
+            color:   wished ? "#EF4444" : "var(--color-cq-muted-2)",
+            cursor:  "pointer",
+            backdropFilter: "blur(6px)",
+            transition: "background 0.18s ease, border-color 0.18s ease, color 0.18s ease",
+          }}
+        >
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={wished ? "filled" : "outline"}
+              initial={{ scale: 0.4, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.4, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="flex items-center justify-center"
+            >
+              {wished ? (
+                <svg viewBox="0 0 512 512" fill="#EF4444" width="12" height="12">
+                  <path d="M47.6 300.4L228.3 469.1c7.5 7 17.4 10.9 27.7 10.9s20.2-3.9 27.7-10.9L464.4 300.4c30.4-28.3 47.6-68 47.6-109.5v-5.8c0-69.9-50.5-129.5-119.4-141C347 36.5 300.6 51.4 268 84L256 96 244 84c-32.6-32.6-79-47.5-124.6-39.9C50.5 55.6 0 115.2 0 185.1v5.8c0 41.5 17.2 81.2 47.6 109.5z"/>
+                </svg>
+              ) : (
+                <svg viewBox="0 0 512 512" fill="none" stroke="currentColor" strokeWidth="40" width="12" height="12">
+                  <path d="M47.6 300.4L228.3 469.1c7.5 7 17.4 10.9 27.7 10.9s20.2-3.9 27.7-10.9L464.4 300.4c30.4-28.3 47.6-68 47.6-109.5v-5.8c0-69.9-50.5-129.5-119.4-141C347 36.5 300.6 51.4 268 84L256 96 244 84c-32.6-32.6-79-47.5-124.6-39.9C50.5 55.6 0 115.2 0 185.1v5.8c0 41.5 17.2 81.2 47.6 109.5z"/>
+                </svg>
+              )}
+            </motion.span>
+          </AnimatePresence>
+        </motion.button>
+
         {/* Dot de stock */}
         <span
-          className="absolute bottom-2 right-2 w-2 h-2 rounded-full block"
+          className="absolute bottom-2 right-2 w-2 h-2 rounded-full block pointer-events-none"
           title={tieneStock ? "En stock" : "Sin stock"}
           style={{ background: tieneStock ? "#22c55e" : "#f59e0b" }}
         />
-      </Link>
+      </div>
 
       {/* ── Info ── */}
       <div className="flex flex-col flex-1 p-3.5">
 
-        {/* Zona 1: SKU */}
+        {/* SKU */}
         <div style={{ height: "16px", marginBottom: "4px" }}>
           {producto.sku && (
             <span style={{
@@ -181,7 +260,7 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
           )}
         </div>
 
-        {/* Zona 2: Título — 2 líneas exactas */}
+        {/* Título — 2 líneas exactas */}
         <Link href={`/producto/${producto.slug}`} style={{ textDecoration: "none" }}>
           <h3
             style={{
@@ -203,10 +282,9 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
           </h3>
         </Link>
 
-        {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Zona 4: Precio + CTA */}
+        {/* Precio + CTA */}
         <div
           className="flex flex-col gap-2 pt-2"
           style={{ borderTop: "1px solid var(--color-cq-border)" }}
@@ -216,62 +294,56 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
             {producto.precio !== null && producto.precio > 0 ? (
               <>
                 <span style={{
-                  fontFamily: "var(--font-display, sans-serif)",
-                  fontSize:   "0.95rem",
-                  fontWeight: 800,
-                  color:      "var(--color-cq-text)",
-                  lineHeight: 1,
+                  fontFamily:    "var(--font-display, sans-serif)",
+                  color:         "var(--color-cq-text)",
+                  fontSize:      "0.95rem",
+                  fontWeight:    700,
+                  letterSpacing: "0.01em",
+                  lineHeight:    1,
                 }}>
-                  ${producto.precio.toLocaleString("es-MX")}
+                  {new Intl.NumberFormat("es-MX", {
+                    style: "currency", currency: "MXN", maximumFractionDigits: 0,
+                  }).format(producto.precio)}
+                  <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: "0.6rem", letterSpacing: "0.06em", marginLeft: "3px", color: "var(--color-cq-muted-2)" }}>MXN</span>
                 </span>
                 {tieneDescuento && (
                   <span style={{
-                    fontFamily:     "var(--font-mono, monospace)",
-                    fontSize:       "0.65rem",
-                    color:          "var(--color-cq-muted-2)",
+                    fontFamily:    "var(--font-mono, monospace)",
+                    color:         "var(--color-cq-muted-2)",
+                    fontSize:      "0.68rem",
                     textDecoration: "line-through",
-                    lineHeight:     1,
+                    lineHeight:    1,
                   }}>
-                    ${producto.precio_original!.toLocaleString("es-MX")}
+                    {new Intl.NumberFormat("es-MX", {
+                      style: "currency", currency: "MXN", maximumFractionDigits: 0,
+                    }).format(producto.precio_original!)}
                   </span>
                 )}
               </>
             ) : (
-              <span style={{
-                fontFamily:    "var(--font-mono, monospace)",
-                fontSize:      "0.65rem",
-                color:         "var(--color-cq-muted-2)",
-                letterSpacing: "0.04em",
-              }}>
-                Consultar precio
+              <span style={{ fontFamily: "var(--font-mono, monospace)", color: "var(--color-cq-muted-2)", fontSize: "0.68rem", letterSpacing: "0.06em" }}>
+                Precio a consultar
               </span>
             )}
           </div>
 
-          {/* CTA — fondo primario sólido */}
+          {/* CTA */}
           <Link
             href={`/producto/${producto.slug}`}
+            className="flex items-center justify-center gap-1.5 w-full rounded-lg text-xs font-bold"
             style={{
-              display:        "flex",
-              alignItems:     "center",
-              justifyContent: "center",
-              gap:            "6px",
-              width:          "100%",
-              padding:        "0.45rem 0.75rem",
-              borderRadius:   "var(--radius-md, 8px)",
-              fontFamily:     "var(--font-display, sans-serif)",
-              fontSize:       "0.65rem",
-              fontWeight:     700,
-              letterSpacing:  "0.08em",
-              textTransform:  "uppercase",
+              fontFamily:    "var(--font-display, sans-serif)",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              height:        "34px",
               textDecoration: "none",
-              background:     tieneStock ? "var(--color-cq-primary)" : "var(--color-cq-surface-2)",
-              color:          tieneStock ? "#ffffff" : "var(--color-cq-muted-2)",
-              border:         tieneStock ? "none" : "1px solid var(--color-cq-border)",
-              boxShadow:      tieneStock ? "0 2px 12px rgba(29,78,216,0.25)" : "none",
-              opacity:        tieneStock ? 1 : 0.6,
-              pointerEvents:  tieneStock ? "auto" : "none",
-              transition:     "none",
+              background:    tieneStock ? "var(--color-cq-primary)" : "var(--color-cq-surface-2)",
+              color:         tieneStock ? "#ffffff" : "var(--color-cq-muted-2)",
+              border:        tieneStock ? "none" : "1px solid var(--color-cq-border)",
+              boxShadow:     tieneStock ? "0 2px 12px rgba(29,78,216,0.25)" : "none",
+              opacity:       tieneStock ? 1 : 0.6,
+              pointerEvents: tieneStock ? "auto" : "none",
+              transition:    "none",
             }}
           >
             {tieneStock ? (
