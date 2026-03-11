@@ -14,7 +14,7 @@ export type PedidoEstado =
   | "reembolsado"
   | "disputa";
 
-export type MetodoPago = "tarjeta" | "transferencia" | "oxxo" | "paypal";
+export type MetodoPago = "tarjeta" | "transferencia" | "oxxo";
 
 export type PagoEstado =
   | "iniciado"
@@ -161,10 +161,10 @@ export interface CrearPedidoPayload {
     precio_unitario: number;
     precio_original: number;
   }[];
-  metodo_pago:   MetodoPago;
-  cupon_codigo?: string;
-  costo_envio:   number;
+  metodo_pago:    MetodoPago;
+  cupon_codigo?:  string;
+  costo_envio:    number;
   notas_cliente?: string;
-  carrito_id?:   number;
-  ip_origen?:    string;
+  carrito_id?:    number;
+  ip_origen?:     string;
 }
