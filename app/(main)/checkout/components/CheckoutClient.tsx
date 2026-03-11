@@ -1,29 +1,21 @@
 // app/(main)/checkout/components/CheckoutClient.tsx
 "use client";
 
-import { useState, useRef }  from "react";
-import Link                  from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
-import { useCart }           from "@/app/global/context/CartContext";
-import { CheckoutStepper }  from "./CheckoutStepper";
-import { StepContacto }     from "./StepContacto";
-import { StepEnvio }        from "./StepEnvio";
-import { StepPago }         from "./StepPago";
-import { StepConfirmacion } from "./StepConfirmacion";
-import { OrderSummary }     from "./OrderSummary";
+import { useState, useRef, useCallback } from "react";
+import Link                               from "next/link";
+import { motion, AnimatePresence }        from "framer-motion";
+import { useCart }                        from "@/app/global/context/CartContext";
+import { useAuth }                        from "@/app/global/context/AuthContext";
+import { CheckoutStepper }               from "./CheckoutStepper";
+import { StepContacto }                  from "./StepContacto";
+import { StepEnvio }                     from "./StepEnvio";
+import { StepPago }                      from "./StepPago";
+import { StepConfirmacion }              from "./StepConfirmacion";
+import { OrderSummary }                  from "./OrderSummary";
 import type { CheckoutFormData, CheckoutStep, DatosPago } from "../types";
 import type { PaymentConfirmData }                         from "./StepPago";
 
-const emptyForm: CheckoutFormData = {
-  contacto: { nombre: "", apellido: "", email: "", telefono: "", modoGuest: true },
-  envio: {
-    calle: "", numeroExt: "", numeroInt: "", colonia: "", ciudad: "",
-    municipio: "", estado: "", codigoPostal: "", pais: "México",
-    referencias: "", empresa: "", guardarDireccion: false,
-  },
-  pago: { metodo: "tarjeta", numeroTarjeta: "", nombreTarjeta: "", expiracion: "", cvv: "", notas: "" },
-};
-
+/* ── Helpers ─────────────────────────────────────────────── */
 function genOrderNumber() { return "CQ" + Date.now().toString(36).toUpperCase(); }
 
 function FontAwesomeLink() {
@@ -57,36 +49,158 @@ function TrustBar() {
   );
 }
 
+const emptyForm: CheckoutFormData = {
+  contacto: { nombre: "", apellido: "", email: "", telefono: "", modoGuest: true },
+  envio: {
+    calle: "", numeroExt: "", numeroInt: "", colonia: "", ciudad: "",
+    municipio: "", estado: "", codigoPostal: "", pais: "México",
+    referencias: "", empresa: "", guardarDireccion: false,
+  },
+  pago: { metodo: "tarjeta", numeroTarjeta: "", nombreTarjeta: "", expiracion: "", cvv: "", notas: "" },
+};
+
+/* ── Guardar pedido en la base de datos ──────────────────── */
+async function guardarPedidoDB(params: {
+  formData:     CheckoutFormData;
+  items:        { variante_id: number; cantidad: number; precio_unitario: number; precio_original: number }[];
+  total:        number;
+  stripeId:     string | null;
+  usuarioId?:   number;
+}) {
+  const { formData, items, stripeId, usuarioId } = params;
+  const { contacto, envio, pago } = formData;
+
+  try {
+    const res = await fetch("/api/pedidos", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        usuario_id:  usuarioId ?? undefined,
+        email:       contacto.email,
+        telefono:    contacto.telefono || undefined,
+        direccion_envio: {
+          nombre:       contacto.nombre,
+          apellido:     contacto.apellido,
+          empresa:      envio.empresa || undefined,
+          telefono:     contacto.telefono || undefined,
+          calle:        envio.calle,
+          numero_ext:   envio.numeroExt,
+          numero_int:   envio.numeroInt || undefined,
+          colonia:      envio.colonia,
+          ciudad:       envio.ciudad,
+          municipio:    envio.municipio || undefined,
+          estado:       envio.estado,
+          codigo_postal: envio.codigoPostal,
+          pais:         envio.pais,
+          referencias:  envio.referencias || undefined,
+        },
+        items,
+        metodo_pago:   pago.metodo,
+        costo_envio:   0,
+        notas_cliente: pago.notas || undefined,
+        referencia_pago: stripeId ?? undefined,
+      }),
+    });
+
+    const json = await res.json();
+    if (!res.ok) console.error("[checkout] Error guardando pedido:", json.error);
+    else console.log("[checkout] ✓ Pedido guardado:", json.data?.numero);
+  } catch (err) {
+    console.error("[checkout] Error al guardar pedido:", err);
+  }
+}
+
+/* ── Guardar teléfono del usuario autenticado ────────────── */
+async function guardarTelefonoUsuario(telefono: string) {
+  try {
+    await fetch("/api/users/profile", {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ telefono }),
+    });
+    console.log("[checkout] ✓ Teléfono guardado en perfil");
+  } catch (err) {
+    console.error("[checkout] Error al guardar teléfono:", err);
+  }
+}
+
+/* ── Guardar dirección del usuario autenticado ───────────── */
+async function guardarDireccionUsuario(
+  formData: CheckoutFormData,
+  esPredeterminada = false
+) {
+  const { contacto, envio } = formData;
+  try {
+    await fetch("/api/users/addresses", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        nombre:           contacto.nombre,
+        apellido:         contacto.apellido,
+        empresa:          envio.empresa || null,
+        telefono:         contacto.telefono || null,
+        calle:            envio.calle,
+        numero_ext:       envio.numeroExt,
+        numero_int:       envio.numeroInt || null,
+        colonia:          envio.colonia,
+        ciudad:           envio.ciudad,
+        municipio:        envio.municipio || null,
+        estado:           envio.estado,
+        codigo_postal:    envio.codigoPostal,
+        pais:             envio.pais,
+        referencias:      envio.referencias || null,
+        es_predeterminada: esPredeterminada,
+        tipo:             "envio",
+      }),
+    });
+    console.log("[checkout] ✓ Dirección guardada en cuenta");
+  } catch (err) {
+    console.error("[checkout] Error al guardar dirección:", err);
+  }
+}
+
 /* ══════════════════════════════════════════════════════════ */
 export function CheckoutClient() {
   const { items, totalPrecio, clearCart } = useCart();
-  const [step,        setStep]            = useState<CheckoutStep>("contacto");
-  const [formData,    setFormData]        = useState<CheckoutFormData>(emptyForm);
-  const [orderNumber]                     = useState<string>(genOrderNumber);
-  const [pedidoId,    setPedidoId]        = useState<string | null>(null);
-  const [paymentData, setPaymentData]     = useState<PaymentConfirmData | null>(null);
+  const { usuario, autenticado, refreshUser } = useAuth();
 
-  // Snapshot del total antes de que clearCart lo ponga en 0
+  const [step,        setStep]      = useState<CheckoutStep>("contacto");
+  const [formData,    setFormData]  = useState<CheckoutFormData>(emptyForm);
+  const [orderNumber]               = useState<string>(genOrderNumber);
+  const [pedidoId,    setPedidoId]  = useState<string | null>(null);
+  const [paymentData, setPaymentData] = useState<PaymentConfirmData | null>(null);
+
   const totalSnapshot = useRef<number>(0);
 
-  if (!items.length && step !== "confirmacion") {
+  /* ── Carrito vacío ── */
+  if (items.length === 0 && step !== "confirmacion") {
     return (
       <>
         <FontAwesomeLink />
-        <div className="min-h-screen flex flex-col items-center justify-center gap-6"
+        <div className="min-h-screen flex items-center justify-center"
           style={{ background: "var(--color-cq-bg)" }}>
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }} className="flex flex-col items-center gap-4 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center gap-5 text-center px-4"
+          >
             <div className="flex items-center justify-center rounded-2xl"
-              style={{ width: 72, height: 72, background: "var(--color-cq-surface-2)" }}>
-              <i className="fa-solid fa-bag-shopping" style={{ fontSize: "1.8rem", color: "var(--color-cq-muted)" }} />
+              style={{ width: 72, height: 72, background: "var(--color-cq-surface-2)",
+                border: "1px solid var(--color-cq-border)" }}>
+              <i className="fa-solid fa-cart-shopping"
+                style={{ fontSize: "1.6rem", color: "var(--color-cq-muted-2)" }} />
             </div>
             <div>
-              <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: 700, color: "var(--color-cq-text)" }}>
+              <p style={{ fontFamily: "var(--font-display)", fontSize: "1.3rem",
+                fontWeight: 700, color: "var(--color-cq-text)" }}>
                 Tu carrito está vacío
-              </h2>
-              <p style={{ fontFamily: "var(--font-body)", fontSize: "0.875rem", color: "var(--color-cq-muted)", marginTop: 6 }}>
-                Agrega productos para continuar con tu compra.
+              </p>
+              <p style={{ fontFamily: "var(--font-body)", fontSize: "0.85rem",
+                color: "var(--color-cq-muted)", marginTop: 6 }}>
+                Agrega productos para continuar con tu compra
               </p>
             </div>
             <Link href="/catalogo" className="btn-primary" style={{ marginTop: 8 }}>
@@ -99,12 +213,44 @@ export function CheckoutClient() {
     );
   }
 
-  const handlePago = (stripePaymentIntentId?: string, pd?: PaymentConfirmData) => {
-    totalSnapshot.current = totalPrecio;       // capturar antes del clear
+  /* ── handlePago: llamado cuando el pago en Stripe fue exitoso ── */
+  const handlePago = useCallback(async (
+    stripePaymentIntentId?: string,
+    pd?: PaymentConfirmData
+  ) => {
+    totalSnapshot.current = totalPrecio;
     setPedidoId(stripePaymentIntentId ?? null);
     setPaymentData(pd ?? null);
     setStep("confirmacion");
-  };
+
+    // Mapear items del carrito al formato de pedido
+    const pedidoItems = items.map((item) => ({
+      variante_id:     item.varianteId,
+      cantidad:        item.cantidad,
+      precio_unitario: item.precio,
+      precio_original: item.precio, // CartItem no expone precio_original; se usa mismo precio
+    }));
+
+    // 1️⃣ Guardar pedido en la BD (non-blocking, fire & forget)
+    guardarPedidoDB({
+      formData,
+      items:      pedidoItems,
+      total:      totalPrecio,
+      stripeId:   stripePaymentIntentId ?? null,
+      usuarioId:  usuario?.id,
+    });
+
+    // 2️⃣ Si usuario autenticado no tenía teléfono y acaba de poner uno, guardarlo
+    if (autenticado && usuario && !usuario.telefono && formData.contacto.telefono?.trim()) {
+      await guardarTelefonoUsuario(formData.contacto.telefono.trim());
+      refreshUser?.(); // refrescar contexto de auth
+    }
+
+    // 3️⃣ Si usuario autenticado marcó guardar dirección
+    if (autenticado && formData.envio.guardarDireccion) {
+      guardarDireccionUsuario(formData, true);
+    }
+  }, [formData, items, totalPrecio, autenticado, usuario, refreshUser]);
 
   return (
     <>
@@ -134,7 +280,9 @@ export function CheckoutClient() {
                       data={formData.envio}
                       onChange={(envio) => setFormData((p) => ({ ...p, envio }))}
                       onNext={() => setStep("pago")}
-                      onBack={() => setStep("contacto")} />
+                      onBack={() => setStep("contacto")}
+                      contactoNombre={formData.contacto.nombre}
+                      contactoApellido={formData.contacto.apellido} />
                   )}
                   {step === "pago" && (
                     <StepPago key="pago"
