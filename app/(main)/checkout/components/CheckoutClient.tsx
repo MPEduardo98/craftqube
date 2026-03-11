@@ -13,48 +13,42 @@ import { StepConfirmacion } from "./StepConfirmacion";
 import { OrderSummary }     from "./OrderSummary";
 import type { CheckoutFormData, CheckoutStep, DatosPago } from "../types";
 
+/* ─── emptyForm con TODOS los campos de los types ─────────── */
 const emptyForm: CheckoutFormData = {
-  contacto: { nombre: "", apellido: "", email: "", telefono: "" },
-  envio: { calle: "", numeroExt: "", numeroInt: "", colonia: "", ciudad: "", estado: "", codigoPostal: "", referencias: "" },
-  pago: { metodo: "tarjeta", numeroTarjeta: "", nombreTarjeta: "", expiracion: "", cvv: "" },
+  contacto: {
+    nombre:    "",
+    apellido:  "",
+    email:     "",
+    telefono:  "",
+    modoGuest: true,
+  },
+  envio: {
+    calle:            "",
+    numeroExt:        "",
+    numeroInt:        "",
+    colonia:          "",
+    ciudad:           "",
+    municipio:        "",
+    estado:           "",
+    codigoPostal:     "",
+    pais:             "México",
+    referencias:      "",
+    empresa:          "",
+    guardarDireccion: false,
+  },
+  pago: {
+    metodo:        "tarjeta",
+    numeroTarjeta: "",
+    nombreTarjeta: "",
+    expiracion:    "",
+    cvv:           "",
+    notas:         "",
+  },
 };
 
 function genOrderNumber() { return "CQ" + Date.now().toString(36).toUpperCase(); }
 
-/* ─── TrustBar ───────────────────────────────────────────── */
-function TrustBar() {
-  const brands = [
-    { label: "Visa",       icon: <i className="fa-brands fa-cc-visa"         style={{ fontSize: "1.45rem" }} /> },
-    { label: "Mastercard", icon: <i className="fa-brands fa-cc-mastercard"   style={{ fontSize: "1.45rem" }} /> },
-    { label: "Amex",       icon: <i className="fa-brands fa-cc-amex"         style={{ fontSize: "1.45rem" }} /> },
-    { label: "PayPal",     icon: <i className="fa-brands fa-cc-paypal"       style={{ fontSize: "1.45rem" }} /> },
-    { label: "OXXO",       icon: <i className="fa-solid fa-store"            style={{ fontSize: "0.9rem"  }} /> },
-    { label: "SPEI",       icon: <i className="fa-solid fa-building-columns" style={{ fontSize: "0.9rem"  }} /> },
-  ];
-
-  return (
-    <div className="flex flex-col items-center gap-3 py-2">
-      <div className="flex items-center gap-3">
-        <div style={{ height: 1, width: 32, background: "var(--color-cq-border)" }} />
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.57rem",
-          letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-cq-muted-2)" }}>
-          Métodos de pago aceptados
-        </span>
-        <div style={{ height: 1, width: 32, background: "var(--color-cq-border)" }} />
-      </div>
-      <div className="flex items-center gap-4 flex-wrap justify-center">
-        {brands.map((b) => (
-          <div key={b.label} className="flex items-center gap-1.5"
-            style={{ color: "var(--color-cq-muted-2)" }}>
-            {b.icon}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ─── Header ─────────────────────────────────────────────── */
+/* ─── CheckoutHeader ─────────────────────────────────────── */
 function CheckoutHeader() {
   return (
     <header className="flex items-center justify-center"
@@ -79,7 +73,6 @@ function CheckoutHeader() {
             </span>
           </motion.div>
         </Link>
-
         <div className="flex items-center gap-1.5" style={{ color: "var(--color-cq-muted-2)" }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
@@ -95,7 +88,40 @@ function CheckoutHeader() {
   );
 }
 
-/* ─── Componente principal ───────────────────────────────── */
+/* ─── TrustBar ───────────────────────────────────────────── */
+function TrustBar() {
+  const brands = [
+    { label: "Visa",       icon: <i className="fa-brands fa-cc-visa"       style={{ fontSize: "1.45rem" }} /> },
+    { label: "Mastercard", icon: <i className="fa-brands fa-cc-mastercard" style={{ fontSize: "1.45rem" }} /> },
+    { label: "Amex",       icon: <i className="fa-brands fa-cc-amex"       style={{ fontSize: "1.45rem" }} /> },
+    { label: "PayPal",     icon: <i className="fa-brands fa-cc-paypal"     style={{ fontSize: "1.45rem" }} /> },
+    { label: "OXXO",       icon: <i className="fa-solid fa-store"          style={{ fontSize: "0.9rem"  }} /> },
+    { label: "SPEI",       icon: <i className="fa-solid fa-building-columns" style={{ fontSize: "0.9rem" }} /> },
+  ];
+
+  return (
+    <div className="flex flex-col items-center gap-3 py-2">
+      <div className="flex items-center gap-3">
+        <div style={{ height: 1, width: 32, background: "var(--color-cq-border)" }} />
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.57rem",
+          letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-cq-muted-2)" }}>
+          Métodos de pago aceptados
+        </span>
+        <div style={{ height: 1, width: 32, background: "var(--color-cq-border)" }} />
+      </div>
+      <div className="flex items-center gap-4 flex-wrap justify-center">
+        {brands.map((b) => (
+          <div key={b.label} className="flex items-center gap-1.5"
+            style={{ color: "var(--color-cq-muted-2)" }}>
+            {b.icon}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════ */
 export function CheckoutClient() {
   const { items, totalPrecio, clearCart } = useCart();
   const [step, setStep]         = useState<CheckoutStep>("contacto");
@@ -143,9 +169,7 @@ export function CheckoutClient() {
     );
   }
 
-  /* StepPago maneja su propio loading/submit.
-     handlePago recibe el paypalOrderId y avanza el step. */
-  const handlePago = (paypalOrderId?: string | undefined) => {
+  const handlePago = (paypalOrderId?: string) => {
     if (paypalOrderId) setPedidoId(paypalOrderId);
     setStep("confirmacion");
   };

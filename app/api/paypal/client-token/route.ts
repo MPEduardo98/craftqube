@@ -1,4 +1,5 @@
-// app/api/paypal/capture-order/route.ts
+// app/api/paypal/client-token/route.ts
+// Genera un client-token necesario para inicializar PayPal Hosted Fields
 import { NextResponse } from "next/server";
 
 const PAYPAL_API =
@@ -26,53 +27,31 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
-export async function POST(req: Request) {
+export async function GET() {
   try {
-    const { orderID } = await req.json();
-
-    if (!orderID) {
-      return NextResponse.json({ error: "Missing orderID" }, { status: 400 });
-    }
-
     const accessToken = await getAccessToken();
 
-    const res = await fetch(`${PAYPAL_API}/v2/checkout/orders/${orderID}/capture`, {
+    const res = await fetch(`${PAYPAL_API}/v1/identity/generate-token`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization:  `Bearer ${accessToken}`,
         "Content-Type": "application/json",
-        "PayPal-Request-Id": `cq-cap-${Date.now()}`,
       },
+      cache: "no-store",
     });
 
-    const capture = await res.json();
+    const data = await res.json();
 
     if (!res.ok) {
-      console.error("[PayPal] capture-order error:", capture);
       return NextResponse.json(
-        { error: capture?.message ?? "Failed to capture order" },
+        { error: data?.message ?? "Failed to generate client token" },
         { status: res.status }
       );
     }
 
-    const captureUnit = capture?.purchase_units?.[0]?.payments?.captures?.[0];
-    const status = captureUnit?.status ?? capture.status;
-
-    if (status !== "COMPLETED") {
-      return NextResponse.json(
-        { error: `Unexpected capture status: ${status}` },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      orderID: capture.id,
-      captureID: captureUnit?.id,
-      status,
-    });
+    return NextResponse.json({ clientToken: data.client_token });
   } catch (err) {
-    console.error("[PayPal] capture-order exception:", err);
+    console.error("[PayPal] client-token exception:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
