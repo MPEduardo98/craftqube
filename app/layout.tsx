@@ -63,6 +63,7 @@ export default function RootLayout({
                 <WishlistProvider>
                   <Header />
                   <CartDrawer />
+                  {/* pt-16 compensa el header fixed de h-16 (64px) */}
                   <main>{children}</main>
                   <Footer />
                   <AlertContainer />

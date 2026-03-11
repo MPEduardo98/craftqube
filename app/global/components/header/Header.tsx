@@ -37,19 +37,17 @@ function CatSkeleton() {
   );
 }
 
+/* ── Header simplificado solo para checkout ───────────────── */
 function CheckoutOnlyHeader() {
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-50"
+      className="sticky top-0 left-0 right-0 z-50"
       style={{
         backgroundColor: "#1224a0",
         boxShadow: "0 4px 24px rgba(18,36,160,0.5)",
       }}
     >
-      <div
-        className="flex items-center justify-center"
-        style={{ height: 64 }}
-      >
+      <div className="flex items-center justify-center" style={{ height: 64 }}>
         <Link href="/" style={{ textDecoration: "none" }}>
           <motion.div
             initial={{ opacity: 0, y: -6 }}
@@ -66,16 +64,14 @@ function CheckoutOnlyHeader() {
   );
 }
 
+/* ── Export principal ─────────────────────────────────────── */
 export function Header() {
   const pathname = usePathname();
-
-  if (pathname === "/checkout") {
-    return <CheckoutOnlyHeader />;
-  }
-
+  if (pathname === "/checkout") return <CheckoutOnlyHeader />;
   return <FullHeader />;
 }
 
+/* ── Header completo ──────────────────────────────────────── */
 function FullHeader() {
   const [mobileOpen,   setMobileOpen]   = useState(false);
   const [searchOpen,   setSearchOpen]   = useState(false);
@@ -112,14 +108,14 @@ function FullHeader() {
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  const handleToggleProducts = () => { setProductsOpen((v) => !v);   setSearchOpen(false); setMobileOpen(false); };
-  const handleToggleSearch   = () => { setSearchOpen((v) => !v);     setProductsOpen(false); setMobileOpen(false); };
-  const handleToggleMobile   = () => { setMobileOpen((v) => !v);     setProductsOpen(false); setSearchOpen(false); };
+  const handleToggleProducts = () => { setProductsOpen((v) => !v);  setSearchOpen(false); setMobileOpen(false); };
+  const handleToggleSearch   = () => { setSearchOpen((v) => !v);    setProductsOpen(false); setMobileOpen(false); };
+  const handleToggleMobile   = () => { setMobileOpen((v) => !v);    setProductsOpen(false); setSearchOpen(false); };
 
   return (
     <motion.header
       ref={headerRef as React.RefObject<HTMLElement>}
-      className="fixed top-0 left-0 right-0 z-50"
+      className="sticky top-0 left-0 right-0 z-50"
       initial={{ y: -80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
@@ -154,7 +150,6 @@ function FullHeader() {
             </motion.button>
 
             <UserButton />
-
             <CartButton />
 
             <motion.button
@@ -200,8 +195,7 @@ function FullHeader() {
                 style={{
                   background: "rgba(255,255,255,0.12)",
                   border: "1px solid rgba(255,255,255,0.2)",
-                  color: "white",
-                  outline: "none",
+                  color: "white", outline: "none",
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && e.currentTarget.value.trim()) {
@@ -225,7 +219,8 @@ function FullHeader() {
             }}
           >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-              <p className="text-xs tracking-widest uppercase mb-4" style={{ color: "rgba(255,255,255,0.5)" }}>
+              <p className="text-xs tracking-widest uppercase mb-4"
+                style={{ color: "rgba(255,255,255,0.5)" }}>
                 Categorías
               </p>
               {!catsLoaded || !categorias.length ? (

@@ -175,7 +175,45 @@ export function CheckoutClient() {
 
   const totalSnapshot = useRef<number>(0);
 
-  /* ── Carrito vacío ── */
+  /* ── handlePago: DEBE estar antes de cualquier early return (Rules of Hooks) ── */
+  const handlePago = useCallback(async (
+    stripePaymentIntentId?: string,
+    pd?: PaymentConfirmData
+  ) => {
+    totalSnapshot.current = totalPrecio;
+    setPedidoId(stripePaymentIntentId ?? null);
+    setPaymentData(pd ?? null);
+    setStep("confirmacion");
+
+    const pedidoItems = items.map((item) => ({
+      variante_id:     item.varianteId,
+      cantidad:        item.cantidad,
+      precio_unitario: item.precio,
+      precio_original: item.precio,
+    }));
+
+    // 1️⃣ Guardar pedido en la BD (non-blocking)
+    guardarPedidoDB({
+      formData,
+      items:      pedidoItems,
+      total:      totalPrecio,
+      stripeId:   stripePaymentIntentId ?? null,
+      usuarioId:  usuario?.id,
+    });
+
+    // 2️⃣ Guardar teléfono si el usuario autenticado no tenía uno
+    if (autenticado && usuario && !usuario.telefono && formData.contacto.telefono?.trim()) {
+      await guardarTelefonoUsuario(formData.contacto.telefono.trim());
+      refreshUser?.();
+    }
+
+    // 3️⃣ Guardar dirección si el usuario lo marcó
+    if (autenticado && formData.envio.guardarDireccion) {
+      guardarDireccionUsuario(formData, true);
+    }
+  }, [formData, items, totalPrecio, autenticado, usuario, refreshUser]);
+
+  /* ── Carrito vacío — early return DESPUÉS de todos los hooks ── */
   if (items.length === 0 && step !== "confirmacion") {
     return (
       <>
@@ -212,45 +250,6 @@ export function CheckoutClient() {
       </>
     );
   }
-
-  /* ── handlePago: llamado cuando el pago en Stripe fue exitoso ── */
-  const handlePago = useCallback(async (
-    stripePaymentIntentId?: string,
-    pd?: PaymentConfirmData
-  ) => {
-    totalSnapshot.current = totalPrecio;
-    setPedidoId(stripePaymentIntentId ?? null);
-    setPaymentData(pd ?? null);
-    setStep("confirmacion");
-
-    // Mapear items del carrito al formato de pedido
-    const pedidoItems = items.map((item) => ({
-      variante_id:     item.varianteId,
-      cantidad:        item.cantidad,
-      precio_unitario: item.precio,
-      precio_original: item.precio, // CartItem no expone precio_original; se usa mismo precio
-    }));
-
-    // 1️⃣ Guardar pedido en la BD (non-blocking, fire & forget)
-    guardarPedidoDB({
-      formData,
-      items:      pedidoItems,
-      total:      totalPrecio,
-      stripeId:   stripePaymentIntentId ?? null,
-      usuarioId:  usuario?.id,
-    });
-
-    // 2️⃣ Si usuario autenticado no tenía teléfono y acaba de poner uno, guardarlo
-    if (autenticado && usuario && !usuario.telefono && formData.contacto.telefono?.trim()) {
-      await guardarTelefonoUsuario(formData.contacto.telefono.trim());
-      refreshUser?.(); // refrescar contexto de auth
-    }
-
-    // 3️⃣ Si usuario autenticado marcó guardar dirección
-    if (autenticado && formData.envio.guardarDireccion) {
-      guardarDireccionUsuario(formData, true);
-    }
-  }, [formData, items, totalPrecio, autenticado, usuario, refreshUser]);
 
   return (
     <>
