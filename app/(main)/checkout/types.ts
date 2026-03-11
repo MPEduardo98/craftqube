@@ -3,21 +3,28 @@
 export type CheckoutStep = "contacto" | "envio" | "pago" | "confirmacion";
 
 export interface DatosContacto {
-  nombre:   string;
-  apellido: string;
-  email:    string;
-  telefono: string;
+  nombre:    string;
+  apellido:  string;
+  email:     string;
+  telefono:  string;
+  /** Solo aplica cuando el usuario NO está autenticado */
+  modoGuest?: boolean;
 }
 
 export interface DatosEnvio {
-  calle:        string;
-  numeroExt:    string;
-  numeroInt:    string;
-  colonia:      string;
-  ciudad:       string;
-  estado:       string;
-  codigoPostal: string;
-  referencias:  string;
+  calle:           string;
+  numeroExt:       string;
+  numeroInt:       string;
+  colonia:         string;
+  ciudad:          string;
+  municipio:       string;
+  estado:          string;
+  codigoPostal:    string;
+  pais:            string;
+  referencias:     string;
+  empresa:         string;
+  /** Guardar dirección en la cuenta (solo usuarios autenticados) */
+  guardarDireccion?: boolean;
 }
 
 export interface DatosPago {
@@ -26,6 +33,7 @@ export interface DatosPago {
   nombreTarjeta: string;
   expiracion:    string;
   cvv:           string;
+  notas:         string;
 }
 
 export interface CheckoutFormData {
@@ -34,11 +42,11 @@ export interface CheckoutFormData {
   pago:     DatosPago;
 }
 
-export const STEPS: { id: CheckoutStep; label: string; shortLabel: string }[] = [
-  { id: "contacto",     label: "Contacto",  shortLabel: "Contacto" },
-  { id: "envio",        label: "Envío",     shortLabel: "Envío"    },
-  { id: "pago",         label: "Pago",      shortLabel: "Pago"     },
-  { id: "confirmacion", label: "Listo",     shortLabel: "Listo"    },
+export const STEPS: { id: CheckoutStep; label: string; shortLabel: string; icon: string }[] = [
+  { id: "contacto",     label: "Contacto",  shortLabel: "Contacto", icon: "fa-user"       },
+  { id: "envio",        label: "Envío",     shortLabel: "Envío",    icon: "fa-truck"      },
+  { id: "pago",         label: "Pago",      shortLabel: "Pago",     icon: "fa-credit-card"},
+  { id: "confirmacion", label: "Listo",     shortLabel: "Listo",    icon: "fa-check"      },
 ];
 
 export const ESTADOS_MX = [
