@@ -12,6 +12,7 @@ import { StepPago }         from "./StepPago";
 import { StepConfirmacion } from "./StepConfirmacion";
 import { OrderSummary }     from "./OrderSummary";
 import type { CheckoutFormData, CheckoutStep, DatosPago } from "../types";
+import type { PaymentConfirmData }                         from "./StepPago";
 
 const emptyForm: CheckoutFormData = {
   contacto: { nombre: "", apellido: "", email: "", telefono: "", modoGuest: true },
@@ -59,15 +60,13 @@ function TrustBar() {
 /* ══════════════════════════════════════════════════════════ */
 export function CheckoutClient() {
   const { items, totalPrecio, clearCart } = useCart();
-  const [step,        setStep]     = useState<CheckoutStep>("contacto");
-  const [formData,    setFormData] = useState<CheckoutFormData>(emptyForm);
-  const [orderNumber]              = useState<string>(genOrderNumber);
-  const [pedidoId,    setPedidoId] = useState<string | null>(null);
+  const [step,        setStep]            = useState<CheckoutStep>("contacto");
+  const [formData,    setFormData]        = useState<CheckoutFormData>(emptyForm);
+  const [orderNumber]                     = useState<string>(genOrderNumber);
+  const [pedidoId,    setPedidoId]        = useState<string | null>(null);
+  const [paymentData, setPaymentData]     = useState<PaymentConfirmData | null>(null);
 
-  /**
-   * FIX: captura el total ANTES de que onClearCart() vacie el carrito y
-   * haga que totalPrecio reactivo vuelva a 0 en el próximo render.
-   */
+  // Snapshot del total antes de que clearCart lo ponga en 0
   const totalSnapshot = useRef<number>(0);
 
   if (!items.length && step !== "confirmacion") {
@@ -100,9 +99,10 @@ export function CheckoutClient() {
     );
   }
 
-  const handlePago = (stripePaymentIntentId?: string) => {
-    totalSnapshot.current = totalPrecio; // snapshot antes del clear
+  const handlePago = (stripePaymentIntentId?: string, pd?: PaymentConfirmData) => {
+    totalSnapshot.current = totalPrecio;       // capturar antes del clear
     setPedidoId(stripePaymentIntentId ?? null);
+    setPaymentData(pd ?? null);
     setStep("confirmacion");
   };
 
@@ -140,7 +140,7 @@ export function CheckoutClient() {
                     <StepPago key="pago"
                       data={formData.pago}
                       onChange={(pago: DatosPago) => setFormData((p) => ({ ...p, pago }))}
-                      onNext={(stripeId: string | undefined) => handlePago(stripeId)}
+                      onNext={(stripeId, pd) => handlePago(stripeId, pd)}
                       onBack={() => setStep("envio")}
                       contactoEmail={formData.contacto.email}
                       contactoNombre={`${formData.contacto.nombre} ${formData.contacto.apellido}`.trim()}
@@ -152,8 +152,9 @@ export function CheckoutClient() {
                     <StepConfirmacion key="confirmacion"
                       formData={formData}
                       orderNumber={orderNumber}
-                      totalFinal={totalSnapshot.current}  // ← nunca será 0
+                      totalFinal={totalSnapshot.current}
                       pedidoId={pedidoId}
+                      paymentData={paymentData}
                       onClearCart={clearCart} />
                   )}
                 </AnimatePresence>
