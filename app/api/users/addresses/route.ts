@@ -36,7 +36,7 @@ export async function GET() {
               calle, numero_ext, numero_int, colonia, ciudad,
               municipio, estado, codigo_postal, pais,
               referencias, es_predeterminada, tipo, created_at
-       FROM direcciones_envio
+       FROM direcciones
        WHERE usuario_id = ?
        ORDER BY es_predeterminada DESC, created_at DESC
        LIMIT 10`,
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
       municipio    = null,
       estado,
       codigo_postal,
-      pais         = "México",
+      pais         = "MX",
       referencias  = null,
       es_predeterminada = false,
       tipo         = "envio",
@@ -96,14 +96,14 @@ export async function POST(req: NextRequest) {
     // Si será predeterminada, quitar el flag a las demás
     if (es_predeterminada) {
       await conn.execute(
-        `UPDATE direcciones_envio SET es_predeterminada = 0
+        `UPDATE direcciones SET es_predeterminada = 0
          WHERE usuario_id = ? AND tipo IN ('envio', 'ambos')`,
         [Number(session.sub)]
       );
     }
 
     const [result] = await conn.execute<ResultSetHeader>(
-      `INSERT INTO direcciones_envio
+      `INSERT INTO direcciones
          (usuario_id, alias, nombre, apellido, empresa, telefono,
           calle, numero_ext, numero_int, colonia, ciudad,
           municipio, estado, codigo_postal, pais,
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
     await conn.commit();
 
     const [rows] = await conn.execute<RowDataPacket[]>(
-      `SELECT * FROM direcciones_envio WHERE id = ? LIMIT 1`,
+      `SELECT * FROM direcciones WHERE id = ? LIMIT 1`,
       [result.insertId]
     );
 
