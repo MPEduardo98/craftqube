@@ -40,7 +40,9 @@ function FieldLabel({ children, focused }: { children: React.ReactNode; focused:
   );
 }
 
-/* ─── Enviar email de confirmación ──────────────────────── */
+/* ══════════════════════════════════════════════════════════ */
+/* Helper: enviar email de confirmación                       */
+/* ══════════════════════════════════════════════════════════ */
 async function enviarEmailConfirmacion(payload: {
   orderNumber: string;
   email:       string;
@@ -53,16 +55,26 @@ async function enviarEmailConfirmacion(payload: {
   oxxo?:       { numero: string; expira: number; hostedVoucherUrl: string | null };
 }) {
   try {
-    await fetch("/api/orders/send-confirmation", {
+    console.log("[email] Enviando confirmación para", payload.email, "metodo:", payload.metodo);
+    const res  = await fetch("/api/orders/send-confirmation", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify(payload),
     });
+    const json = await res.json();
+    if (!res.ok) {
+      console.error("[email] Error del servidor:", json.error ?? res.status);
+    } else {
+      console.log("[email] Enviado correctamente ✓");
+    }
   } catch (err) {
-    console.error("[email-confirmacion]", err);
+    console.error("[email] Fetch falló:", err);
   }
 }
 
+/* ══════════════════════════════════════════════════════════ */
+/* Props                                                      */
+/* ══════════════════════════════════════════════════════════ */
 interface Props {
   data:           DatosPago;
   onChange:       (data: DatosPago) => void;
@@ -137,16 +149,8 @@ function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError, orderNum
       });
       if (error) throw new Error(error.message ?? "Error al procesar el pago.");
       if (paymentIntent?.status === "succeeded") {
-        // Enviar email de confirmación (non-blocking)
-        enviarEmailConfirmacion({
-          orderNumber,
-          email,
-          nombre,
-          total:   totalPrecio,
-          items,
-          envio:   envioData,
-          metodo:  "tarjeta",
-        });
+        // Email de confirmación (non-blocking)
+        enviarEmailConfirmacion({ orderNumber, email, nombre, total: totalPrecio, items, envio: envioData, metodo: "tarjeta" });
         onSuccess(paymentIntent.id);
       } else {
         throw new Error("El pago no fue completado.");
@@ -175,27 +179,21 @@ function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError, orderNum
         )}
       </AnimatePresence>
       <div style={{ opacity: mounting ? 0 : 1, transition: "opacity .3s", display: "flex", flexDirection: "column", gap: 14 }}>
-        {/* Nombre del titular */}
         <div className="flex flex-col gap-1.5">
           <FieldLabel focused={focused === "name"}>Nombre del titular</FieldLabel>
-          <input
-            value={cardName}
-            onChange={(e) => onCardNameChange(e.target.value)}
+          <input value={cardName} onChange={(e) => onCardNameChange(e.target.value)}
             onFocus={() => setFocused("name")} onBlur={() => setFocused("")}
             placeholder="Como aparece en la tarjeta"
             style={{ height: 46, padding: "0 12px", borderRadius: 10, background: "var(--color-cq-surface-2)",
               border: `1.5px solid ${focused === "name" ? "var(--color-cq-accent)" : "var(--color-cq-border)"}`,
               boxShadow: focused === "name" ? "0 0 0 3px rgba(37,99,235,0.1)" : "none",
               fontFamily: "var(--font-body)", fontSize: "0.875rem", color: "var(--color-cq-text)",
-              outline: "none", width: "100%", transition: "border-color .2s, box-shadow .2s" }}
-          />
+              outline: "none", width: "100%", transition: "border-color .2s, box-shadow .2s" }} />
         </div>
-        {/* Número */}
         <div className="flex flex-col gap-1.5">
           <FieldLabel focused={focused === "number"}>Número de tarjeta</FieldLabel>
           <div style={fieldBox("number")}><div id="stripe-number" style={{ width: "100%" }} /></div>
         </div>
-        {/* Expiry + CVC */}
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
             <FieldLabel focused={focused === "expiry"}>Vencimiento</FieldLabel>
@@ -207,7 +205,6 @@ function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError, orderNum
           </div>
         </div>
       </div>
-      {/* Botón pagar */}
       <motion.button type="button" onClick={handlePay} disabled={paying || mounting} whileTap={{ scale: 0.98 }}
         className="flex items-center justify-center gap-2.5 w-full rounded-xl"
         style={{ height: 52, fontFamily: "var(--font-body)", fontWeight: 600, fontSize: "0.95rem",
@@ -256,20 +253,10 @@ function PanelOxxo({ email, nombre, onSuccess, onError, orderNumber, envioData }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Error al generar voucher.");
       setVoucher(data);
-      // Email de confirmación con código OXXO (non-blocking)
+      // Email con código OXXO (non-blocking)
       enviarEmailConfirmacion({
-        orderNumber,
-        email,
-        nombre,
-        total:  totalPrecio,
-        items,
-        envio:  envioData,
-        metodo: "oxxo",
-        oxxo:   {
-          numero:           data.numero,
-          expira:           data.expira,
-          hostedVoucherUrl: data.hostedVoucherUrl,
-        },
+        orderNumber, email, nombre, total: totalPrecio, items, envio: envioData, metodo: "oxxo",
+        oxxo: { numero: data.numero, expira: data.expira, hostedVoucherUrl: data.hostedVoucherUrl },
       });
     } catch (err: unknown) {
       onError(err instanceof Error ? err.message : "Error inesperado.");
@@ -290,7 +277,7 @@ function PanelOxxo({ email, nombre, onSuccess, onError, orderNumber, envioData }
           <i className="fa-solid fa-circle-info" style={{ color: "var(--color-cq-accent)", fontSize: "0.9rem", marginTop: 2 }} />
           <div style={{ fontFamily: "var(--font-body)", fontSize: "0.82rem", color: "var(--color-cq-muted)", lineHeight: 1.7 }}>
             <p>Generaremos un <strong style={{ color: "var(--color-cq-text)" }}>código de barras único</strong> para pagar en cualquier tienda OXXO.</p>
-            <p style={{ marginTop: 6 }}>El voucher es válido por <strong style={{ color: "var(--color-cq-text)" }}>72 horas</strong>. El pedido se confirmará automáticamente al recibir el pago.</p>
+            <p style={{ marginTop: 6 }}>El voucher es válido por <strong style={{ color: "var(--color-cq-text)" }}>72 horas</strong>.</p>
           </div>
         </div>
         <motion.button type="button" onClick={generarVoucher} disabled={loading} whileTap={{ scale: 0.98 }}
@@ -312,7 +299,6 @@ function PanelOxxo({ email, nombre, onSuccess, onError, orderNumber, envioData }
         <i className="fa-solid fa-circle-check" style={{ color: "#22c55e", fontSize: "0.9rem" }} />
         <span style={{ fontFamily: "var(--font-body)", fontSize: "0.85rem", color: "#16a34a", fontWeight: 600 }}>Voucher generado · Email enviado</span>
       </div>
-      {/* Referencia */}
       <div className="flex flex-col gap-2 rounded-xl p-4"
         style={{ background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)" }}>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-cq-muted)" }}>
@@ -340,7 +326,6 @@ function PanelOxxo({ email, nombre, onSuccess, onError, orderNumber, envioData }
           Vence el {formatFecha(voucher.expira)}
         </span>
       </div>
-      {/* Instrucciones */}
       <div className="flex flex-col gap-2.5">
         {[
           "Ve a cualquier tienda OXXO en México.",
@@ -360,7 +345,6 @@ function PanelOxxo({ email, nombre, onSuccess, onError, orderNumber, envioData }
           </div>
         ))}
       </div>
-      {/* PDF voucher */}
       {voucher.hostedVoucherUrl && (
         <a href={voucher.hostedVoucherUrl} target="_blank" rel="noopener noreferrer"
           className="flex items-center justify-center gap-2 rounded-xl"
@@ -415,22 +399,10 @@ function PanelSpei({ email, nombre, onSuccess, onError, orderNumber, envioData }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Error al generar datos SPEI.");
       setSpei(data);
-      // Email de confirmación con datos SPEI (non-blocking)
+      // Email con datos SPEI (non-blocking)
       enviarEmailConfirmacion({
-        orderNumber,
-        email,
-        nombre,
-        total:  totalPrecio,
-        items,
-        envio:  envioData,
-        metodo: "transferencia",
-        spei:   {
-          clabe:                 data.clabe,
-          banco:                 data.banco,
-          referencia:            data.referencia,
-          monto:                 data.monto,
-          hostedInstructionsUrl: data.hostedInstructionsUrl,
-        },
+        orderNumber, email, nombre, total: totalPrecio, items, envio: envioData, metodo: "transferencia",
+        spei: { clabe: data.clabe, banco: data.banco, referencia: data.referencia, monto: data.monto, hostedInstructionsUrl: data.hostedInstructionsUrl },
       });
     } catch (err: unknown) {
       onError(err instanceof Error ? err.message : "Error inesperado.");
@@ -531,14 +503,11 @@ function PanelSpei({ email, nombre, onSuccess, onError, orderNumber, envioData }
       {/* Monto */}
       <div className="flex items-center justify-between rounded-xl px-4 py-3"
         style={{ background: "rgba(37,99,235,0.05)", border: "1px solid rgba(37,99,235,0.12)" }}>
-        <span style={{ fontFamily: "var(--font-body)", fontSize: "0.82rem", color: "var(--color-cq-muted)" }}>
-          Monto exacto a transferir
-        </span>
+        <span style={{ fontFamily: "var(--font-body)", fontSize: "0.82rem", color: "var(--color-cq-muted)" }}>Monto exacto a transferir</span>
         <span style={{ fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 800, color: "var(--color-cq-accent)" }}>
           {formatMXN(spei.monto)}
         </span>
       </div>
-      {/* Aviso exactitud */}
       <div className="flex items-start gap-2.5 rounded-xl p-3"
         style={{ background: "rgba(249,115,22,0.05)", border: "1px solid rgba(249,115,22,0.15)" }}>
         <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: "0.8rem", color: "#f97316", marginTop: 2, flexShrink: 0 }} />
@@ -547,7 +516,6 @@ function PanelSpei({ email, nombre, onSuccess, onError, orderNumber, envioData }
           Diferencias en centavos pueden retrasar la confirmación.
         </span>
       </div>
-      {/* Link instrucciones */}
       {spei.hostedInstructionsUrl && (
         <a href={spei.hostedInstructionsUrl} target="_blank" rel="noopener noreferrer"
           className="flex items-center justify-center gap-2 rounded-xl"
@@ -598,7 +566,6 @@ export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contac
         </div>
       </div>
 
-      {/* Error global */}
       <AnimatePresence>
         {error && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
@@ -652,10 +619,7 @@ export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contac
               onCardNameChange={(v) => { setCardName(v); onChange({ ...data, nombreTarjeta: v }); }}
               onSuccess={(piId) => onNext(piId)}
               onError={(msg) => setError(msg)}
-              orderNumber={orderNumber}
-              email={contactoEmail}
-              nombre={contactoNombre}
-              envioData={envioData}
+              orderNumber={orderNumber} email={contactoEmail} nombre={contactoNombre} envioData={envioData}
             />
           </motion.div>
         )}
@@ -664,12 +628,9 @@ export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contac
             exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }}
             className="rounded-xl p-5" style={{ background: "var(--color-cq-surface-2)", border: "1px solid var(--color-cq-border)" }}>
             <PanelSpei
-              email={contactoEmail}
-              nombre={contactoNombre}
-              onSuccess={(piId) => onNext(piId)}
-              onError={(msg) => setError(msg)}
-              orderNumber={orderNumber}
-              envioData={envioData}
+              email={contactoEmail} nombre={contactoNombre}
+              onSuccess={(piId) => onNext(piId)} onError={(msg) => setError(msg)}
+              orderNumber={orderNumber} envioData={envioData}
             />
           </motion.div>
         )}
@@ -678,12 +639,9 @@ export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contac
             exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }}
             className="rounded-xl p-5" style={{ background: "var(--color-cq-surface-2)", border: "1px solid var(--color-cq-border)" }}>
             <PanelOxxo
-              email={contactoEmail}
-              nombre={contactoNombre}
-              onSuccess={(piId) => onNext(piId)}
-              onError={(msg) => setError(msg)}
-              orderNumber={orderNumber}
-              envioData={envioData}
+              email={contactoEmail} nombre={contactoNombre}
+              onSuccess={(piId) => onNext(piId)} onError={(msg) => setError(msg)}
+              orderNumber={orderNumber} envioData={envioData}
             />
           </motion.div>
         )}

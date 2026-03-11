@@ -1,7 +1,7 @@
 // app/(main)/checkout/components/CheckoutClient.tsx
 "use client";
 
-import { useState }          from "react";
+import { useState, useRef }  from "react";
 import Link                  from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart }           from "@/app/global/context/CartContext";
@@ -13,42 +13,18 @@ import { StepConfirmacion } from "./StepConfirmacion";
 import { OrderSummary }     from "./OrderSummary";
 import type { CheckoutFormData, CheckoutStep, DatosPago } from "../types";
 
-/* ─── emptyForm ──────────────────────────────────────────── */
 const emptyForm: CheckoutFormData = {
-  contacto: {
-    nombre:    "",
-    apellido:  "",
-    email:     "",
-    telefono:  "",
-    modoGuest: true,
-  },
+  contacto: { nombre: "", apellido: "", email: "", telefono: "", modoGuest: true },
   envio: {
-    calle:            "",
-    numeroExt:        "",
-    numeroInt:        "",
-    colonia:          "",
-    ciudad:           "",
-    municipio:        "",
-    estado:           "",
-    codigoPostal:     "",
-    pais:             "México",
-    referencias:      "",
-    empresa:          "",
-    guardarDireccion: false,
+    calle: "", numeroExt: "", numeroInt: "", colonia: "", ciudad: "",
+    municipio: "", estado: "", codigoPostal: "", pais: "México",
+    referencias: "", empresa: "", guardarDireccion: false,
   },
-  pago: {
-    metodo:        "tarjeta",
-    numeroTarjeta: "",
-    nombreTarjeta: "",
-    expiracion:    "",
-    cvv:           "",
-    notas:         "",
-  },
+  pago: { metodo: "tarjeta", numeroTarjeta: "", nombreTarjeta: "", expiracion: "", cvv: "", notas: "" },
 };
 
 function genOrderNumber() { return "CQ" + Date.now().toString(36).toUpperCase(); }
 
-/* ─── Font Awesome ───────────────────────────────────────── */
 function FontAwesomeLink() {
   return (
     <link
@@ -59,15 +35,14 @@ function FontAwesomeLink() {
   );
 }
 
-/* ─── TrustBar ───────────────────────────────────────────── */
 function TrustBar() {
   return (
     <div className="flex items-center justify-center gap-6 py-4"
       style={{ borderTop: "1px solid var(--color-cq-border)", marginTop: 8 }}>
       {[
-        { icon: "fa-solid fa-lock",          label: "SSL Seguro" },
-        { icon: "fa-solid fa-rotate-left",   label: "30 días devolución" },
-        { icon: "fa-solid fa-headset",       label: "Soporte 24/7" },
+        { icon: "fa-solid fa-lock",        label: "SSL Seguro" },
+        { icon: "fa-solid fa-rotate-left", label: "30 días devolución" },
+        { icon: "fa-solid fa-headset",     label: "Soporte 24/7" },
       ].map(({ icon, label }) => (
         <div key={label} className="flex items-center gap-1.5">
           <i className={icon} style={{ fontSize: "0.7rem", color: "var(--color-cq-muted-2)" }} />
@@ -82,16 +57,19 @@ function TrustBar() {
 }
 
 /* ══════════════════════════════════════════════════════════ */
-/* CheckoutClient                                             */
-/* ══════════════════════════════════════════════════════════ */
 export function CheckoutClient() {
   const { items, totalPrecio, clearCart } = useCart();
-  const [step,        setStep]        = useState<CheckoutStep>("contacto");
-  const [formData,    setFormData]    = useState<CheckoutFormData>(emptyForm);
-  const [orderNumber] = useState<string>(genOrderNumber);
-  const [pedidoId,    setPedidoId]    = useState<string | null>(null);
+  const [step,        setStep]     = useState<CheckoutStep>("contacto");
+  const [formData,    setFormData] = useState<CheckoutFormData>(emptyForm);
+  const [orderNumber]              = useState<string>(genOrderNumber);
+  const [pedidoId,    setPedidoId] = useState<string | null>(null);
 
-  /* Carrito vacío */
+  /**
+   * FIX: captura el total ANTES de que onClearCart() vacie el carrito y
+   * haga que totalPrecio reactivo vuelva a 0 en el próximo render.
+   */
+  const totalSnapshot = useRef<number>(0);
+
   if (!items.length && step !== "confirmacion") {
     return (
       <>
@@ -123,6 +101,7 @@ export function CheckoutClient() {
   }
 
   const handlePago = (stripePaymentIntentId?: string) => {
+    totalSnapshot.current = totalPrecio; // snapshot antes del clear
     setPedidoId(stripePaymentIntentId ?? null);
     setStep("confirmacion");
   };
@@ -133,7 +112,6 @@ export function CheckoutClient() {
       <div className="min-h-screen" style={{ background: "var(--color-cq-bg)" }}>
         <div className="max-w-5xl mx-auto px-4 py-8">
 
-          {/* Stepper */}
           {step !== "confirmacion" && (
             <div className="mb-8">
               <CheckoutStepper currentStep={step} />
@@ -141,7 +119,6 @@ export function CheckoutClient() {
           )}
 
           <div className="flex gap-8 items-start">
-            {/* ── Izquierda: formulario ── */}
             <div className="flex-1 min-w-0">
               <div className="rounded-2xl p-6 sm:p-8"
                 style={{ background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)" }}>
@@ -175,7 +152,7 @@ export function CheckoutClient() {
                     <StepConfirmacion key="confirmacion"
                       formData={formData}
                       orderNumber={orderNumber}
-                      totalFinal={totalPrecio}
+                      totalFinal={totalSnapshot.current}  // ← nunca será 0
                       pedidoId={pedidoId}
                       onClearCart={clearCart} />
                   )}
@@ -185,7 +162,6 @@ export function CheckoutClient() {
               {step !== "confirmacion" && <TrustBar />}
             </div>
 
-            {/* ── Derecha: Order Summary ── */}
             {step !== "confirmacion" && (
               <div className="hidden lg:block shrink-0" style={{ width: 312 }}>
                 <div style={{ position: "sticky", top: 80 }}>
