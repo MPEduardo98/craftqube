@@ -8,6 +8,9 @@ import { CartDrawer }       from "./global/components/cart/CartDrawer";
 import { ThemeProvider }    from "./global/context/ThemeContext";
 import { CartProvider }     from "./global/context/CartContext";
 import { WishlistProvider } from "./global/context/WishlistContext";
+import { AuthProvider }     from "./global/context/AuthContext";
+import { AlertProvider }    from "./global/context/AlertContext";
+import { AlertContainer }   from "./global/components/alerts/AlertContainer";
 
 const barlowCondensed = Barlow_Condensed({
   variable: "--font-barlow",
@@ -53,16 +56,21 @@ export default function RootLayout({
       <body
         className={`${barlowCondensed.variable} ${dmSans.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        <ThemeProvider>
-          <CartProvider>
-            <WishlistProvider>
-              <Header />
-              <CartDrawer />
-              <main>{children}</main>
-              <Footer />
-            </WishlistProvider>
-          </CartProvider>
-        </ThemeProvider>
+        <AlertProvider>
+          <AuthProvider>
+            <ThemeProvider>
+              <CartProvider>
+                <WishlistProvider>
+                  <Header />
+                  <CartDrawer />
+                  <main>{children}</main>
+                  <Footer />
+                  <AlertContainer />
+                </WishlistProvider>
+              </CartProvider>
+            </ThemeProvider>
+          </AuthProvider>
+        </AlertProvider>
       </body>
     </html>
   );

@@ -1,7 +1,4 @@
 // app/global/context/AuthContext.tsx
-// ─────────────────────────────────────────────────────────────
-// Contexto de autenticación — JWT access token + refresh
-// ─────────────────────────────────────────────────────────────
 "use client";
 
 import {
@@ -21,9 +18,9 @@ interface AuthState {
 }
 
 interface AuthContextValue extends AuthState {
-  login:      (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  register:   (payload: RegisterInput) => Promise<{ ok: boolean; error?: string }>;
-  logout:     () => Promise<void>;
+  login:       (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  register:    (payload: RegisterInput) => Promise<{ ok: boolean; error?: string }>;
+  logout:      () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
@@ -49,7 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [usuario,  setUsuario]  = useState<UsuarioPublico | null>(null);
   const [cargando, setCargando] = useState(true);
 
-  /** Verifica sesión activa al montar */
   const refreshUser = useCallback(async () => {
     try {
       const res = await fetch("/api/auth/me", { credentials: "include" });
@@ -70,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     try {
-      const res = await fetch("/api/auth/login", {
+      const res  = await fetch("/api/auth/login", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ email, password }),
@@ -88,6 +84,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(async (payload: RegisterInput) => {
+    console.group("🔐 [AuthContext] register()");
+    console.log("📤 Payload enviado:", {
+      nombre:   payload.nombre,
+      apellido: payload.apellido,
+      email:    payload.email,
+      telefono: payload.telefono ?? "(vacío)",
+      password: "***",
+    });
+
     try {
       const res = await fetch("/api/auth/register", {
         method:  "POST",
@@ -95,13 +100,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body:    JSON.stringify(payload),
         credentials: "include",
       });
-      const json = await res.json();
+
+      console.log("📥 HTTP Status:", res.status, res.statusText);
+
+      // Leer el body como texto primero para ver exactamente qué devuelve
+      const rawText = await res.text();
+      console.log("📄 Respuesta raw:", rawText);
+
+      let json: { success?: boolean; error?: string; usuario?: UsuarioPublico };
+      try {
+        json = JSON.parse(rawText);
+        console.log("✅ JSON parseado:", json);
+      } catch (parseErr) {
+        console.error("❌ Error al parsear JSON:", parseErr);
+        console.groupEnd();
+        return { ok: false, error: "Respuesta inválida del servidor" };
+      }
+
       if (res.ok && json.success) {
-        setUsuario(json.usuario);
+        console.log("🎉 Registro exitoso. Usuario:", json.usuario);
+        setUsuario(json.usuario ?? null);
+        console.groupEnd();
         return { ok: true };
       }
+
+      console.warn("⚠️ Registro fallido. Error:", json.error);
+      console.groupEnd();
       return { ok: false, error: json.error ?? "Error al registrarse" };
-    } catch {
+
+    } catch (err) {
+      console.error("💥 Excepción en register fetch:", err);
+      console.groupEnd();
       return { ok: false, error: "Error de conexión" };
     }
   }, []);
