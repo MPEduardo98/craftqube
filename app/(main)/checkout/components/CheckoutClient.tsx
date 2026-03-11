@@ -53,7 +53,7 @@ function FontAwesomeLink() {
   return (
     <link
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
       crossOrigin="anonymous"
     />
   );
@@ -62,17 +62,18 @@ function FontAwesomeLink() {
 /* ─── TrustBar ───────────────────────────────────────────── */
 function TrustBar() {
   return (
-    <div className="flex items-center justify-center gap-6 flex-wrap"
-      style={{ padding: "12px 0", opacity: 0.5 }}>
+    <div className="flex items-center justify-center gap-6 py-4"
+      style={{ borderTop: "1px solid var(--color-cq-border)", marginTop: 8 }}>
       {[
-        { icon: "fa-solid fa-lock",           label: "SSL seguro"     },
-        { icon: "fa-solid fa-rotate-left",    label: "30 días devolución" },
-        { icon: "fa-solid fa-headset",        label: "Soporte 24/7"   },
-      ].map((t) => (
-        <div key={t.label} className="flex items-center gap-1.5">
-          <i className={t.icon} style={{ fontSize: "0.65rem", color: "var(--color-cq-muted)" }} />
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-cq-muted)" }}>
-            {t.label}
+        { icon: "fa-solid fa-lock",          label: "SSL Seguro" },
+        { icon: "fa-solid fa-rotate-left",   label: "30 días devolución" },
+        { icon: "fa-solid fa-headset",       label: "Soporte 24/7" },
+      ].map(({ icon, label }) => (
+        <div key={label} className="flex items-center gap-1.5">
+          <i className={icon} style={{ fontSize: "0.7rem", color: "var(--color-cq-muted-2)" }} />
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", letterSpacing: "0.1em",
+            textTransform: "uppercase", color: "var(--color-cq-muted-2)" }}>
+            {label}
           </span>
         </div>
       ))}
@@ -80,30 +81,14 @@ function TrustBar() {
   );
 }
 
-/* ─── CheckoutHeader ─────────────────────────────────────── */
-function CheckoutHeader() {
-  return (
-    <header className="flex items-center justify-center"
-      style={{ height: 62, borderBottom: "1px solid var(--color-cq-border)" }}>
-      <Link href="/" style={{ textDecoration: "none" }}>
-        <span style={{
-          fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.35rem",
-          color: "var(--color-cq-text)", letterSpacing: "-0.02em",
-        }}>
-          craft<span style={{ color: "var(--color-cq-accent)" }}>qube</span>
-        </span>
-      </Link>
-    </header>
-  );
-}
-
+/* ══════════════════════════════════════════════════════════ */
+/* CheckoutClient                                             */
 /* ══════════════════════════════════════════════════════════ */
 export function CheckoutClient() {
   const { items, totalPrecio, clearCart } = useCart();
   const [step,        setStep]        = useState<CheckoutStep>("contacto");
   const [formData,    setFormData]    = useState<CheckoutFormData>(emptyForm);
   const [orderNumber] = useState<string>(genOrderNumber);
-  /* stripePaymentIntentId en lugar de paypalOrderId */
   const [pedidoId,    setPedidoId]    = useState<string | null>(null);
 
   /* Carrito vacío */
@@ -138,90 +123,69 @@ export function CheckoutClient() {
   }
 
   const handlePago = (stripePaymentIntentId?: string) => {
-    if (stripePaymentIntentId) setPedidoId(stripePaymentIntentId);
+    setPedidoId(stripePaymentIntentId ?? null);
     setStep("confirmacion");
   };
 
   return (
     <>
       <FontAwesomeLink />
-
       <div className="min-h-screen" style={{ background: "var(--color-cq-bg)" }}>
+        <div className="max-w-5xl mx-auto px-4 py-8">
 
-        {/* Grid decorativo */}
-        <div className="pointer-events-none fixed inset-0" style={{
-          backgroundImage: "linear-gradient(var(--color-cq-border) 1px, transparent 1px), linear-gradient(90deg, var(--color-cq-border) 1px, transparent 1px)",
-          backgroundSize: "80px 80px", opacity: "var(--grid-opacity, 0.03)", zIndex: 0,
-        }} />
-
-        <CheckoutHeader />
-
-        <div className="max-w-5xl mx-auto px-4 sm:px-8 pt-10 pb-20 relative z-10">
-
+          {/* Stepper */}
           {step !== "confirmacion" && (
-            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }} style={{ marginBottom: 32 }}>
+            <div className="mb-8">
               <CheckoutStepper currentStep={step} />
-            </motion.div>
-          )}
-
-          {/* Mobile summary */}
-          {step !== "confirmacion" && (
-            <div className="lg:hidden" style={{ marginBottom: 20 }}>
-              <OrderSummary compact />
             </div>
           )}
 
-          <div className="flex flex-col lg:flex-row gap-5 items-start">
-
-            {/* ── Izquierda: formulario ────────────────────── */}
-            <div className="flex-1 min-w-0 flex flex-col gap-5">
-              <div className="rounded-2xl"
-                style={{
-                  background: "var(--color-cq-surface)",
-                  border: "1px solid var(--color-cq-border)",
-                  boxShadow: "0 2px 16px rgba(0,0,0,0.05)",
-                }}>
-                <div className="p-7 sm:p-9">
-                  <AnimatePresence mode="wait">
-                    {step === "contacto" && (
-                      <StepContacto key="contacto"
-                        data={formData.contacto}
-                        onChange={(contacto) => setFormData((p) => ({ ...p, contacto }))}
-                        onNext={() => setStep("envio")} />
-                    )}
-                    {step === "envio" && (
-                      <StepEnvio key="envio"
-                        data={formData.envio}
-                        onChange={(envio) => setFormData((p) => ({ ...p, envio }))}
-                        onNext={() => setStep("pago")}
-                        onBack={() => setStep("contacto")} />
-                    )}
-                    {step === "pago" && (
-                      <StepPago key="pago"
-                        data={formData.pago}
-                        onChange={(pago: DatosPago) => setFormData((p) => ({ ...p, pago }))}
-                        onNext={(stripeId: string | undefined) => handlePago(stripeId)}
-                        onBack={() => setStep("envio")}
-                        contactoEmail={formData.contacto.email}
-                        contactoNombre={`${formData.contacto.nombre} ${formData.contacto.apellido}`.trim()} />
-                    )}
-                    {step === "confirmacion" && (
-                      <StepConfirmacion key="confirmacion"
-                        formData={formData}
-                        orderNumber={orderNumber}
-                        totalFinal={totalPrecio}
-                        pedidoId={pedidoId}
-                        onClearCart={clearCart} />
-                    )}
-                  </AnimatePresence>
-                </div>
+          <div className="flex gap-8 items-start">
+            {/* ── Izquierda: formulario ── */}
+            <div className="flex-1 min-w-0">
+              <div className="rounded-2xl p-6 sm:p-8"
+                style={{ background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)" }}>
+                <AnimatePresence mode="wait">
+                  {step === "contacto" && (
+                    <StepContacto key="contacto"
+                      data={formData.contacto}
+                      onChange={(contacto) => setFormData((p) => ({ ...p, contacto }))}
+                      onNext={() => setStep("envio")} />
+                  )}
+                  {step === "envio" && (
+                    <StepEnvio key="envio"
+                      data={formData.envio}
+                      onChange={(envio) => setFormData((p) => ({ ...p, envio }))}
+                      onNext={() => setStep("pago")}
+                      onBack={() => setStep("contacto")} />
+                  )}
+                  {step === "pago" && (
+                    <StepPago key="pago"
+                      data={formData.pago}
+                      onChange={(pago: DatosPago) => setFormData((p) => ({ ...p, pago }))}
+                      onNext={(stripeId: string | undefined) => handlePago(stripeId)}
+                      onBack={() => setStep("envio")}
+                      contactoEmail={formData.contacto.email}
+                      contactoNombre={`${formData.contacto.nombre} ${formData.contacto.apellido}`.trim()}
+                      orderNumber={orderNumber}
+                      envioData={formData.envio}
+                    />
+                  )}
+                  {step === "confirmacion" && (
+                    <StepConfirmacion key="confirmacion"
+                      formData={formData}
+                      orderNumber={orderNumber}
+                      totalFinal={totalPrecio}
+                      pedidoId={pedidoId}
+                      onClearCart={clearCart} />
+                  )}
+                </AnimatePresence>
               </div>
 
               {step !== "confirmacion" && <TrustBar />}
             </div>
 
-            {/* ── Derecha: Order Summary ───────────────────── */}
+            {/* ── Derecha: Order Summary ── */}
             {step !== "confirmacion" && (
               <div className="hidden lg:block shrink-0" style={{ width: 312 }}>
                 <div style={{ position: "sticky", top: 80 }}>

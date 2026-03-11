@@ -17,50 +17,65 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email requerido para SPEI" }, { status: 400 });
     }
 
+    // ── 1. Crear o recuperar Customer (requerido por customer_balance) ──
+    const existingCustomers = await stripe.customers.list({ email, limit: 1 });
+
+    const customer =
+      existingCustomers.data.length > 0
+        ? existingCustomers.data[0]
+        : await stripe.customers.create({
+            email,
+            name: nombre ?? "Cliente",
+          });
+
+    // ── 2. Crear PaymentIntent vinculado al Customer ──
     const paymentIntent = await stripe.paymentIntents.create({
-      amount:               Math.round(Number(amount) * 100), // centavos
+      amount:               Math.round(Number(amount) * 100),
       currency:             "mxn",
+      customer:             customer.id,   // ← requerido para customer_balance
       payment_method_types: ["customer_balance"],
       payment_method_data: {
         type: "customer_balance",
       },
       payment_method_options: {
         customer_balance: {
-          funding_type:         "bank_transfer",
+          funding_type: "bank_transfer",
           bank_transfer: {
             type: "mx_bank_transfer",
           },
         },
       },
-      confirm: true,
+      confirm:    true,
       return_url: `${process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"}/checkout`,
-      // Metadata para identificar el pedido en el webhook
       metadata: {
         email,
-        nombre: nombre ?? "Cliente",
+        nombre:      nombre ?? "Cliente",
+        customerId:  customer.id,
       },
     });
 
-    const bankTransfer = paymentIntent.next_action?.display_bank_transfer_instructions;
+    const bankTransfer =
+      paymentIntent.next_action?.display_bank_transfer_instructions;
 
     if (!bankTransfer) {
       throw new Error("No se pudo generar la información de transferencia SPEI.");
     }
 
-    // Extraer CLABE del objeto de Stripe
+    // ── 3. Extraer CLABE del objeto de Stripe ──
     const clabeInstructions = bankTransfer.financial_addresses?.find(
-      (a) => a.type === "aba" || a.type === "sort_code" || a.spei
+      (a: Stripe.PaymentIntent.NextAction.DisplayBankTransferInstructions.FinancialAddress) =>
+        a.type === "spei"
     );
 
-    const clabe = clabeInstructions?.spei?.clabe ?? null;
-    const banco = clabeInstructions?.spei?.bank_name ?? "Banco asignado por Stripe";
+    const clabe = (clabeInstructions as { spei?: { clabe?: string; bank_name?: string } })?.spei?.clabe ?? null;
+    const banco = (clabeInstructions as { spei?: { clabe?: string; bank_name?: string } })?.spei?.bank_name ?? "Banco asignado por Stripe";
 
     return NextResponse.json({
-      paymentIntentId: paymentIntent.id,
+      paymentIntentId:       paymentIntent.id,
       clabe,
       banco,
-      monto:           Number(amount),
-      referencia:      bankTransfer.reference ?? null,
+      monto:                 Number(amount),
+      referencia:            bankTransfer.reference ?? null,
       hostedInstructionsUrl: bankTransfer.hosted_instructions_url ?? null,
     });
   } catch (err: unknown) {

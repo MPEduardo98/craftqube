@@ -9,8 +9,8 @@ import {
   type StripeElements,
   type StripeCardNumberElement,
 } from "@stripe/stripe-js";
-import { useCart } from "@/app/global/context/CartContext";
-import type { DatosPago } from "../types";
+import { useCart }      from "@/app/global/context/CartContext";
+import type { DatosPago, DatosEnvio } from "../types";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -40,6 +40,29 @@ function FieldLabel({ children, focused }: { children: React.ReactNode; focused:
   );
 }
 
+/* ─── Enviar email de confirmación ──────────────────────── */
+async function enviarEmailConfirmacion(payload: {
+  orderNumber: string;
+  email:       string;
+  nombre:      string;
+  total:       number;
+  items:       ReturnType<typeof useCart>["items"];
+  envio:       DatosEnvio;
+  metodo:      "tarjeta" | "transferencia" | "oxxo";
+  spei?:       { clabe: string | null; banco: string; referencia: string | null; monto: number; hostedInstructionsUrl: string | null };
+  oxxo?:       { numero: string; expira: number; hostedVoucherUrl: string | null };
+}) {
+  try {
+    await fetch("/api/orders/send-confirmation", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(payload),
+    });
+  } catch (err) {
+    console.error("[email-confirmacion]", err);
+  }
+}
+
 interface Props {
   data:           DatosPago;
   onChange:       (data: DatosPago) => void;
@@ -47,6 +70,8 @@ interface Props {
   onBack:         () => void;
   contactoEmail:  string;
   contactoNombre: string;
+  orderNumber:    string;
+  envioData:      DatosEnvio;
 }
 
 type Metodo = "tarjeta" | "transferencia" | "oxxo";
@@ -60,11 +85,12 @@ const METODOS: { id: Metodo; label: string; icon: string; desc: string }[] = [
 /* ══════════════════════════════════════════════════════════ */
 /* Panel Tarjeta                                              */
 /* ══════════════════════════════════════════════════════════ */
-function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError }: {
+function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError, orderNumber, email, nombre, envioData }: {
   cardName: string; onCardNameChange: (v: string) => void;
   onSuccess: (piId: string) => void; onError: (msg: string) => void;
+  orderNumber: string; email: string; nombre: string; envioData: DatosEnvio;
 }) {
-  const { totalPrecio } = useCart();
+  const { totalPrecio, items } = useCart();
   const [stripe,   setStripe]   = useState<StripeInstance | null>(null);
   const [elements, setElements] = useState<StripeElements | null>(null);
   const [cardEl,   setCardEl]   = useState<StripeCardNumberElement | null>(null);
@@ -81,7 +107,7 @@ function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError }: {
     let mounted = true;
     stripePromise.then((s) => {
       if (!s || !mounted) return;
-      const els = s.elements();
+      const els    = s.elements();
       const number = els.create("cardNumber", { style: stripeStyle, placeholder: "1234  5678  9012  3456" });
       const expiry = els.create("cardExpiry",  { style: stripeStyle });
       const cvc    = els.create("cardCvc",     { style: stripeStyle });
@@ -110,18 +136,32 @@ function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError }: {
         payment_method: { card: cardEl, billing_details: { name: cardName } },
       });
       if (error) throw new Error(error.message ?? "Error al procesar el pago.");
-      if (paymentIntent?.status === "succeeded") { onSuccess(paymentIntent.id); }
-      else throw new Error("El pago no fue completado.");
+      if (paymentIntent?.status === "succeeded") {
+        // Enviar email de confirmación (non-blocking)
+        enviarEmailConfirmacion({
+          orderNumber,
+          email,
+          nombre,
+          total:   totalPrecio,
+          items,
+          envio:   envioData,
+          metodo:  "tarjeta",
+        });
+        onSuccess(paymentIntent.id);
+      } else {
+        throw new Error("El pago no fue completado.");
+      }
     } catch (err: unknown) {
       onError(err instanceof Error ? err.message : "Error inesperado.");
     } finally { setPaying(false); }
-  }, [stripe, elements, cardEl, cardName, totalPrecio, onSuccess, onError]);
+  }, [stripe, elements, cardEl, cardName, totalPrecio, items, orderNumber, email, nombre, envioData, onSuccess, onError]);
 
   const fieldBox = (id: string): React.CSSProperties => ({
     display: "flex", alignItems: "center", height: 46, padding: "0 12px", borderRadius: 10,
     background: "var(--color-cq-surface-2)",
     border: `1.5px solid ${focused === id ? "var(--color-cq-accent)" : "var(--color-cq-border)"}`,
-    boxShadow: focused === id ? "0 0 0 3px rgba(37,99,235,0.1)" : "none", transition: "border-color .2s, box-shadow .2s",
+    boxShadow: focused === id ? "0 0 0 3px rgba(37,99,235,0.1)" : "none",
+    transition: "border-color .2s, box-shadow .2s",
   });
 
   return (
@@ -134,20 +174,28 @@ function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError }: {
           </motion.div>
         )}
       </AnimatePresence>
-      <div style={{ opacity: mounting ? 0 : 1, transition: "opacity .3s", display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ opacity: mounting ? 0 : 1, transition: "opacity .3s", display: "flex", flexDirection: "column", gap: 14 }}>
+        {/* Nombre del titular */}
         <div className="flex flex-col gap-1.5">
           <FieldLabel focused={focused === "name"}>Nombre del titular</FieldLabel>
-          <div style={fieldBox("name")}>
-            <input type="text" value={cardName} onChange={(e) => onCardNameChange(e.target.value)}
-              onFocus={() => setFocused("name")} onBlur={() => setFocused("")}
-              placeholder="Como aparece en la tarjeta" autoComplete="cc-name"
-              style={{ width: "100%", background: "transparent", outline: "none", border: "none", fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "var(--color-cq-text)" }} />
-          </div>
+          <input
+            value={cardName}
+            onChange={(e) => onCardNameChange(e.target.value)}
+            onFocus={() => setFocused("name")} onBlur={() => setFocused("")}
+            placeholder="Como aparece en la tarjeta"
+            style={{ height: 46, padding: "0 12px", borderRadius: 10, background: "var(--color-cq-surface-2)",
+              border: `1.5px solid ${focused === "name" ? "var(--color-cq-accent)" : "var(--color-cq-border)"}`,
+              boxShadow: focused === "name" ? "0 0 0 3px rgba(37,99,235,0.1)" : "none",
+              fontFamily: "var(--font-body)", fontSize: "0.875rem", color: "var(--color-cq-text)",
+              outline: "none", width: "100%", transition: "border-color .2s, box-shadow .2s" }}
+          />
         </div>
+        {/* Número */}
         <div className="flex flex-col gap-1.5">
           <FieldLabel focused={focused === "number"}>Número de tarjeta</FieldLabel>
           <div style={fieldBox("number")}><div id="stripe-number" style={{ width: "100%" }} /></div>
         </div>
+        {/* Expiry + CVC */}
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
             <FieldLabel focused={focused === "expiry"}>Vencimiento</FieldLabel>
@@ -158,33 +206,27 @@ function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError }: {
             <div style={fieldBox("cvc")}><div id="stripe-cvc" style={{ width: "100%" }} /></div>
           </div>
         </div>
-        <div className="flex items-center gap-2" style={{ opacity: 0.5 }}>
-          {["visa", "mastercard", "amex"].map((b) => (
-            <span key={b} style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", letterSpacing: "0.08em",
-              textTransform: "uppercase", padding: "2px 6px", borderRadius: 4,
-              border: "1px solid var(--color-cq-border)", color: "var(--color-cq-muted)" }}>{b}</span>
-          ))}
-        </div>
-        <motion.button type="button" onClick={handlePay} disabled={paying || mounting} whileTap={{ scale: 0.98 }}
-          className="flex items-center justify-center gap-2.5 w-full rounded-xl"
-          style={{ height: 52, fontFamily: "var(--font-body)", fontWeight: 600, fontSize: "0.95rem",
-            background: "var(--color-cq-accent)", color: "white", border: "none",
-            cursor: paying || mounting ? "not-allowed" : "pointer", opacity: paying || mounting ? 0.65 : 1 }}>
-          {paying ? <><Spinner light /> Procesando…</> : <><i className="fa-solid fa-lock" style={{ fontSize: "0.8rem" }} /> Pagar {formatMXN(totalPrecio)}</>}
-        </motion.button>
-        <div className="flex items-center justify-center gap-2">
-          <i className="fa-solid fa-shield-halved" style={{ fontSize: "0.7rem", color: "var(--color-cq-muted-2)" }} />
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.58rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-cq-muted-2)" }}>
-            Cifrado SSL 256-bit · Procesado por Stripe
-          </span>
-        </div>
+      </div>
+      {/* Botón pagar */}
+      <motion.button type="button" onClick={handlePay} disabled={paying || mounting} whileTap={{ scale: 0.98 }}
+        className="flex items-center justify-center gap-2.5 w-full rounded-xl"
+        style={{ height: 52, fontFamily: "var(--font-body)", fontWeight: 600, fontSize: "0.95rem",
+          background: "var(--color-cq-accent)", color: "white", border: "none",
+          cursor: paying || mounting ? "not-allowed" : "pointer", opacity: paying || mounting ? 0.65 : 1 }}>
+        {paying ? <><Spinner light /> Procesando…</> : <><i className="fa-solid fa-lock" style={{ fontSize: "0.8rem" }} /> Pagar {formatMXN(totalPrecio)}</>}
+      </motion.button>
+      <div className="flex items-center justify-center gap-2">
+        <i className="fa-solid fa-shield-halved" style={{ fontSize: "0.7rem", color: "var(--color-cq-muted-2)" }} />
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.58rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-cq-muted-2)" }}>
+          Cifrado SSL 256-bit · Procesado por Stripe
+        </span>
       </div>
     </div>
   );
 }
 
 /* ══════════════════════════════════════════════════════════ */
-/* Panel OXXO — voucher real de Stripe                        */
+/* Panel OXXO                                                 */
 /* ══════════════════════════════════════════════════════════ */
 interface OxxoVoucher {
   paymentIntentId:  string;
@@ -193,11 +235,12 @@ interface OxxoVoucher {
   hostedVoucherUrl: string | null;
 }
 
-function PanelOxxo({ email, nombre, onSuccess, onError }: {
+function PanelOxxo({ email, nombre, onSuccess, onError, orderNumber, envioData }: {
   email: string; nombre: string;
   onSuccess: (piId: string) => void; onError: (msg: string) => void;
+  orderNumber: string; envioData: DatosEnvio;
 }) {
-  const { totalPrecio } = useCart();
+  const { totalPrecio, items } = useCart();
   const [loading, setLoading] = useState(false);
   const [voucher, setVoucher] = useState<OxxoVoucher | null>(null);
   const [copied,  setCopied]  = useState(false);
@@ -206,13 +249,28 @@ function PanelOxxo({ email, nombre, onSuccess, onError }: {
     if (!email) { onError("Necesitamos tu email para generar el voucher OXXO."); return; }
     setLoading(true);
     try {
-      const res = await fetch("/api/stripe/create-oxxo-payment", {
+      const res  = await fetch("/api/stripe/create-oxxo-payment", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: totalPrecio, email, nombre }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Error al generar voucher.");
       setVoucher(data);
+      // Email de confirmación con código OXXO (non-blocking)
+      enviarEmailConfirmacion({
+        orderNumber,
+        email,
+        nombre,
+        total:  totalPrecio,
+        items,
+        envio:  envioData,
+        metodo: "oxxo",
+        oxxo:   {
+          numero:           data.numero,
+          expira:           data.expira,
+          hostedVoucherUrl: data.hostedVoucherUrl,
+        },
+      });
     } catch (err: unknown) {
       onError(err instanceof Error ? err.message : "Error inesperado.");
     } finally { setLoading(false); }
@@ -249,11 +307,10 @@ function PanelOxxo({ email, nombre, onSuccess, onError }: {
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
       className="flex flex-col gap-4">
-      {/* Éxito */}
       <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"
         style={{ background: "rgba(34,197,94,0.07)", border: "1px solid rgba(34,197,94,0.2)" }}>
         <i className="fa-solid fa-circle-check" style={{ color: "#22c55e", fontSize: "0.9rem" }} />
-        <span style={{ fontFamily: "var(--font-body)", fontSize: "0.85rem", color: "#16a34a", fontWeight: 600 }}>Voucher generado correctamente</span>
+        <span style={{ fontFamily: "var(--font-body)", fontSize: "0.85rem", color: "#16a34a", fontWeight: 600 }}>Voucher generado · Email enviado</span>
       </div>
       {/* Referencia */}
       <div className="flex flex-col gap-2 rounded-xl p-4"
@@ -314,7 +371,6 @@ function PanelOxxo({ email, nombre, onSuccess, onError }: {
           Ver / descargar voucher
         </a>
       )}
-      {/* Confirmar */}
       <motion.button type="button" onClick={() => onSuccess(voucher.paymentIntentId)} whileTap={{ scale: 0.98 }}
         className="flex items-center justify-center gap-2.5 w-full rounded-xl"
         style={{ height: 52, fontFamily: "var(--font-body)", fontWeight: 600, fontSize: "0.95rem",
@@ -327,7 +383,7 @@ function PanelOxxo({ email, nombre, onSuccess, onError }: {
 }
 
 /* ══════════════════════════════════════════════════════════ */
-/* Panel SPEI — transferencia real vía Stripe                 */
+/* Panel SPEI                                                 */
 /* ══════════════════════════════════════════════════════════ */
 interface SpeiData {
   paymentIntentId:       string;
@@ -338,11 +394,12 @@ interface SpeiData {
   hostedInstructionsUrl: string | null;
 }
 
-function PanelSpei({ email, nombre, onSuccess, onError }: {
+function PanelSpei({ email, nombre, onSuccess, onError, orderNumber, envioData }: {
   email: string; nombre: string;
   onSuccess: (piId: string) => void; onError: (msg: string) => void;
+  orderNumber: string; envioData: DatosEnvio;
 }) {
-  const { totalPrecio } = useCart();
+  const { totalPrecio, items } = useCart();
   const [loading, setLoading] = useState(false);
   const [spei,    setSpei]    = useState<SpeiData | null>(null);
   const [copied,  setCopied]  = useState<"clabe" | "ref" | null>(null);
@@ -351,13 +408,30 @@ function PanelSpei({ email, nombre, onSuccess, onError }: {
     if (!email) { onError("Necesitamos tu email para generar la CLABE SPEI."); return; }
     setLoading(true);
     try {
-      const res = await fetch("/api/stripe/create-spei-payment", {
+      const res  = await fetch("/api/stripe/create-spei-payment", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: totalPrecio, email, nombre }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Error al generar datos SPEI.");
       setSpei(data);
+      // Email de confirmación con datos SPEI (non-blocking)
+      enviarEmailConfirmacion({
+        orderNumber,
+        email,
+        nombre,
+        total:  totalPrecio,
+        items,
+        envio:  envioData,
+        metodo: "transferencia",
+        spei:   {
+          clabe:                 data.clabe,
+          banco:                 data.banco,
+          referencia:            data.referencia,
+          monto:                 data.monto,
+          hostedInstructionsUrl: data.hostedInstructionsUrl,
+        },
+      });
     } catch (err: unknown) {
       onError(err instanceof Error ? err.message : "Error inesperado.");
     } finally { setLoading(false); }
@@ -384,7 +458,7 @@ function PanelSpei({ email, nombre, onSuccess, onError }: {
           style={{ height: 52, fontFamily: "var(--font-body)", fontWeight: 600, fontSize: "0.95rem",
             background: "var(--color-cq-accent)", color: "white", border: "none",
             cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.65 : 1 }}>
-          {loading ? <><Spinner light /> Generando CLABE…</> : <><i className="fa-solid fa-building-columns" /> Obtener datos de transferencia</>}
+          {loading ? <><Spinner light /> Generando CLABE…</> : <><i className="fa-solid fa-building-columns" style={{ fontSize: "0.9rem" }} /> Obtener datos de transferencia</>}
         </motion.button>
       </div>
     );
@@ -393,109 +467,86 @@ function PanelSpei({ email, nombre, onSuccess, onError }: {
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
       className="flex flex-col gap-4">
-
-      {/* Éxito */}
       <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"
         style={{ background: "rgba(34,197,94,0.07)", border: "1px solid rgba(34,197,94,0.2)" }}>
         <i className="fa-solid fa-circle-check" style={{ color: "#22c55e", fontSize: "0.9rem" }} />
-        <span style={{ fontFamily: "var(--font-body)", fontSize: "0.85rem", color: "#16a34a", fontWeight: 600 }}>
-          Datos de transferencia generados
-        </span>
+        <span style={{ fontFamily: "var(--font-body)", fontSize: "0.85rem", color: "#16a34a", fontWeight: 600 }}>Datos generados · Email enviado</span>
       </div>
-
-      {/* Tarjeta de datos bancarios */}
-      <div className="flex flex-col gap-3 rounded-xl p-4"
+      {/* CLABE */}
+      <div className="flex flex-col gap-2 rounded-xl p-4"
         style={{ background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)" }}>
-
-        {/* Banco */}
-        <div className="flex flex-col gap-0.5">
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.58rem", letterSpacing: "0.14em",
-            textTransform: "uppercase", color: "var(--color-cq-muted-2)" }}>Banco receptor</span>
-          <span style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", fontWeight: 600, color: "var(--color-cq-text)" }}>
-            {spei.banco}
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-cq-muted)" }}>
+          CLABE interbancaria
+        </span>
+        <div className="flex items-center gap-3">
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "1.1rem", fontWeight: 700,
+            color: "var(--color-cq-text)", letterSpacing: "0.08em", flex: 1, wordBreak: "break-all" }}>
+            {spei.clabe ?? "—"}
           </span>
-        </div>
-
-        <div style={{ height: 1, background: "var(--color-cq-border)" }} />
-
-        {/* CLABE */}
-        {spei.clabe && (
-          <div className="flex flex-col gap-1">
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.58rem", letterSpacing: "0.14em",
-              textTransform: "uppercase", color: "var(--color-cq-muted-2)" }}>CLABE interbancaria</span>
-            <div className="flex items-center gap-3">
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: "1rem", fontWeight: 700,
-                color: "var(--color-cq-text)", letterSpacing: "0.06em", flex: 1, wordBreak: "break-all" }}>
-                {spei.clabe}
+          {spei.clabe && (
+            <motion.button type="button" onClick={() => copiar(spei.clabe!, "clabe")} whileTap={{ scale: 0.94 }}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5"
+              style={{ background: copied === "clabe" ? "rgba(34,197,94,0.1)" : "var(--color-cq-surface-2)",
+                border: `1px solid ${copied === "clabe" ? "rgba(34,197,94,0.3)" : "var(--color-cq-border)"}`,
+                cursor: "pointer", transition: "all .2s" }}>
+              <i className={`fa-solid ${copied === "clabe" ? "fa-check" : "fa-copy"}`}
+                style={{ fontSize: "0.75rem", color: copied === "clabe" ? "#22c55e" : "var(--color-cq-muted)" }} />
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.62rem", textTransform: "uppercase",
+                letterSpacing: "0.08em", color: copied === "clabe" ? "#22c55e" : "var(--color-cq-muted)" }}>
+                {copied === "clabe" ? "Copiado" : "Copiar"}
               </span>
-              <motion.button type="button" onClick={() => copiar(spei.clabe!, "clabe")} whileTap={{ scale: 0.94 }}
-                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5"
-                style={{ background: copied === "clabe" ? "rgba(34,197,94,0.1)" : "var(--color-cq-surface-2)",
-                  border: `1px solid ${copied === "clabe" ? "rgba(34,197,94,0.3)" : "var(--color-cq-border)"}`,
-                  cursor: "pointer", transition: "all .2s", flexShrink: 0 }}>
-                <i className={`fa-solid ${copied === "clabe" ? "fa-check" : "fa-copy"}`}
-                  style={{ fontSize: "0.75rem", color: copied === "clabe" ? "#22c55e" : "var(--color-cq-muted)" }} />
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.62rem", letterSpacing: "0.08em",
-                  textTransform: "uppercase", color: copied === "clabe" ? "#22c55e" : "var(--color-cq-muted)" }}>
-                  {copied === "clabe" ? "Copiado" : "Copiar"}
-                </span>
-              </motion.button>
-            </div>
-          </div>
-        )}
-
-        <div style={{ height: 1, background: "var(--color-cq-border)" }} />
-
-        {/* Monto */}
-        <div className="flex items-center justify-between">
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.58rem", letterSpacing: "0.14em",
-            textTransform: "uppercase", color: "var(--color-cq-muted-2)" }}>Monto exacto a transferir</span>
-          <span style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", fontWeight: 800,
-            color: "var(--color-cq-accent)" }}>
-            {formatMXN(spei.monto)}
-          </span>
+            </motion.button>
+          )}
         </div>
-
-        {/* Referencia */}
-        {spei.referencia && (
-          <>
-            <div style={{ height: 1, background: "var(--color-cq-border)" }} />
-            <div className="flex flex-col gap-1">
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.58rem", letterSpacing: "0.14em",
-                textTransform: "uppercase", color: "var(--color-cq-muted-2)" }}>Referencia / Concepto</span>
-              <div className="flex items-center gap-3">
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.85rem", color: "var(--color-cq-text)", flex: 1 }}>
-                  {spei.referencia}
-                </span>
-                <motion.button type="button" onClick={() => copiar(spei.referencia!, "ref")} whileTap={{ scale: 0.94 }}
-                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5"
-                  style={{ background: copied === "ref" ? "rgba(34,197,94,0.1)" : "var(--color-cq-surface-2)",
-                    border: `1px solid ${copied === "ref" ? "rgba(34,197,94,0.3)" : "var(--color-cq-border)"}`,
-                    cursor: "pointer", transition: "all .2s", flexShrink: 0 }}>
-                  <i className={`fa-solid ${copied === "ref" ? "fa-check" : "fa-copy"}`}
-                    style={{ fontSize: "0.75rem", color: copied === "ref" ? "#22c55e" : "var(--color-cq-muted)" }} />
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.62rem", letterSpacing: "0.08em",
-                    textTransform: "uppercase", color: copied === "ref" ? "#22c55e" : "var(--color-cq-muted)" }}>
-                    {copied === "ref" ? "Copiado" : "Copiar"}
-                  </span>
-                </motion.button>
-              </div>
-            </div>
-          </>
-        )}
-
-
-      </div>
-
-      {/* Advertencia monto exacto */}
-      <div className="flex items-start gap-2.5 rounded-xl px-4 py-3"
-        style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.2)" }}>
-        <i className="fa-solid fa-triangle-exclamation" style={{ color: "#ca8a04", fontSize: "0.85rem", marginTop: 1 }} />
-        <span style={{ fontFamily: "var(--font-body)", fontSize: "0.8rem", color: "#92400e", lineHeight: 1.55 }}>
-          Transfiere el monto <strong>exacto</strong>. Diferencias en centavos pueden retrasar la confirmación.
+        <span style={{ fontFamily: "var(--font-body)", fontSize: "0.78rem", color: "var(--color-cq-muted)" }}>
+          Banco: <strong style={{ color: "var(--color-cq-text)" }}>{spei.banco}</strong>
         </span>
       </div>
-
+      {/* Referencia */}
+      {spei.referencia && (
+        <div className="flex flex-col gap-1.5 rounded-xl p-4"
+          style={{ background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)" }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-cq-muted)" }}>
+            Referencia
+          </span>
+          <div className="flex items-center gap-3">
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.95rem", fontWeight: 700, color: "var(--color-cq-text)", flex: 1, wordBreak: "break-all" }}>
+              {spei.referencia}
+            </span>
+            <motion.button type="button" onClick={() => copiar(spei.referencia!, "ref")} whileTap={{ scale: 0.94 }}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5"
+              style={{ background: copied === "ref" ? "rgba(34,197,94,0.1)" : "var(--color-cq-surface-2)",
+                border: `1px solid ${copied === "ref" ? "rgba(34,197,94,0.3)" : "var(--color-cq-border)"}`,
+                cursor: "pointer", transition: "all .2s" }}>
+              <i className={`fa-solid ${copied === "ref" ? "fa-check" : "fa-copy"}`}
+                style={{ fontSize: "0.75rem", color: copied === "ref" ? "#22c55e" : "var(--color-cq-muted)" }} />
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.62rem", textTransform: "uppercase",
+                letterSpacing: "0.08em", color: copied === "ref" ? "#22c55e" : "var(--color-cq-muted)" }}>
+                {copied === "ref" ? "Copiado" : "Copiar"}
+              </span>
+            </motion.button>
+          </div>
+        </div>
+      )}
+      {/* Monto */}
+      <div className="flex items-center justify-between rounded-xl px-4 py-3"
+        style={{ background: "rgba(37,99,235,0.05)", border: "1px solid rgba(37,99,235,0.12)" }}>
+        <span style={{ fontFamily: "var(--font-body)", fontSize: "0.82rem", color: "var(--color-cq-muted)" }}>
+          Monto exacto a transferir
+        </span>
+        <span style={{ fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 800, color: "var(--color-cq-accent)" }}>
+          {formatMXN(spei.monto)}
+        </span>
+      </div>
+      {/* Aviso exactitud */}
+      <div className="flex items-start gap-2.5 rounded-xl p-3"
+        style={{ background: "rgba(249,115,22,0.05)", border: "1px solid rgba(249,115,22,0.15)" }}>
+        <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: "0.8rem", color: "#f97316", marginTop: 2, flexShrink: 0 }} />
+        <span style={{ fontFamily: "var(--font-body)", fontSize: "0.78rem", color: "var(--color-cq-muted)", lineHeight: 1.55 }}>
+          Transfiere el monto <strong style={{ color: "var(--color-cq-text)" }}>exacto</strong>.
+          Diferencias en centavos pueden retrasar la confirmación.
+        </span>
+      </div>
       {/* Link instrucciones */}
       {spei.hostedInstructionsUrl && (
         <a href={spei.hostedInstructionsUrl} target="_blank" rel="noopener noreferrer"
@@ -507,8 +558,6 @@ function PanelSpei({ email, nombre, onSuccess, onError }: {
           Ver instrucciones completas
         </a>
       )}
-
-      {/* Confirmar */}
       <motion.button type="button" onClick={() => onSuccess(spei.paymentIntentId)} whileTap={{ scale: 0.98 }}
         className="flex items-center justify-center gap-2.5 w-full rounded-xl"
         style={{ height: 52, fontFamily: "var(--font-body)", fontWeight: 600, fontSize: "0.95rem",
@@ -523,7 +572,7 @@ function PanelSpei({ email, nombre, onSuccess, onError }: {
 /* ══════════════════════════════════════════════════════════ */
 /* StepPago                                                   */
 /* ══════════════════════════════════════════════════════════ */
-export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contactoNombre }: Props) {
+export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contactoNombre, orderNumber, envioData }: Props) {
   const [error,    setError]    = useState<string | null>(null);
   const [cardName, setCardName] = useState(data.nombreTarjeta ?? "");
 
@@ -549,36 +598,39 @@ export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contac
         </div>
       </div>
 
+      {/* Error global */}
       <AnimatePresence>
         {error && (
-          <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-            className="flex items-center gap-2.5 rounded-xl px-4 py-3"
-            style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)" }}>
-            <i className="fa-solid fa-triangle-exclamation" style={{ color: "#ef4444", fontSize: "0.85rem" }} />
-            <span style={{ fontFamily: "var(--font-body)", fontSize: "0.85rem", color: "#ef4444" }}>{error}</span>
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+            className="flex items-start gap-3 rounded-xl px-4 py-3"
+            style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.18)" }}>
+            <i className="fa-solid fa-circle-exclamation" style={{ color: "#ef4444", fontSize: "0.9rem", marginTop: 2, flexShrink: 0 }} />
+            <span style={{ fontFamily: "var(--font-body)", fontSize: "0.85rem", color: "#dc2626", lineHeight: 1.55 }}>{error}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="flex flex-col gap-2">
-        {METODOS.map((m) => {
-          const active = data.metodo === m.id;
+      {/* Selector de método */}
+      <div className="flex flex-col gap-2.5">
+        {METODOS.map(({ id, label, icon, desc }) => {
+          const active = data.metodo === id;
           return (
-            <motion.button key={m.id} type="button" onClick={() => setMetodo(m.id)} whileTap={{ scale: 0.99 }}
-              className="flex items-center gap-4 w-full text-left rounded-xl px-4 py-3.5"
-              style={{ background: active ? "rgba(37,99,235,0.07)" : "var(--color-cq-surface-2)",
+            <motion.button key={id} type="button" onClick={() => setMetodo(id)} whileTap={{ scale: 0.99 }}
+              className="flex items-center gap-4 rounded-xl px-4 py-3.5 w-full text-left"
+              style={{ background: active ? "rgba(37,99,235,0.04)" : "var(--color-cq-surface)",
                 border: `1.5px solid ${active ? "var(--color-cq-accent)" : "var(--color-cq-border)"}`,
-                transition: "background .2s, border-color .2s", cursor: "pointer" }}>
-              <div className="flex items-center justify-center rounded-lg"
-                style={{ width: 36, height: 36, background: active ? "rgba(37,99,235,0.1)" : "var(--color-cq-surface)", flexShrink: 0 }}>
-                <i className={m.icon} style={{ fontSize: "0.9rem", color: active ? "var(--color-cq-accent)" : "var(--color-cq-muted)" }} />
+                cursor: "pointer", transition: "all .2s" }}>
+              <div className="flex items-center justify-center rounded-lg flex-shrink-0"
+                style={{ width: 36, height: 36, background: active ? "rgba(37,99,235,0.1)" : "var(--color-cq-surface-2)" }}>
+                <i className={icon} style={{ fontSize: "0.95rem", color: active ? "var(--color-cq-accent)" : "var(--color-cq-muted)" }} />
               </div>
-              <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                <span style={{ fontFamily: "var(--font-body)", fontWeight: 600, fontSize: "0.9rem", color: "var(--color-cq-text)" }}>{m.label}</span>
-                <span style={{ fontFamily: "var(--font-body)", fontSize: "0.75rem", color: "var(--color-cq-muted)" }}>{m.desc}</span>
+              <div className="flex-1 min-w-0">
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", fontWeight: 600,
+                  color: active ? "var(--color-cq-text)" : "var(--color-cq-muted)", margin: 0 }}>{label}</p>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "0.78rem", color: "var(--color-cq-muted-2)", margin: 0, marginTop: 2 }}>{desc}</p>
               </div>
-              <div className="flex items-center justify-center rounded-full"
-                style={{ width: 18, height: 18, border: `2px solid ${active ? "var(--color-cq-accent)" : "var(--color-cq-border)"}`, flexShrink: 0 }}>
+              <div className="flex items-center justify-center rounded-full flex-shrink-0"
+                style={{ width: 18, height: 18, border: `2px solid ${active ? "var(--color-cq-accent)" : "var(--color-cq-border)"}` }}>
                 {active && (
                   <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}
                     style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-cq-accent)" }} />
@@ -589,6 +641,7 @@ export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contac
         })}
       </div>
 
+      {/* Panel activo */}
       <AnimatePresence mode="wait">
         {data.metodo === "tarjeta" && (
           <motion.div key="tarjeta" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
@@ -599,10 +652,13 @@ export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contac
               onCardNameChange={(v) => { setCardName(v); onChange({ ...data, nombreTarjeta: v }); }}
               onSuccess={(piId) => onNext(piId)}
               onError={(msg) => setError(msg)}
+              orderNumber={orderNumber}
+              email={contactoEmail}
+              nombre={contactoNombre}
+              envioData={envioData}
             />
           </motion.div>
         )}
-
         {data.metodo === "transferencia" && (
           <motion.div key="transferencia" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }}
@@ -612,10 +668,11 @@ export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contac
               nombre={contactoNombre}
               onSuccess={(piId) => onNext(piId)}
               onError={(msg) => setError(msg)}
+              orderNumber={orderNumber}
+              envioData={envioData}
             />
           </motion.div>
         )}
-
         {data.metodo === "oxxo" && (
           <motion.div key="oxxo" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }}
@@ -625,6 +682,8 @@ export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contac
               nombre={contactoNombre}
               onSuccess={(piId) => onNext(piId)}
               onError={(msg) => setError(msg)}
+              orderNumber={orderNumber}
+              envioData={envioData}
             />
           </motion.div>
         )}

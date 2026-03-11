@@ -3,6 +3,8 @@ import { resend, FROM_EMAIL, BASE_URL } from "./resend";
 import { WelcomeEmail }                 from "./templates/WelcomeEmail";
 import { VerifyEmail }                  from "./templates/VerifyEmail";
 import { ResetPasswordEmail }           from "./templates/ResetPasswordEmail";
+import { OrderConfirmationEmail }       from "./templates/OrderConfirmationEmail";
+import type { OrderConfirmationProps }  from "./templates/OrderConfirmationEmail";
 import { render }                       from "@react-email/components";
 import React                            from "react";
 import fs                               from "fs";
@@ -19,7 +21,6 @@ interface EmailResult {
 let _logoCache: string | null | undefined = undefined;
 
 async function getLogoAttachment(): Promise<{ content: string; filename: string; contentId: string } | null> {
-  // Usar cache si ya fue procesado
   if (_logoCache !== undefined) {
     return _logoCache
       ? { content: _logoCache, filename: "Logo.png", contentId: "craftqube-logo" }
@@ -126,6 +127,35 @@ export async function sendPasswordResetEmail(
     return { success: true };
   } catch (error) {
     console.error("[sendPasswordResetEmail]", error);
+    return { success: false, error: error instanceof Error ? error.message : "Error al enviar email" };
+  }
+}
+
+/* ── Confirmación de pedido ────────────────────────────── */
+export async function sendOrderConfirmationEmail(
+  to:   string,
+  data: OrderConfirmationProps
+): Promise<EmailResult> {
+  try {
+    const logo = await getLogoAttachment();
+    const html = await render(React.createElement(OrderConfirmationEmail, data));
+
+    const subjectMetodo =
+      data.metodo === "transferencia" ? "Datos de transferencia SPEI" :
+      data.metodo === "oxxo"          ? "Código de pago OXXO" :
+      "Pedido confirmado";
+
+    await resend.emails.send({
+      from:        FROM_EMAIL,
+      to,
+      subject:     `${subjectMetodo} — Pedido ${data.orderNumber} · Craftqube`,
+      html,
+      attachments: logo ? [logo] : [],
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("[sendOrderConfirmationEmail]", error);
     return { success: false, error: error instanceof Error ? error.message : "Error al enviar email" };
   }
 }
