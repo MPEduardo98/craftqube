@@ -512,3 +512,26 @@ html {
 html::-webkit-scrollbar {
   display: none;               /* Chrome / Safari / Opera */
 }
+
+/* Agregar en app/globals.css */
+
+/* ── PayPal Hosted Fields ─────────────────────────────────
+   El iframe de PayPal se inyecta dentro del div con el id
+   del campo. Esta clase da las dimensiones correctas.
+   ────────────────────────────────────────────────────── */
+.hosted-field-input {
+  flex: 1;
+  height: 100%;
+  min-height: 24px;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  overflow: hidden;
+}
+
+.hosted-field-input iframe {
+  width:  100% !important;
+  height: 100% !important;
+  border: none !important;
+  background: transparent !important;
+}
