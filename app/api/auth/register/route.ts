@@ -7,6 +7,7 @@ import type { RowDataPacket }                   from "mysql2";
 import { signAccessToken, signRefreshToken }    from "@/app/global/lib/auth/jwt";
 import { setAuthCookies }                       from "@/app/global/lib/auth/cookies";
 import type { RegisterPayload, UsuarioPublico } from "@/app/global/types/auth";
+import { sendWelcomeEmail }                     from "@/app/global/lib/email/send";
 
 function dbConfig(): mysql.ConnectionOptions {
   return {
@@ -160,7 +161,14 @@ export async function POST(req: NextRequest) {
         created_at:       new Date().toISOString(),
       };
 
-      // TODO: sendVerificationEmail(email, nombre, verifyToken)
+      // ── Enviar email de bienvenida ───────────────────────
+      sendWelcomeEmail(
+        email.toLowerCase().trim(),
+        nombre.trim(),
+        verifyToken
+      ).catch((err) => {
+        console.error("[register] Email send failed (non-blocking):", err);
+      });
 
       return NextResponse.json({ success: true, usuario }, { status: 201 });
 
