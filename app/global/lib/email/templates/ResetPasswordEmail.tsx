@@ -1,37 +1,37 @@
-// app/global/lib/email/templates/VerifyEmail.tsx
+// app/global/lib/email/templates/ResetPasswordEmail.tsx
 import { EmailBase } from "./EmailBase";
 
 interface Props {
-  nombre:    string;
-  verifyUrl: string;
+  nombre:   string;
+  resetUrl: string;
 }
 
-export function VerifyEmail({ nombre, verifyUrl }: Props) {
+export function ResetPasswordEmail({ nombre, resetUrl }: Props) {
   return (
     <EmailBase
-      subtitulo="Verificación de cuenta"
-      titulo="Verifica tu correo"
-      footerText="Recibiste este correo porque alguien solicitó verificar esta dirección en Craftqube."
+      subtitulo="Seguridad de cuenta"
+      titulo="Restablecer contraseña"
+      footerText="Este correo fue enviado a solicitud del usuario. Si no lo reconoces, puedes ignorarlo de forma segura."
     >
       <p style={{ margin: "0 0 8px 0", fontSize: "16px", color: "#1e293b", lineHeight: 1.6 }}>
         Hola, <strong style={{ color: "#0f172a" }}>{nombre}</strong>
       </p>
       <p style={{ margin: "0 0 32px 0", fontSize: "15px", color: "#475569", lineHeight: 1.7 }}>
-        Haz clic en el botón de abajo para verificar tu dirección de correo
-        y activar tu cuenta en Craftqube.
+        Recibimos una solicitud para restablecer la contraseña de tu cuenta.
+        Haz clic en el botón de abajo para crear una nueva contraseña segura.
       </p>
 
       {/* CTA */}
       <table width="100%" cellPadding="0" cellSpacing="0" style={{ marginBottom: "36px" }}>
         <tr>
           <td align="center">
-            <a href={verifyUrl} style={{
+            <a href={resetUrl} style={{
               display: "inline-block", padding: "15px 40px",
               background: "linear-gradient(135deg, #1638c8, #2563EB)",
               color: "#ffffff", textDecoration: "none", borderRadius: "10px",
               fontSize: "13px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase",
             }}>
-              Verificar correo →
+              Restablecer contraseña →
             </a>
           </td>
         </tr>
@@ -47,10 +47,13 @@ export function VerifyEmail({ nombre, verifyUrl }: Props) {
             borderRadius: "8px", borderLeft: "3px solid #2563EB",
           }}>
             <p style={{ margin: "0 0 8px 0", fontSize: "13px", color: "#475569", lineHeight: 1.6 }}>
-              Este enlace expira en <strong style={{ color: "#1e293b" }}>24 horas.</strong>
+              El enlace expira en <strong style={{ color: "#1e293b" }}>30 minutos.</strong>
+            </p>
+            <p style={{ margin: "0 0 8px 0", fontSize: "13px", color: "#475569", lineHeight: 1.6 }}>
+              Por seguridad, <strong style={{ color: "#1e293b" }}>todas tus sesiones activas</strong> serán cerradas al cambiar tu contraseña.
             </p>
             <p style={{ margin: 0, fontSize: "13px", color: "#94a3b8", lineHeight: 1.6 }}>
-              Si no solicitaste esta verificación, puedes ignorar este correo de forma segura.
+              Si no solicitaste esto, puedes ignorar este correo de forma segura.
             </p>
           </td>
         </tr>
@@ -62,7 +65,7 @@ export function VerifyEmail({ nombre, verifyUrl }: Props) {
           O copia este enlace en tu navegador
         </p>
         <p style={{ margin: 0, fontSize: "11px", color: "#2563EB", wordBreak: "break-all", fontFamily: "monospace", lineHeight: 1.6 }}>
-          {verifyUrl}
+          {resetUrl}
         </p>
       </div>
     </EmailBase>
