@@ -27,7 +27,7 @@ export interface Usuario {
 }
 
 /** Versión pública (sin password_hash ni notas_internas) */
-export type UsuarioPublico = Omit<Usuario, "rfc" | "razon_social">;
+export type UsuarioPublico = Usuario;
 
 export interface Sesion {
   id:             number;

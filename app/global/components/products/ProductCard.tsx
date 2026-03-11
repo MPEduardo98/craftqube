@@ -1,36 +1,37 @@
 // app/global/components/products/ProductCard.tsx
-// ZOOM via Framer Motion (onHoverStart/End + motion.div) para animación suave
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
+import { motion } from "framer-motion";
 import { useWishlist } from "@/app/global/context/WishlistContext";
+import { useCart } from "@/app/global/context/CartContext";
 import type { Producto } from "@/app/global/types/product";
 
-/* ─── Fallback illustration ──────────────────────────────── */
+/* ── Formato precio ─────────────────────────────────────── */
+function formatPrice(price: number): string {
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+    maximumFractionDigits: 0,
+  }).format(price) + " MXN";
+}
+
+/* ── Ilustración placeholder ────────────────────────────── */
 function FallbackIllustration({ categoria }: { categoria?: string | null }) {
-  const cat    = (categoria ?? "").toLowerCase();
-  const gradId = `grad-${Math.random().toString(36).slice(2, 7)}`;
+  const cat = (categoria ?? "").toLowerCase();
+  const gradId = `grad-${cat.replace(/\s+/g, "-")}-${Math.random().toString(36).substring(7)}`;
 
   return (
-    <svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full max-w-[90px]">
+    <svg viewBox="0 0 160 160" width="100%" height="100%" style={{ maxWidth: 120, maxHeight: 120 }}>
       <defs>
-        <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%"   stopColor="#2563EB" stopOpacity="0.7" />
-          <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0.3" />
+        <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#2563EB" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="#2563EB" stopOpacity="0.08" />
         </linearGradient>
       </defs>
-
-      {cat.includes("perfil") || cat.includes("aluminio") || cat.includes("estructura") ? (
-        <>
-          <rect x="20" y="20" width="120" height="24" rx="4" fill={`url(#${gradId})`} opacity="0.6" />
-          <rect x="20" y="52" width="120" height="24" rx="4" fill={`url(#${gradId})`} opacity="0.45" />
-          <rect x="20" y="84" width="120" height="24" rx="4" fill={`url(#${gradId})`} opacity="0.3" />
-          <rect x="20" y="116" width="120" height="24" rx="4" fill={`url(#${gradId})`} opacity="0.18" />
-        </>
-      ) : cat.includes("tornill") || cat.includes("accesorio") || cat.includes("conector") ? (
+      {cat.includes("perfil") || cat.includes("aluminio") ? (
         <>
           <path d="M80 130 L80 50 L130 50" stroke="#2563EB" strokeWidth="6" strokeLinecap="round" fill="none" opacity="0.55" />
           <rect x="55" y="28" width="30" height="30" rx="3" fill={`url(#${gradId})`} opacity="0.5" />
@@ -69,7 +70,9 @@ interface ProductCardProps {
 export function ProductCard({ producto, imageSizes }: ProductCardProps) {
   const [imgError, setImgError] = useState(false);
   const [hovered, setHovered]   = useState(false);
+  
   const { toggleItem, isWished } = useWishlist();
+  const { addItem, updateQty, items } = useCart();
 
   const tieneStock     = (producto.stock ?? 0) > 0;
   const tieneDescuento =
@@ -88,6 +91,11 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
 
   const wished = isWished(producto.id);
 
+  // Verificar si el producto ya está en el carrito
+  // Usamos el ID del producto como varianteId por defecto
+  const varianteId = producto.id;
+  const itemEnCarrito = items.find(item => item.varianteId === varianteId);
+
   const handleWishlistToggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -102,55 +110,90 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
     });
   };
 
+  const handleAgregarAlCarrito = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!tieneStock) return;
+
+    addItem({
+      productoId:   producto.id,
+      varianteId:   varianteId,
+      titulo:       producto.titulo,
+      slug:         producto.slug,
+      sku:          producto.sku ?? `PROD-${producto.id}`,
+      precio:       producto.precio ?? 0,
+      cantidad:     1,
+      imagenNombre: producto.imagen_nombre ?? null,
+      imagenAlt:    producto.imagen_alt ?? null,
+      atributos:    [],
+    });
+  };
+
+  const handleIncrementar = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!itemEnCarrito) return;
+    updateQty(varianteId, itemEnCarrito.cantidad + 1);
+  };
+
+  const handleDecrementar = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!itemEnCarrito) return;
+    if (itemEnCarrito.cantidad > 1) {
+      updateQty(varianteId, itemEnCarrito.cantidad - 1);
+    }
+  };
+
+  const mostrarSelector = !!itemEnCarrito;
+
   return (
     <motion.article
       className="flex flex-col rounded-xl overflow-hidden cq-product-card"
-      style={{ background: "var(--color-cq-surface)", height: "100%", width: "100%" }}
+      style={{ background: "var(--color-cq-surface)", height: "100%", width: "100%", border: "1px solid var(--color-cq-border)" }}
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
     >
       {/* ── Imagen 1:1 ── */}
-      <div
-        className="relative w-full overflow-hidden shrink-0"
+      <Link
+        href={`/producto/${producto.slug}`}
+        className="relative w-full overflow-hidden shrink-0 block"
         style={{
           aspectRatio:  "1 / 1",
           background:   "var(--color-cq-surface-2)",
           borderBottom: "1px solid var(--color-cq-border)",
         }}
       >
-        <Link
-          href={`/producto/${producto.slug}`}
-          className="absolute inset-0"
-          tabIndex={-1}
-        >
-          {imageSrc ? (
-            <div className="absolute inset-0 overflow-hidden">
-              <motion.div
-                className="absolute inset-0"
-                animate={{ scale: hovered ? 1.1 : 1 }}
-                transition={{ duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] }}
-              >
-                <Image
-                  src={imageSrc}
-                  alt={producto.imagen_alt ?? producto.titulo}
-                  fill
-                  className="object-contain p-3"
-                  sizes={imageSizes ?? "(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"}
-                  onError={() => setImgError(true)}
-                />
-              </motion.div>
-            </div>
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center p-6">
-              <motion.div
-                animate={{ scale: hovered ? 1.06 : 1 }}
-                transition={{ duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] }}
-              >
-                <FallbackIllustration categoria={producto.categoria} />
-              </motion.div>
-            </div>
-          )}
-        </Link>
+        {imageSrc ? (
+          <div className="absolute inset-0 overflow-hidden">
+            <motion.div
+              className="absolute inset-0"
+              animate={{ scale: hovered ? 1.1 : 1 }}
+              transition={{ duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] }}
+            >
+              <Image
+                src={imageSrc}
+                alt={producto.imagen_alt ?? producto.titulo}
+                fill
+                className="object-contain p-3"
+                sizes={imageSizes ?? "(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"}
+                onError={() => setImgError(true)}
+              />
+            </motion.div>
+          </div>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center p-6">
+            <motion.div
+              animate={{ scale: hovered ? 1.06 : 1 }}
+              transition={{ duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] }}
+            >
+              <FallbackIllustration categoria={producto.categoria} />
+            </motion.div>
+          </div>
+        )}
 
         {/* Badge descuento */}
         {tieneDescuento && (
@@ -206,155 +249,173 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
             border: wished
               ? "1px solid rgba(239,68,68,0.3)"
               : "1px solid var(--color-cq-border)",
-            color:   wished ? "#EF4444" : "var(--color-cq-muted-2)",
-            cursor:  "pointer",
-            backdropFilter: "blur(6px)",
-            transition: "background 0.18s ease, border-color 0.18s ease, color 0.18s ease",
+            color:   wished ? "#EF4444" : "var(--color-cq-muted)",
           }}
         >
-          <AnimatePresence mode="wait">
-            <motion.span
-              key={wished ? "filled" : "outline"}
-              initial={{ scale: 0.4, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.4, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="flex items-center justify-center"
-            >
-              {wished ? (
-                <svg viewBox="0 0 512 512" fill="#EF4444" width="12" height="12">
-                  <path d="M47.6 300.4L228.3 469.1c7.5 7 17.4 10.9 27.7 10.9s20.2-3.9 27.7-10.9L464.4 300.4c30.4-28.3 47.6-68 47.6-109.5v-5.8c0-69.9-50.5-129.5-119.4-141C347 36.5 300.6 51.4 268 84L256 96 244 84c-32.6-32.6-79-47.5-124.6-39.9C50.5 55.6 0 115.2 0 185.1v5.8c0 41.5 17.2 81.2 47.6 109.5z"/>
-                </svg>
-              ) : (
-                <svg viewBox="0 0 512 512" fill="none" stroke="currentColor" strokeWidth="40" width="12" height="12">
-                  <path d="M47.6 300.4L228.3 469.1c7.5 7 17.4 10.9 27.7 10.9s20.2-3.9 27.7-10.9L464.4 300.4c30.4-28.3 47.6-68 47.6-109.5v-5.8c0-69.9-50.5-129.5-119.4-141C347 36.5 300.6 51.4 268 84L256 96 244 84c-32.6-32.6-79-47.5-124.6-39.9C50.5 55.6 0 115.2 0 185.1v5.8c0 41.5 17.2 81.2 47.6 109.5z"/>
-                </svg>
-              )}
-            </motion.span>
-          </AnimatePresence>
+          <svg
+            viewBox="0 0 24 24"
+            fill={wished ? "currentColor" : "none"}
+            stroke="currentColor"
+            strokeWidth={wished ? 0 : 2}
+            width="13"
+            height="13"
+          >
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+          </svg>
         </motion.button>
+      </Link>
 
-        {/* Dot de stock */}
-        <span
-          className="absolute bottom-2 right-2 w-2 h-2 rounded-full block pointer-events-none"
-          title={tieneStock ? "En stock" : "Sin stock"}
-          style={{ background: tieneStock ? "#22c55e" : "#f59e0b" }}
-        />
-      </div>
-
-      {/* ── Info ── */}
-      <div className="flex flex-col flex-1 p-3.5">
-
-        {/* SKU */}
-        <div style={{ height: "16px", marginBottom: "4px" }}>
-          {producto.sku && (
-            <span style={{
-              fontFamily:    "var(--font-mono, monospace)",
-              color:         "var(--color-cq-muted-2)",
-              fontSize:      "0.58rem",
-              letterSpacing: "0.06em",
-              lineHeight:    1,
-            }}>
-              {producto.sku}
+      {/* ── Contenido ── */}
+      <div className="flex-1 flex flex-col p-3.5 gap-2">
+        {/* Categoría */}
+        <div className="flex items-center justify-between">
+          {producto.categoria && (
+            <span
+              className="uppercase"
+              style={{
+                fontFamily:    "var(--font-mono, monospace)",
+                fontSize:      "0.6rem",
+                letterSpacing: "0.08em",
+                color:         "var(--color-cq-muted-2)",
+                fontWeight:    600,
+              }}
+            >
+              {producto.categoria}
             </span>
           )}
         </div>
 
-        {/* Título — 2 líneas exactas */}
-        <Link href={`/producto/${producto.slug}`} style={{ textDecoration: "none" }}>
-          <h3
-            style={{
-              fontFamily:      "var(--font-display, sans-serif)",
-              color:           "var(--color-cq-text)",
-              fontSize:        "0.8rem",
-              fontWeight:      700,
-              letterSpacing:   "0.01em",
-              lineHeight:      1.3,
-              display:         "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow:        "hidden",
-              height:          "2.6em",
-              marginBottom:    "6px",
-            }}
-          >
-            {producto.titulo}
-          </h3>
+        {/* Título */}
+        <Link
+          href={`/producto/${producto.slug}`}
+          className="line-clamp-2 flex-1 font-semibold leading-snug hover:text-blue-500 transition-colors"
+          style={{
+            fontFamily:     "var(--font-body, sans-serif)",
+            fontSize:       "0.88rem",
+            color:          "var(--color-cq-text)",
+            textDecoration: "none",
+            minHeight:      "2.6em",
+          }}
+        >
+          {producto.titulo}
         </Link>
 
-        <div className="flex-1" />
-
-        {/* Precio + CTA */}
-        <div
-          className="flex flex-col gap-2 pt-2"
-          style={{ borderTop: "1px solid var(--color-cq-border)" }}
-        >
-          {/* Precio */}
-          <div style={{ height: "24px", display: "flex", alignItems: "center", gap: "6px" }}>
-            {producto.precio !== null && producto.precio > 0 ? (
-              <>
-                <span style={{
-                  fontFamily:    "var(--font-display, sans-serif)",
-                  color:         "var(--color-cq-text)",
-                  fontSize:      "0.95rem",
-                  fontWeight:    700,
-                  letterSpacing: "0.01em",
-                  lineHeight:    1,
-                }}>
-                  {new Intl.NumberFormat("es-MX", {
-                    style: "currency", currency: "MXN", maximumFractionDigits: 0,
-                  }).format(producto.precio)}
-                  <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: "0.6rem", letterSpacing: "0.06em", marginLeft: "3px", color: "var(--color-cq-muted-2)" }}>MXN</span>
-                </span>
-                {tieneDescuento && (
-                  <span style={{
-                    fontFamily:    "var(--font-mono, monospace)",
-                    color:         "var(--color-cq-muted-2)",
-                    fontSize:      "0.68rem",
-                    textDecoration: "line-through",
-                    lineHeight:    1,
-                  }}>
-                    {new Intl.NumberFormat("es-MX", {
-                      style: "currency", currency: "MXN", maximumFractionDigits: 0,
-                    }).format(producto.precio_original!)}
-                  </span>
-                )}
-              </>
-            ) : (
-              <span style={{ fontFamily: "var(--font-mono, monospace)", color: "var(--color-cq-muted-2)", fontSize: "0.68rem", letterSpacing: "0.06em" }}>
-                Precio a consultar
-              </span>
-            )}
-          </div>
-
-          {/* CTA */}
-          <Link
-            href={`/producto/${producto.slug}`}
-            className="flex items-center justify-center gap-1.5 w-full rounded-lg text-xs font-bold"
+        {/* Precio */}
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span
             style={{
-              fontFamily:    "var(--font-display, sans-serif)",
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              height:        "34px",
-              textDecoration: "none",
-              background:    tieneStock ? "var(--color-cq-primary)" : "var(--color-cq-surface-2)",
-              color:         tieneStock ? "#ffffff" : "var(--color-cq-muted-2)",
-              border:        tieneStock ? "none" : "1px solid var(--color-cq-border)",
-              boxShadow:     tieneStock ? "0 2px 12px rgba(29,78,216,0.25)" : "none",
-              opacity:       tieneStock ? 1 : 0.6,
-              pointerEvents: tieneStock ? "auto" : "none",
-              transition:    "none",
+              fontFamily: "var(--font-display, sans-serif)",
+              fontSize:   "1.1rem",
+              fontWeight: 800,
+              color:      "var(--color-cq-text)",
             }}
           >
-            {tieneStock ? (
-              <>
-                <svg viewBox="0 0 576 512" fill="currentColor" width="12" height="12">
-                  <path d="M0 24C0 10.7 10.7 0 24 0H69.5c22 0 41.5 12.8 50.6 32h411c26.3 0 45.5 25 38.6 50.4l-41 152.3c-8.5 31.4-37 53.3-69.5 53.3H170.7l5.4 28.5c2.2 11.3 12.1 19.5 23.6 19.5H488c13.3 0 24 10.7 24 24s-10.7 24-24 24H199.7c-34.6 0-64.3-24.6-70.7-58.5L77.4 54.5c-.7-3.8-4-6.5-7.9-6.5H24C10.7 48 0 37.3 0 24zM128 464a48 48 0 1 1 96 0 48 48 0 1 1 -96 0zm336-48a48 48 0 1 1 0 96 48 48 0 1 1 0-96z"/>
+            {formatPrice(producto.precio ?? 0)}
+          </span>
+          {tieneDescuento && (
+            <span
+              style={{
+                fontFamily:       "var(--font-mono, monospace)",
+                fontSize:         "0.72rem",
+                color:            "var(--color-cq-muted-2)",
+                textDecoration:   "line-through",
+                textDecorationThickness: "1px",
+              }}
+            >
+              {formatPrice(producto.precio_original!)}
+            </span>
+          )}
+        </div>
+
+        {/* ── Botón / Selector de cantidad ── */}
+        <div className="mt-auto pt-2">
+          {!mostrarSelector ? (
+            // Botón "Agregar al carrito"
+            <motion.button
+              onClick={handleAgregarAlCarrito}
+              disabled={!tieneStock}
+              whileHover={tieneStock ? { scale: 1.02 } : {}}
+              whileTap={tieneStock ? { scale: 0.98 } : {}}
+              className="flex items-center justify-center gap-1.5 rounded-lg font-bold text-xs w-full"
+              style={{
+                fontFamily:    "var(--font-display, sans-serif)",
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                height:        "38px",
+                background:    tieneStock ? "var(--color-cq-primary)" : "var(--color-cq-surface-2)",
+                color:         tieneStock ? "#ffffff" : "var(--color-cq-muted-2)",
+                border:        tieneStock ? "none" : "1px solid var(--color-cq-border)",
+                boxShadow:     tieneStock ? "0 2px 12px rgba(29,78,216,0.25)" : "none",
+                cursor:        tieneStock ? "pointer" : "not-allowed",
+                opacity:       tieneStock ? 1 : 0.6,
+              }}
+            >
+              {tieneStock ? (
+                <>
+                  <svg viewBox="0 0 576 512" fill="currentColor" width="12" height="12">
+                    <path d="M0 24C0 10.7 10.7 0 24 0H69.5c22 0 41.5 12.8 50.6 32h411c26.3 0 45.5 25 38.6 50.4l-41 152.3c-8.5 31.4-37 53.3-69.5 53.3H170.7l5.4 28.5c2.2 11.3 12.1 19.5 23.6 19.5H488c13.3 0 24 10.7 24 24s-10.7 24-24 24H199.7c-34.6 0-64.3-24.6-70.7-58.5L77.4 54.5c-.7-3.8-4-6.5-7.9-6.5H24C10.7 48 0 37.3 0 24zM128 464a48 48 0 1 1 96 0 48 48 0 1 1 -96 0zm336-48a48 48 0 1 1 0 96 48 48 0 1 1 0-96z"/>
+                  </svg>
+                  Agregar
+                </>
+              ) : "Sin stock"}
+            </motion.button>
+          ) : (
+            // Selector de cantidad
+            <div 
+              className="flex items-center rounded-lg overflow-hidden w-full"
+              style={{ 
+                border: "1px solid var(--color-cq-border)",
+                height: "38px",
+                background: "var(--color-cq-surface)"
+              }}
+            >
+              <button
+                onClick={handleDecrementar}
+                className="flex items-center justify-center transition-colors hover:bg-gray-100"
+                style={{ 
+                  width: "38px", 
+                  height: "38px", 
+                  color: "var(--color-cq-text)",
+                  cursor: "pointer",
+                  border: "none",
+                  background: "transparent"
+                }}
+              >
+                <svg viewBox="0 0 448 512" fill="currentColor" width="10" height="10">
+                  <path d="M432 256c0 17.7-14.3 32-32 32L48 288c-17.7 0-32-14.3-32-32s14.3-32 32-32l352 0c17.7 0 32 14.3 32 32z"/>
                 </svg>
-                Agregar al carrito
-              </>
-            ) : "Sin stock"}
-          </Link>
+              </button>
+              
+              <div 
+                className="flex-1 flex items-center justify-center font-bold text-sm"
+                style={{ 
+                  color: "var(--color-cq-text)",
+                  fontFamily: "var(--font-mono)",
+                  borderLeft: "1px solid var(--color-cq-border)",
+                  borderRight: "1px solid var(--color-cq-border)"
+                }}
+              >
+                {itemEnCarrito?.cantidad ?? 1}
+              </div>
+              
+              <button
+                onClick={handleIncrementar}
+                className="flex items-center justify-center transition-colors hover:bg-gray-100"
+                style={{ 
+                  width: "38px", 
+                  height: "38px", 
+                  color: "var(--color-cq-text)",
+                  cursor: "pointer",
+                  border: "none",
+                  background: "transparent"
+                }}
+              >
+                <svg viewBox="0 0 448 512" fill="currentColor" width="10" height="10">
+                  <path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z"/>
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </motion.article>
