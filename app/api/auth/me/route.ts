@@ -27,7 +27,8 @@ export async function GET() {
 
     const [rows] = await conn.execute<RowDataPacket[]>(
       `SELECT id, email, nombre, apellido, telefono, rol, estado,
-              email_verificado, avatar_url, ultimo_login, created_at
+              email_verificado, avatar_url, rfc, razon_social,
+              ultimo_login, created_at
        FROM usuarios
        WHERE id = ? AND deleted_at IS NULL LIMIT 1`,
       [Number(session.sub)]

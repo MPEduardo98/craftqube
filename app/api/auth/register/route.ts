@@ -157,6 +157,8 @@ export async function POST(req: NextRequest) {
         estado:           "pendiente_verificacion",
         email_verificado: false,
         avatar_url:       null,
+        rfc:              null,
+        razon_social:     null,
         ultimo_login:     null,
         created_at:       new Date().toISOString(),
       };
@@ -173,7 +175,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, usuario }, { status: 201 });
 
     } catch (txErr) {
-      // Revertir todo si algo falló dentro de la transacción
       await conn.rollback().catch(() => {});
       throw txErr;
     }
@@ -182,7 +183,6 @@ export async function POST(req: NextRequest) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error("[POST /api/auth/register] Error:", msg);
 
-    // Mensajes amigables según tipo de error MySQL
     if (msg.includes("ER_DUP_ENTRY") || msg.includes("Duplicate entry")) {
       return NextResponse.json(
         { success: false, error: "Este correo ya está registrado" },

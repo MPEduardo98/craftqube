@@ -36,7 +36,8 @@ export async function POST(req: NextRequest) {
 
     const [rows] = await conn.execute<RowDataPacket[]>(
       `SELECT id, email, password_hash, nombre, apellido, telefono,
-              rol, estado, email_verificado, avatar_url, ultimo_login, created_at
+              rol, estado, email_verificado, avatar_url,
+              rfc, razon_social, ultimo_login, created_at
        FROM usuarios
        WHERE email = ? AND deleted_at IS NULL LIMIT 1`,
       [email.toLowerCase().trim()]
@@ -112,6 +113,8 @@ export async function POST(req: NextRequest) {
       estado:           u.estado,
       email_verificado: Boolean(u.email_verificado),
       avatar_url:       u.avatar_url,
+      rfc:              u.rfc          ?? null,
+      razon_social:     u.razon_social ?? null,
       ultimo_login:     u.ultimo_login,
       created_at:       u.created_at,
     };
