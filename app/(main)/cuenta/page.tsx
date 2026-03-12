@@ -1,12 +1,26 @@
-// app/(main)/cuenta/layout.tsx
-import { Metadata } from "next";
-import { AccountLayout } from "./components/AccountLayout";
+// app/(main)/cuenta/page.tsx
+"use client";
 
-export const metadata: Metadata = {
-  title: "Mi Cuenta — Craftqube",
-  description: "Gestiona tu perfil, pedidos, favoritos y direcciones de envío",
+import { useState } from "react";
+import { AccountLayout, type Section } from "./components/AccountLayout";
+import { PerfilSection }      from "./components/sections/PerfilSection";
+import { PedidosSection }     from "./components/sections/PedidosSection";
+import { FavoritosSection }   from "./components/sections/FavoritosSection";
+import { DireccionesSection } from "./components/sections/DireccionesSection";
+
+const SECTIONS: Record<Section, React.ReactNode> = {
+  perfil:      <PerfilSection />,
+  pedidos:     <PedidosSection />,
+  favoritos:   <FavoritosSection />,
+  direcciones: <DireccionesSection />,
 };
 
-export default function CuentaLayout({ children }: { children: React.ReactNode }) {
-  return <AccountLayout>{children}</AccountLayout>;
+export default function CuentaPage() {
+  const [active, setActive] = useState<Section>("perfil");
+
+  return (
+    <AccountLayout active={active} setActive={setActive}>
+      {SECTIONS[active]}
+    </AccountLayout>
+  );
 }
