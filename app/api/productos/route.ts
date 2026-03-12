@@ -1,40 +1,29 @@
 // app/api/productos/route.ts
+// ─────────────────────────────────────────────────────────────
+// Optimizado: pool singleton + caché HTTP 60s
+// ─────────────────────────────────────────────────────────────
 import { NextResponse } from "next/server";
-import mysql from "mysql2/promise";
+import { pool }         from "@/app/global/lib/db/pool";
 
 export async function GET() {
-  let connection;
-
   try {
-    connection = await mysql.createConnection({
-      host:     process.env.DB_HOST,
-      user:     process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      port:     Number(process.env.DB_PORT) || 3306,
-      ssl:      { rejectUnauthorized: false },
-    });
-
-    const [rows] = await connection.execute(`
+    const [rows] = await pool.execute<any[]>(`
       SELECT
         p.id,
         p.titulo,
         p.descripcion_corta,
         p.slug,
         p.estado,
-        -- MIN() para tomar la primera categoría si el producto tiene varias
-        MIN(c.nombre)                     AS categoria,
-        MIN(c.slug)                       AS categoria_slug,
-        m.nombre                          AS marca,
+        MIN(c.nombre)                          AS categoria,
+        MIN(c.slug)                            AS categoria_slug,
+        m.nombre                               AS marca,
         v.sku,
-        v.precio_final                    AS precio,
+        v.precio_final                         AS precio,
         v.precio_original,
         v.stock,
         v.es_default,
-        SUBSTRING_INDEX(
-          MIN(img.url), '/', -1
-        )                                 AS imagen_nombre,
-        MIN(img.alt)                      AS imagen_alt
+        SUBSTRING_INDEX(MIN(img.url), '/', -1) AS imagen_nombre,
+        MIN(img.alt)                           AS imagen_alt
       FROM productos p
       LEFT JOIN producto_categorias pc  ON pc.producto_id  = p.id
       LEFT JOIN categorias c            ON c.id            = pc.categoria_id
@@ -56,14 +45,15 @@ export async function GET() {
       ORDER BY p.created_at DESC
     `);
 
-    return NextResponse.json({ success: true, data: rows });
+    return NextResponse.json(
+      { success: true, data: rows },
+      { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
+    );
   } catch (error) {
     console.error("[/api/productos] DB error:", error);
     return NextResponse.json(
       { success: false, error: "Error al conectar con la base de datos" },
       { status: 500 }
     );
-  } finally {
-    if (connection) await connection.end();
   }
 }

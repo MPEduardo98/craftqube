@@ -1,5 +1,5 @@
 // app/api/productos/[slug]/route.ts
-import { NextResponse } from "next/server";
+import { NextResponse }      from "next/server";
 import { getProductoBySlug } from "@/app/global/lib/db/getProductoBySlug";
 
 export async function GET(
@@ -16,5 +16,8 @@ export async function GET(
     );
   }
 
-  return NextResponse.json({ success: true, data });
+  return NextResponse.json(
+    { success: true, data },
+    { headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600" } }
+  );
 }
