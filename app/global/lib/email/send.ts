@@ -16,36 +16,63 @@ interface EmailResult {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Logo optimizado — se cachea en memoria tras la primera llamada
-───────────────────────────────────────────────────────────── */
-let _logoCache: string | null | undefined = undefined;
+   Logo optimizado para email
+   
+   Reglas:
+   - Display en HTML:  width="140"  (lo que el usuario ve)
+   - Archivo fuente:   280px ancho  (2× para pantallas retina)
+   - Formato:          WebP         (60-80% más ligero que PNG)
+   - Objetivo:         < 10 KB
+   - Cache:            en memoria tras la primera llamada
+─────────────────────────────────────────────────────────────── */
+type LogoAttachment = { content: string; filename: string; contentId: string };
 
-async function getLogoAttachment(): Promise<{ content: string; filename: string; contentId: string } | null> {
-  if (_logoCache !== undefined) {
-    return _logoCache
-      ? { content: _logoCache, filename: "Logo.png", contentId: "craftqube-logo" }
-      : null;
-  }
+let _logoCache: LogoAttachment | null | undefined = undefined;
+
+async function getLogoAttachment(): Promise<LogoAttachment | null> {
+  if (_logoCache !== undefined) return _logoCache;
 
   try {
-    const logoPath = path.join(process.cwd(), "public", "Logo.png");
+    const logoPath = path.join(process.cwd(), "public", "logo_email.png");
     const raw      = fs.readFileSync(logoPath);
+    const rawKB    = Math.round(raw.length / 1024);
 
     try {
-      const sharp     = (await import("sharp")).default;
-      const optimized = await sharp(raw)
-        .resize({ width: 300, withoutEnlargement: true })
-        .png({ compressionLevel: 9, quality: 80 })
+      const sharp = (await import("sharp")).default;
+
+      const buffer = await sharp(raw)
+        .resize({
+          width:              280,         // 2× el display de 140px → retina
+          withoutEnlargement: true,        // no agrandar si el original es menor
+        })
+        .webp({
+          quality:    82,                  // buen balance calidad/peso para logos
+          lossless:   false,
+          smartSubsample: true,
+        })
         .toBuffer();
 
-      console.log(`[email] Logo: ${Math.round(raw.length / 1024)}KB → ${Math.round(optimized.length / 1024)}KB`);
-      _logoCache = optimized.toString("base64");
+      const finalKB = Math.round(buffer.length / 1024);
+      console.log(`[email] Logo: ${rawKB}KB PNG → ${finalKB}KB WebP (280px)`);
+
+      _logoCache = {
+        content:   buffer.toString("base64"),
+        filename:  "Logo.webp",
+        contentId: "craftqube-logo",
+      };
+
     } catch {
-      console.warn("[email] sharp no disponible, usando logo sin optimizar");
-      _logoCache = raw.toString("base64");
+      // sharp no disponible — fallback a PNG sin transformar
+      console.warn(`[email] sharp no disponible, usando logo original (${rawKB}KB)`);
+      _logoCache = {
+        content:   raw.toString("base64"),
+        filename:  "Logo.png",
+        contentId: "craftqube-logo",
+      };
     }
 
-    return { content: _logoCache, filename: "Logo.png", contentId: "craftqube-logo" };
+    return _logoCache;
+
   } catch {
     console.warn("[email] No se pudo leer public/Logo.png — el logo no aparecerá");
     _logoCache = null;
@@ -53,16 +80,16 @@ async function getLogoAttachment(): Promise<{ content: string; filename: string;
   }
 }
 
-/* ── Welcome ───────────────────────────────────────────── */
+/* ── Welcome ───────────────────────────────────────────────── */
 export async function sendWelcomeEmail(
   to:          string,
   nombre:      string,
   verifyToken: string
 ): Promise<EmailResult> {
   try {
-    const verifyUrl  = `${BASE_URL}/verificar?token=${verifyToken}`;
-    const logo       = await getLogoAttachment();
-    const html       = await render(React.createElement(WelcomeEmail, { nombre, verifyUrl }));
+    const verifyUrl = `${BASE_URL}/verificar?token=${verifyToken}`;
+    const logo      = await getLogoAttachment();
+    const html      = await render(React.createElement(WelcomeEmail, { nombre, verifyUrl }));
 
     await resend.emails.send({
       from:        FROM_EMAIL,
@@ -79,16 +106,16 @@ export async function sendWelcomeEmail(
   }
 }
 
-/* ── Reenvío de verificación ───────────────────────────── */
+/* ── Reenvío de verificación ───────────────────────────────── */
 export async function sendVerificationEmail(
   to:          string,
   nombre:      string,
   verifyToken: string
 ): Promise<EmailResult> {
   try {
-    const verifyUrl  = `${BASE_URL}/verificar?token=${verifyToken}`;
-    const logo       = await getLogoAttachment();
-    const html       = await render(React.createElement(VerifyEmail, { nombre, verifyUrl }));
+    const verifyUrl = `${BASE_URL}/verificar?token=${verifyToken}`;
+    const logo      = await getLogoAttachment();
+    const html      = await render(React.createElement(VerifyEmail, { nombre, verifyUrl }));
 
     await resend.emails.send({
       from:        FROM_EMAIL,
@@ -105,7 +132,7 @@ export async function sendVerificationEmail(
   }
 }
 
-/* ── Reset de contraseña ───────────────────────────────── */
+/* ── Reset de contraseña ───────────────────────────────────── */
 export async function sendPasswordResetEmail(
   to:         string,
   nombre:     string,
@@ -131,7 +158,7 @@ export async function sendPasswordResetEmail(
   }
 }
 
-/* ── Confirmación de pedido ────────────────────────────── */
+/* ── Confirmación de pedido ────────────────────────────────── */
 export async function sendOrderConfirmationEmail(
   to:   string,
   data: OrderConfirmationProps
@@ -142,7 +169,7 @@ export async function sendOrderConfirmationEmail(
 
     const subjectMetodo =
       data.metodo === "transferencia" ? "Datos de transferencia SPEI" :
-      data.metodo === "oxxo"          ? "Código de pago OXXO" :
+      data.metodo === "oxxo"          ? "Código de pago OXXO"         :
       "Pedido confirmado";
 
     await resend.emails.send({
