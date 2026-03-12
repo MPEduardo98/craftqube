@@ -134,13 +134,17 @@ function SaveRow({ loading, onSave, onCancel }: { loading: boolean; onSave: () =
 export function PerfilSection() {
   const { usuario, refreshUser } = useAuth();
   const alert = useAlert();
+
   const [editingPersonal,    setEditingPersonal]    = useState(false);
   const [editingFacturacion, setEditingFacturacion] = useState(false);
-  const [loading,            setLoading]            = useState(false);
 
+  // ── FIX: estados de loading separados por sección ──────────
+  const [loadingPersonal,    setLoadingPersonal]    = useState(false);
+  const [loadingFacturacion, setLoadingFacturacion] = useState(false);
+
+  // ── Correo ─────────────────────────────────────────────────
   const [resending,    setResending]    = useState(false);
   const [resendSent,   setResendSent]   = useState(false);
-
   const [editingEmail, setEditingEmail] = useState(false);
   const [newEmail,     setNewEmail]     = useState("");
   const [loadingEmail, setLoadingEmail] = useState(false);
@@ -154,7 +158,10 @@ export function PerfilSection() {
   });
 
   const handleSave = async (section: "personal" | "facturacion") => {
-    setLoading(true);
+    // ── FIX: cada sección activa su propio loading ──────────
+    if (section === "personal")    setLoadingPersonal(true);
+    if (section === "facturacion") setLoadingFacturacion(true);
+
     try {
       const res  = await fetch("/api/users/profile", {
         method: "PATCH",
@@ -174,7 +181,8 @@ export function PerfilSection() {
     } catch {
       alert.error("Error de conexión");
     } finally {
-      setLoading(false);
+      if (section === "personal")    setLoadingPersonal(false);
+      if (section === "facturacion") setLoadingFacturacion(false);
     }
   };
 
@@ -227,6 +235,8 @@ export function PerfilSection() {
         alert.success("Correo actualizado. Revisa tu bandeja para verificarlo.");
         setEditingEmail(false);
         setNewEmail("");
+        // ── FIX: resetear resendSent para que el botón vuelva a aparecer ──
+        setResendSent(false);
         await refreshUser?.();
       } else {
         alert.error(data.error || "No se pudo actualizar el correo");
@@ -247,7 +257,7 @@ export function PerfilSection() {
         description="Nombre y teléfono de contacto"
         onEdit={() => setEditingPersonal(true)}
         editing={editingPersonal}
-        loading={loading}
+        loading={loadingPersonal}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Nombre"   value={form.nombre}   editing={editingPersonal}
@@ -257,12 +267,20 @@ export function PerfilSection() {
           <Field label="Teléfono" value={form.telefono} editing={editingPersonal}
             onChange={(v) => setForm({ ...form, telefono: v })} placeholder="10 dígitos" type="tel" />
         </div>
-        {editingPersonal && <SaveRow loading={loading} onSave={() => handleSave("personal")} onCancel={() => handleCancel("personal")} />}
+        {editingPersonal && (
+          <SaveRow
+            loading={loadingPersonal}
+            onSave={() => handleSave("personal")}
+            onCancel={() => handleCancel("personal")}
+          />
+        )}
       </Card>
 
       {/* ── 2. Correo electrónico ── */}
       <div className="rounded-xl p-6" style={{ position: "relative", background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)" }}>
-        <LoadingOverlay visible={loadingEmail} message="Guardando..." />
+        {/* ── FIX: overlay activo también durante reenvío ── */}
+        <LoadingOverlay visible={loadingEmail || resending} message="Guardando..." />
+
         <div className="flex items-center justify-between mb-5 pb-4" style={{ borderBottom: "1px solid var(--color-cq-border)" }}>
           <div>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 700, color: "var(--color-cq-text)", margin: 0 }}>
@@ -347,17 +365,31 @@ export function PerfilSection() {
                 <p style={{ fontFamily: "var(--font-body)", fontSize: "0.75rem", color: "var(--color-cq-muted)", lineHeight: 1.5 }}>
                   Verifica tu correo para acceder a todas las funciones de tu cuenta.
                 </p>
-                {!resendSent && (
+                {/* ── FIX: botón siempre visible si no se ha enviado ── */}
+                {!resendSent ? (
                   <motion.button
                     onClick={handleResendVerification} disabled={resending}
                     whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--color-cq-primary)", color: "white", border: "none", borderRadius: 8, padding: "8px 16px", cursor: resending ? "not-allowed" : "pointer", opacity: resending ? 0.6 : 1, width: "fit-content" }}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 8,
+                      background: "var(--color-cq-primary)", color: "white",
+                      border: "none", borderRadius: 8, padding: "8px 16px",
+                      cursor: resending ? "not-allowed" : "pointer",
+                      opacity: resending ? 0.6 : 1, width: "fit-content",
+                    }}
                   >
                     <i className="fa-solid fa-paper-plane" style={{ fontSize: "0.65rem" }} />
                     <span style={{ fontFamily: "var(--font-body)", fontSize: "0.8rem", fontWeight: 600 }}>
                       Reenviar verificación
                     </span>
                   </motion.button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <i className="fa-solid fa-circle-check" style={{ fontSize: "0.72rem", color: "#10b981" }} />
+                    <span style={{ fontFamily: "var(--font-body)", fontSize: "0.78rem", color: "#10b981", fontWeight: 500 }}>
+                      Correo enviado — revisa tu bandeja
+                    </span>
+                  </div>
                 )}
               </div>
             )}
@@ -371,7 +403,7 @@ export function PerfilSection() {
         description="RFC y razón social para tus facturas"
         onEdit={() => setEditingFacturacion(true)}
         editing={editingFacturacion}
-        loading={loading}
+        loading={loadingFacturacion}
         optional
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -380,7 +412,13 @@ export function PerfilSection() {
           <Field label="Razón social" value={form.razon_social} editing={editingFacturacion}
             onChange={(v) => setForm({ ...form, razon_social: v })} placeholder="Empresa S.A. de C.V." />
         </div>
-        {editingFacturacion && <SaveRow loading={loading} onSave={() => handleSave("facturacion")} onCancel={() => handleCancel("facturacion")} />}
+        {editingFacturacion && (
+          <SaveRow
+            loading={loadingFacturacion}
+            onSave={() => handleSave("facturacion")}
+            onCancel={() => handleCancel("facturacion")}
+          />
+        )}
       </Card>
 
       {/* ── 4. Meta info ── */}
