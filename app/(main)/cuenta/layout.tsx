@@ -1,5 +1,6 @@
 // app/(main)/cuenta/layout.tsx
 import type { Metadata } from "next";
+import { AccountLayout } from "./components/AccountLayout";
 
 export const metadata: Metadata = {
   title: "Mi Cuenta — Craftqube",
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function CuentaLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return <AccountLayout>{children}</AccountLayout>;
 }
