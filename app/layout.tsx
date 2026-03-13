@@ -1,7 +1,13 @@
 // app/layout.tsx
-import type { Metadata } from "next";
+// ─────────────────────────────────────────────────────────────
+// Server Component raíz.
+// Fetcha categorías en el servidor (unstable_cache, TTL 5 min)
+// y las pasa al Header como prop → cero waterfalls en cliente.
+// ─────────────────────────────────────────────────────────────
+import type { Metadata }  from "next";
 import { Barlow_Condensed, DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+
 import { Header }           from "./global/components/header/Header";
 import { Footer }           from "./global/components/footer/Footer";
 import { CartDrawer }       from "./global/components/cart/CartDrawer";
@@ -11,30 +17,31 @@ import { WishlistProvider } from "./global/context/WishlistContext";
 import { AuthProvider }     from "./global/context/AuthContext";
 import { AlertProvider }    from "./global/context/AlertContext";
 import { AlertContainer }   from "./global/components/alerts/AlertContainer";
+import { getCategorias }    from "./global/lib/db/getCategorias";
 
 const barlowCondensed = Barlow_Condensed({
   variable: "--font-barlow",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
+  subsets:  ["latin"],
+  weight:   ["400", "500", "600", "700", "800"],
+  display:  "swap",
 });
 
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
+  subsets:  ["latin"],
+  weight:   ["300", "400", "500", "600", "700"],
+  display:  "swap",
 });
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains",
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  display: "swap",
+  subsets:  ["latin"],
+  weight:   ["400", "500"],
+  display:  "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Craftqube — Perfiles de Aluminio & Automatización Industrial",
+  title:       "Craftqube — Perfiles de Aluminio & Automatización Industrial",
   description:
     "Distribuidor premium de perfiles estructurales de aluminio, tornillería, escuadras y sistemas de automatización industrial. Calidad, precisión y tecnología.",
   keywords: [
@@ -46,11 +53,14 @@ export const metadata: Metadata = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
+
+  // Categorías resueltas en el servidor — sin fetch client-side
+  // unstable_cache devuelve la misma respuesta si no expiró el TTL
+  const categorias = await getCategorias().catch(() => []);
+
   return (
     <html lang="es" className="scroll-smooth">
       <body
@@ -61,7 +71,8 @@ export default function RootLayout({
             <ThemeProvider>
               <CartProvider>
                 <WishlistProvider>
-                  <Header />
+                  {/* initialCategorias → header las muestra al instante */}
+                  <Header initialCategorias={categorias} />
                   <CartDrawer />
                   {/* pt-16 compensa el header fixed de h-16 (64px) */}
                   <main>{children}</main>

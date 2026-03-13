@@ -5,12 +5,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/app/global/context/CartContext";
-
-function formatPrice(n: number) {
-  return new Intl.NumberFormat("es-MX", {
-    style: "currency", currency: "MXN", maximumFractionDigits: 0,
-  }).format(n) + " MXN";
-}
+import { formatPrice } from "@/app/global/lib/format";
 
 function esAtributoVisible(a: string, v: string): boolean {
   const al = a.toLowerCase().trim();
@@ -41,7 +36,7 @@ export function OrderSummary({ compact = false }: Props) {
   return (
     <div className="flex flex-col">
 
-      {/* ── Toggle mobile compact ── */}
+      {/* Toggle mobile compact */}
       {compact && (
         <button onClick={() => setOpen((p) => !p)}
           className="flex items-center justify-between w-full py-3 px-5"
@@ -54,7 +49,7 @@ export function OrderSummary({ compact = false }: Props) {
           <div className="flex items-center gap-2" style={{ color: "var(--color-cq-accent)" }}>
             <i className="fa-solid fa-bag-shopping" style={{ fontSize: "0.85rem" }} />
             <span style={{ fontFamily: "var(--font-display)", fontSize: "0.85rem", fontWeight: 700, color: "var(--color-cq-text)" }}>
-              Resumen ({items.length} art.{items.length !== 1 ? "" : ""})
+              Resumen ({items.length} art.)
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -63,8 +58,9 @@ export function OrderSummary({ compact = false }: Props) {
             </span>
             <motion.i
               animate={{ rotate: open ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
               className="fa-solid fa-chevron-down"
-              style={{ fontSize: "0.7rem", color: "var(--color-cq-muted)" }}
+              style={{ fontSize: "0.75rem", color: "var(--color-cq-muted)" }}
             />
           </div>
         </button>
@@ -76,90 +72,66 @@ export function OrderSummary({ compact = false }: Props) {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="overflow-hidden"
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+            style={{ overflow: "hidden" }}
           >
-            <div style={{
-              background: "var(--color-cq-surface)",
-              border: "1px solid var(--color-cq-border)",
-              borderTop: compact ? "none" : undefined,
-              borderRadius: compact ? "0 0 12px 12px" : 16,
-              boxShadow: compact ? "none" : "0 2px 16px rgba(0,0,0,0.05)",
-            }}>
-
-              {/* Header label */}
+            <CardWrapper>
+              {/* Header */}
               {!compact && (
-                <div className="px-5 py-4 flex items-center gap-2"
-                  style={{ borderBottom: "1px solid var(--color-cq-border)" }}>
-                  <i className="fa-solid fa-receipt" style={{ fontSize: "0.75rem", color: "var(--color-cq-accent)" }} />
-                  <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.63rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-cq-muted)" }}>
-                    Tu pedido · {items.length} artículo{items.length !== 1 ? "s" : ""}
-                  </p>
+                <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--color-cq-border)", background: "var(--color-cq-surface-2)" }}>
+                  <span style={{ fontFamily: "var(--font-display)", fontSize: "0.9rem", fontWeight: 700, color: "var(--color-cq-text)" }}>
+                    Resumen del pedido
+                  </span>
                 </div>
               )}
 
               {/* Items */}
-              <div className="flex flex-col px-5 pt-4 pb-2 gap-4">
+              <div className="px-5 py-4 flex flex-col gap-3" style={{ maxHeight: 320, overflowY: "auto" }}>
                 {items.map((item) => {
-                  const imgSrc = item.imagenNombre
+                  const imageSrc = item.imagenNombre
                     ? `/productos/${item.productoId}/${item.imagenNombre}`
                     : null;
-                  const atributos = item.atributos.filter((a) => esAtributoVisible(a.atributo, a.valor));
+                  const atributosVisibles = item.atributos.filter((a) =>
+                    esAtributoVisible(a.atributo, a.valor)
+                  );
                   return (
-                    <div key={item.varianteId} className="flex items-start gap-3">
-                      {/* Imagen + badge */}
-                      <div className="relative shrink-0">
-                        <div className="rounded-xl overflow-hidden" style={{
-                          width: 56, height: 56,
-                          background: "var(--color-cq-surface-2)",
-                          border: "1px solid var(--color-cq-border)",
-                        }}>
-                          {imgSrc ? (
-                            <Image src={imgSrc} alt={item.imagenAlt ?? item.titulo} fill style={{ objectFit: "contain" }} />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <i className="fa-regular fa-image" style={{ fontSize: "1.1rem", color: "var(--color-cq-muted-2)" }} />
-                            </div>
-                          )}
-                        </div>
-                        <div className="absolute -top-1.5 -right-1.5 flex items-center justify-center rounded-full"
-                          style={{
-                            minWidth: 18, height: 18, padding: "0 4px",
-                            background: "var(--color-cq-accent)",
-                            fontFamily: "var(--font-mono)", fontSize: "0.55rem", fontWeight: 700,
-                            color: "white", border: "2px solid var(--color-cq-surface)",
-                          }}>
+                    <div key={item.varianteId} className="flex items-center gap-3">
+                      <div className="relative shrink-0 rounded-lg overflow-hidden"
+                        style={{ width: 52, height: 52, background: "var(--color-cq-surface-2)", border: "1px solid var(--color-cq-border)" }}>
+                        {imageSrc ? (
+                          <Image src={imageSrc} alt={item.imagenAlt ?? item.titulo} fill className="object-contain p-1" />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <svg viewBox="0 0 40 40" width="22" height="22">
+                              <circle cx="20" cy="20" r="10" fill="none" stroke="#2563EB" strokeWidth="1.5" opacity="0.4"/>
+                            </svg>
+                          </div>
+                        )}
+                        <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center rounded-full text-white"
+                          style={{ width: 18, height: 18, background: "var(--color-cq-primary)", fontFamily: "var(--font-mono)", fontSize: "0.58rem", fontWeight: 700 }}>
                           {item.cantidad}
-                        </div>
+                        </span>
                       </div>
-
-                      {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <p style={{
-                          fontFamily: "var(--font-body)", fontSize: "0.82rem", fontWeight: 600,
-                          color: "var(--color-cq-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                        }}>
+                        <p className="line-clamp-1 font-medium" style={{ fontFamily: "var(--font-body)", fontSize: "0.82rem", color: "var(--color-cq-text)" }}>
                           {item.titulo}
                         </p>
-                        {atributos.length > 0 && (
-                          <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.58rem", color: "var(--color-cq-muted-2)", letterSpacing: "0.04em", marginTop: 2 }}>
-                            {atributos.map((a) => `${a.atributo}: ${a.valor}`).join(" · ")}
+                        {atributosVisibles.length > 0 && (
+                          <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", color: "var(--color-cq-muted-2)" }}>
+                            {atributosVisibles.map((a) => `${a.atributo}: ${a.valor}`).join(" · ")}
                           </p>
                         )}
                       </div>
-
-                      {/* Precio */}
-                      <p style={{ fontFamily: "var(--font-display)", fontSize: "0.9rem", fontWeight: 700, color: "var(--color-cq-text)", flexShrink: 0 }}>
-                        ${(item.precio * item.cantidad).toLocaleString("es-MX")}
-                      </p>
+                      <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.82rem", fontWeight: 600, color: "var(--color-cq-text)", whiteSpace: "nowrap" }}>
+                        {formatPrice(item.precio * item.cantidad)}
+                      </span>
                     </div>
                   );
                 })}
               </div>
 
               {/* Totales */}
-              <div className="mx-5 mb-5 pt-4 flex flex-col gap-2.5"
-                style={{ borderTop: "1px solid var(--color-cq-border)" }}>
+              <div className="mx-5 mb-5 pt-4 flex flex-col gap-2.5" style={{ borderTop: "1px solid var(--color-cq-border)" }}>
                 <div className="flex justify-between items-center">
                   <span style={{ fontFamily: "var(--font-body)", fontSize: "0.82rem", color: "var(--color-cq-muted)" }}>Subtotal</span>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.82rem", color: "var(--color-cq-text)" }}>
@@ -185,7 +157,7 @@ export function OrderSummary({ compact = false }: Props) {
                   </span>
                 </div>
               </div>
-            </div>
+            </CardWrapper>
           </motion.div>
         )}
       </AnimatePresence>

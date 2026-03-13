@@ -9,6 +9,7 @@ import { ProductVariantSelector } from "./ProductVariantSelector";
 import { ProductSpecs }           from "./ProductSpecs";
 import { useCart }                from "@/app/global/context/CartContext";
 import { useWishlist }            from "@/app/global/context/WishlistContext";
+import { formatPrice }            from "@/app/global/lib/format";
 import type { ProductoDetalle, ProductoVariante } from "@/app/global/types/product-detail";
 
 const FaIcons = {
@@ -54,7 +55,6 @@ const FaIcons = {
   ),
 };
 
-/* ── Corazón SVG — outline / filled ─────────────────────── */
 function HeartIcon({ filled }: { filled: boolean }) {
   return filled ? (
     <svg viewBox="0 0 512 512" fill="#EF4444" width="17" height="17">
@@ -75,14 +75,6 @@ function fadeUp(delay: number) {
   };
 }
 
-function formatPrice(n: number) {
-  return (
-    new Intl.NumberFormat("es-MX", {
-      style: "currency", currency: "MXN", maximumFractionDigits: 0,
-    }).format(n) + " MXN"
-  );
-}
-
 interface Props {
   producto: ProductoDetalle;
 }
@@ -96,8 +88,7 @@ export function ProductDetailClient({ producto }: Props) {
     producto.variantes[0] ??
     null;
 
-  const [selectedVariante, setSelectedVariante] =
-    useState<ProductoVariante | null>(defaultVariante);
+  const [selectedVariante, setSelectedVariante] = useState<ProductoVariante | null>(defaultVariante);
   const [added,    setAdded]    = useState(false);
   const [cantidad, setCantidad] = useState(1);
 
@@ -107,11 +98,8 @@ export function ProductDetailClient({ producto }: Props) {
   const sinExistencia  = selectedVariante?.vender_sin_existencia === 1;
   const tieneStock     = stock > 0 || sinExistencia;
   const tieneDescuento = precioOriginal > 0 && precioOriginal > precio;
-  const descuento      = tieneDescuento
-    ? Math.round((1 - precio / precioOriginal) * 100)
-    : 0;
-
-  const wished = isWished(producto.id);
+  const descuento      = tieneDescuento ? Math.round((1 - precio / precioOriginal) * 100) : 0;
+  const wished         = isWished(producto.id);
 
   const imagenesVariante = selectedVariante
     ? producto.imagenes.filter((img) => img.variante_id === selectedVariante.id)
@@ -120,7 +108,6 @@ export function ProductDetailClient({ producto }: Props) {
     imagenesVariante.length > 0
       ? imagenesVariante
       : producto.imagenes.filter((img) => img.variante_id === null);
-
   const imagenPrincipal = imagenesMostrar[0] ?? null;
 
   const handleAddToCart = () => {
@@ -170,52 +157,47 @@ export function ProductDetailClient({ producto }: Props) {
 
   return (
     <div className="min-h-screen" style={{ background: "var(--color-cq-bg)" }}>
-      <div
-        className="fixed inset-0 pointer-events-none"
-        style={{
-          backgroundImage: "linear-gradient(rgba(37,99,235,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.025) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-          zIndex: 0,
-        }}
+      <div className="fixed inset-0 pointer-events-none"
+        style={{ backgroundImage: "linear-gradient(rgba(37,99,235,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.025) 1px, transparent 1px)", backgroundSize: "48px 48px", zIndex: 0 }}
       />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-20 pb-8 lg:pt-24 lg:pb-14">
 
         {/* Breadcrumb */}
-        <motion.nav
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
+        <motion.nav initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
           className="mb-8 flex items-center gap-2 flex-wrap"
-          style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", letterSpacing: "0.1em" }}
-        >
+          style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", letterSpacing: "0.1em" }}>
           <Link href="/" className="hover:text-blue-500 transition-colors uppercase" style={{ color: "var(--color-cq-muted)", textDecoration: "none" }}>Inicio</Link>
-          <span style={{ color: "var(--color-cq-border-2)" }}>›</span>
+          <span style={{ color: "var(--color-cq-border)" }}>›</span>
           <Link href="/catalogo" className="hover:text-blue-500 transition-colors uppercase" style={{ color: "var(--color-cq-muted)", textDecoration: "none" }}>Catálogo</Link>
           {producto.categorias[0] && (
             <>
-              <span style={{ color: "var(--color-cq-border-2)" }}>›</span>
+              <span style={{ color: "var(--color-cq-border)" }}>›</span>
               <Link href={`/catalogo?cat=${producto.categorias[0].slug}`} className="hover:text-blue-500 transition-colors uppercase" style={{ color: "var(--color-cq-muted)", textDecoration: "none" }}>
                 {producto.categorias[0].nombre}
               </Link>
             </>
           )}
-          <span style={{ color: "var(--color-cq-border-2)" }}>›</span>
-          <span className="truncate max-w-48" style={{ color: "var(--color-cq-text)", textTransform: "uppercase" }}>{producto.titulo}</span>
+          <span style={{ color: "var(--color-cq-border)" }}>›</span>
+          <span className="uppercase" style={{ color: "var(--color-cq-text)" }}>{producto.titulo}</span>
         </motion.nav>
 
-        {/* 2-col */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
+        {/* Grid principal */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 xl:gap-16">
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+          {/* Galería */}
+          <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45 }}>
             <ProductGallery imagenes={imagenesMostrar} productoId={producto.id} titulo={producto.titulo} />
           </motion.div>
 
-          <div className="flex flex-col gap-6">
+          {/* Info */}
+          <div className="flex flex-col gap-5">
 
-            {/* Brand + cats */}
-            <motion.div {...fadeUp(0)} className="flex flex-wrap items-center gap-2">
+            {/* Marca + categorías */}
+            <motion.div {...fadeUp(0)} className="flex flex-wrap gap-2">
               {producto.marca && (
                 <span className="px-2.5 py-1 rounded-md text-xs font-bold"
-                  style={{ fontFamily: "var(--font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", background: "var(--color-cq-accent-glow)", color: "var(--color-cq-accent)", border: "1px solid rgba(37,99,235,0.2)" }}>
+                  style={{ fontFamily: "var(--font-mono)", letterSpacing: "0.08em", textTransform: "uppercase", background: "var(--color-cq-accent-glow)", color: "var(--color-cq-accent)", border: "1px solid rgba(37,99,235,0.2)" }}>
                   {producto.marca}
                 </span>
               )}
@@ -228,13 +210,12 @@ export function ProductDetailClient({ producto }: Props) {
               ))}
             </motion.div>
 
-            {/* Title */}
+            {/* Título */}
             <motion.h1 {...fadeUp(0.07)} className="text-display"
               style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)", color: "var(--color-cq-text)", lineHeight: 1.1 }}>
               {producto.titulo}
             </motion.h1>
 
-            {/* Desc corta */}
             {producto.descripcion_corta && (
               <motion.p {...fadeUp(0.14)} className="text-base leading-relaxed" style={{ color: "var(--color-cq-muted)" }}>
                 {producto.descripcion_corta}
@@ -243,7 +224,7 @@ export function ProductDetailClient({ producto }: Props) {
 
             <div style={{ height: "1px", background: "var(--color-cq-border)" }} />
 
-            {/* Precio + stock badge */}
+            {/* Precio + stock */}
             <motion.div {...fadeUp(0.21)} className="flex flex-col gap-2">
               <div className="flex items-center gap-3 flex-wrap">
                 {precio > 0 ? (
@@ -256,12 +237,7 @@ export function ProductDetailClient({ producto }: Props) {
                   </span>
                 )}
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                  style={{
-                    background: tieneStock ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)",
-                    border: `1px solid ${tieneStock ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)"}`,
-                    fontFamily: "var(--font-mono)", fontSize: "0.62rem", letterSpacing: "0.1em",
-                    textTransform: "uppercase", color: tieneStock ? "#22C55E" : "#EF4444", whiteSpace: "nowrap",
-                  }}>
+                  style={{ background: tieneStock ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)", border: `1px solid ${tieneStock ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)"}`, fontFamily: "var(--font-mono)", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", color: tieneStock ? "#22C55E" : "#EF4444", whiteSpace: "nowrap" }}>
                   <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: tieneStock ? "#22C55E" : "#EF4444" }} />
                   {tieneStock ? (stock > 10 ? "En stock" : `Últimas ${stock} unidades`) : "Agotado"}
                 </span>
@@ -305,7 +281,7 @@ export function ProductDetailClient({ producto }: Props) {
                   <input type="number" min={1} value={cantidad}
                     onChange={(e) => handleCantidadChange(e.target.value)}
                     className="text-center font-bold text-sm outline-none bg-transparent"
-                    style={{ width: "68px", height: "52px", color: "var(--color-cq-text)", fontFamily: "var(--font-mono)", borderLeft: "1px solid var(--color-cq-border)", borderRight: "1px solid var(--color-cq-border)", MozAppearance: "textfield" }}
+                    style={{ width: "68px", height: "52px", color: "var(--color-cq-text)", fontFamily: "var(--font-mono)", borderLeft: "1px solid var(--color-cq-border)", borderRight: "1px solid var(--color-cq-border)" }}
                   />
                   <button onClick={incrementar}
                     className="flex items-center justify-center transition-all"
@@ -314,54 +290,24 @@ export function ProductDetailClient({ producto }: Props) {
                   </button>
                 </div>
 
-                <motion.button
-                  onClick={handleAddToCart}
-                  disabled={!tieneStock}
+                <motion.button onClick={handleAddToCart} disabled={!tieneStock}
                   whileHover={tieneStock ? { scale: 1.02, y: -1 } : {}}
                   whileTap={tieneStock ? { scale: 0.97 } : {}}
                   className="flex-1 flex items-center justify-center gap-2 rounded-xl font-bold text-sm"
-                  style={{
-                    fontFamily: "var(--font-display)", letterSpacing: "0.08em", textTransform: "uppercase",
-                    height: "52px", minWidth: "160px",
-                    background: tieneStock ? (added ? "#16A34A" : "var(--color-cq-primary)") : "var(--color-cq-surface-2)",
-                    color: tieneStock ? "white" : "var(--color-cq-muted-2)",
-                    border: tieneStock ? "none" : "1px solid var(--color-cq-border)",
-                    cursor: tieneStock ? "pointer" : "not-allowed",
-                    boxShadow: tieneStock ? "0 4px 20px rgba(29,78,216,0.3)" : "none",
-                    transition: "background 0.25s ease, box-shadow 0.25s ease",
-                  }}>
+                  style={{ fontFamily: "var(--font-display)", letterSpacing: "0.08em", textTransform: "uppercase", height: "52px", minWidth: "160px", background: tieneStock ? (added ? "#16A34A" : "var(--color-cq-primary)") : "var(--color-cq-surface-2)", color: tieneStock ? "white" : "var(--color-cq-muted-2)", border: tieneStock ? "none" : "1px solid var(--color-cq-border)", cursor: tieneStock ? "pointer" : "not-allowed", boxShadow: tieneStock ? "0 4px 20px rgba(29,78,216,0.3)" : "none", transition: "background 0.25s ease, box-shadow 0.25s ease" }}>
                   {added ? <>{FaIcons.check} Agregado</> : <>{FaIcons.cartShopping} {tieneStock ? "Agregar al carrito" : "Sin stock"}</>}
                 </motion.button>
 
-                {/* ── Botón Wishlist ── */}
-                <motion.button
-                  onClick={handleWishlistToggle}
-                  whileHover={{ scale: 1.06 }}
-                  whileTap={{ scale: 0.88 }}
+                <motion.button onClick={handleWishlistToggle}
+                  whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.88 }}
                   title={wished ? "Quitar de favoritos" : "Guardar en favoritos"}
                   className="flex items-center justify-center rounded-xl shrink-0 relative overflow-hidden"
-                  style={{
-                    width: "52px", height: "52px",
-                    border: wished
-                      ? "1.5px solid rgba(239,68,68,0.35)"
-                      : "1.5px solid var(--color-cq-border)",
-                    background: wished
-                      ? "rgba(239,68,68,0.07)"
-                      : "var(--color-cq-surface)",
-                    color: wished ? "#EF4444" : "var(--color-cq-muted)",
-                    cursor: "pointer",
-                    transition: "background 0.2s ease, border-color 0.2s ease, color 0.2s ease",
-                  }}
-                >
+                  style={{ width: "52px", height: "52px", border: wished ? "1.5px solid rgba(239,68,68,0.35)" : "1.5px solid var(--color-cq-border)", background: wished ? "rgba(239,68,68,0.07)" : "var(--color-cq-surface)", color: wished ? "#EF4444" : "var(--color-cq-muted)", cursor: "pointer", transition: "background 0.2s ease, border-color 0.2s ease, color 0.2s ease" }}>
                   <AnimatePresence mode="wait">
-                    <motion.span
-                      key={wished ? "filled" : "outline"}
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.5, opacity: 0 }}
+                    <motion.span key={wished ? "filled" : "outline"}
+                      initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.5, opacity: 0 }}
                       transition={{ duration: 0.18, ease: "easeOut" }}
-                      className="flex items-center justify-center"
-                    >
+                      className="flex items-center justify-center">
                       <HeartIcon filled={wished} />
                     </motion.span>
                   </AnimatePresence>
@@ -375,43 +321,22 @@ export function ProductDetailClient({ producto }: Props) {
                 <div key={b.label} className="flex flex-col items-center gap-2 py-3 rounded-xl text-center"
                   style={{ background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)" }}>
                   <span style={{ color: "var(--color-cq-accent)" }}>{b.icon}</span>
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.58rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-cq-muted)" }}>{b.label}</span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.58rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-cq-muted)" }}>
+                    {b.label}
+                  </span>
                 </div>
               ))}
             </motion.div>
           </div>
         </div>
 
-        {/* Descripción + Specs */}
-        {(producto.descripcion_larga || producto.metacampos.length > 0 ||
-          (selectedVariante && selectedVariante.metacampos.length > 0) || selectedVariante?.peso) && (
-          <motion.div
-            initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.5 }}
-            className="mt-16 grid grid-cols-1 lg:grid-cols-2 gap-10"
-          >
-            {producto.descripcion_larga && (
-              <div className="rounded-2xl p-6" style={{ background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)" }}>
-                <div className="flex items-center gap-2 mb-4 pb-4" style={{ borderBottom: "1px solid var(--color-cq-border)" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-cq-accent)" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h12"/></svg>
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--color-cq-muted)" }}>Descripción</span>
-                </div>
-                <div className="text-sm leading-relaxed" style={{ color: "var(--color-cq-text)", whiteSpace: "pre-line" }}>
-                  {producto.descripcion_larga}
-                </div>
-              </div>
-            )}
+        {/* Specs */}
+        {producto.metacampos.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.4 }}
+            className="mt-14">
             <ProductSpecs metacampos={producto.metacampos} varianteActiva={selectedVariante} />
           </motion.div>
         )}
-
-        {/* Back */}
-        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.4 }}
-          className="mt-16 pt-8" style={{ borderTop: "1px solid var(--color-cq-border)" }}>
-          <Link href="/catalogo" className="btn-ghost inline-flex items-center gap-2">
-            {FaIcons.arrowLeft} Volver al catálogo
-          </Link>
-        </motion.div>
       </div>
     </div>
   );

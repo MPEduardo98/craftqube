@@ -8,15 +8,7 @@ import { motion } from "framer-motion";
 import { useWishlist } from "@/app/global/context/WishlistContext";
 import { useCart } from "@/app/global/context/CartContext";
 import type { Producto } from "@/app/global/types/product";
-
-/* ── Formato precio ─────────────────────────────────────── */
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-    maximumFractionDigits: 0,
-  }).format(price) + " MXN";
-}
+import { formatPrice } from "@/app/global/lib/format";
 
 /* ── Ilustración placeholder ────────────────────────────── */
 function FallbackIllustration({ categoria }: { categoria?: string | null }) {
@@ -60,17 +52,15 @@ function FallbackIllustration({ categoria }: { categoria?: string | null }) {
   );
 }
 
-/* ─── Props ──────────────────────────────────────────────── */
 interface ProductCardProps {
   producto:    Producto;
   imageSizes?: string;
 }
 
-/* ─── Componente ─────────────────────────────────────────── */
 export function ProductCard({ producto, imageSizes }: ProductCardProps) {
   const [imgError, setImgError] = useState(false);
   const [hovered, setHovered]   = useState(false);
-  
+
   const { toggleItem, isWished } = useWishlist();
   const { addItem, updateQty, items } = useCart();
 
@@ -89,12 +79,10 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
     ? Math.round(((producto.precio_original! - producto.precio!) / producto.precio_original!) * 100)
     : 0;
 
-  const wished = isWished(producto.id);
-
-  // Verificar si el producto ya está en el carrito
-  // Usamos el ID del producto como varianteId por defecto
-  const varianteId = producto.id;
+  const wished        = isWished(producto.id);
+  const varianteId    = producto.id;
   const itemEnCarrito = items.find(item => item.varianteId === varianteId);
+  const mostrarSelector = !!itemEnCarrito;
 
   const handleWishlistToggle = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -113,12 +101,10 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
   const handleAgregarAlCarrito = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
     if (!tieneStock) return;
-
     addItem({
       productoId:   producto.id,
-      varianteId:   varianteId,
+      varianteId,
       titulo:       producto.titulo,
       slug:         producto.slug,
       sku:          producto.sku ?? `PROD-${producto.id}`,
@@ -133,22 +119,14 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
   const handleIncrementar = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    if (!itemEnCarrito) return;
-    updateQty(varianteId, itemEnCarrito.cantidad + 1);
+    if (itemEnCarrito) updateQty(varianteId, itemEnCarrito.cantidad + 1);
   };
 
   const handleDecrementar = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    if (!itemEnCarrito) return;
-    if (itemEnCarrito.cantidad > 1) {
-      updateQty(varianteId, itemEnCarrito.cantidad - 1);
-    }
+    if (itemEnCarrito && itemEnCarrito.cantidad > 1) updateQty(varianteId, itemEnCarrito.cantidad - 1);
   };
-
-  const mostrarSelector = !!itemEnCarrito;
 
   return (
     <motion.article
@@ -161,11 +139,7 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
       <Link
         href={`/producto/${producto.slug}`}
         className="relative w-full overflow-hidden shrink-0 block"
-        style={{
-          aspectRatio:  "1 / 1",
-          background:   "var(--color-cq-surface-2)",
-          borderBottom: "1px solid var(--color-cq-border)",
-        }}
+        style={{ aspectRatio: "1 / 1", background: "var(--color-cq-surface-2)", borderBottom: "1px solid var(--color-cq-border)" }}
       >
         {imageSrc ? (
           <div className="absolute inset-0 overflow-hidden">
@@ -186,80 +160,35 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
           </div>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center p-6">
-            <motion.div
-              animate={{ scale: hovered ? 1.06 : 1 }}
-              transition={{ duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] }}
-            >
+            <motion.div animate={{ scale: hovered ? 1.06 : 1 }} transition={{ duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] }}>
               <FallbackIllustration categoria={producto.categoria} />
             </motion.div>
           </div>
         )}
 
-        {/* Badge descuento */}
         {tieneDescuento && (
-          <span
-            className="absolute top-2 left-2 font-bold px-2 py-0.5 rounded-md pointer-events-none"
-            style={{
-              background:    "var(--color-cq-primary)",
-              color:         "white",
-              fontFamily:    "var(--font-mono, monospace)",
-              fontSize:      "0.58rem",
-              letterSpacing: "0.04em",
-            }}
-          >
+          <span className="absolute top-2 left-2 font-bold px-2 py-0.5 rounded-md pointer-events-none"
+            style={{ background: "var(--color-cq-primary)", color: "white", fontFamily: "var(--font-mono, monospace)", fontSize: "0.58rem", letterSpacing: "0.04em" }}>
             -{descuentoPct}%
           </span>
         )}
 
-        {/* Badge marca */}
         {producto.marca && (
-          <span
-            className="absolute top-2 right-2 pointer-events-none"
-            style={{
-              display:       "inline-block",
-              padding:       "3px 8px",
-              borderRadius:  "99px",
-              background:    "var(--color-cq-primary)",
-              boxShadow:     "0 2px 8px rgba(29,78,216,0.3)",
-              fontFamily:    "var(--font-mono, monospace)",
-              fontSize:      "0.54rem",
-              letterSpacing: "0.06em",
-              color:         "#ffffff",
-              fontWeight:    600,
-              whiteSpace:    "nowrap",
-            }}
-          >
+          <span className="absolute top-2 right-2 pointer-events-none"
+            style={{ display: "inline-block", padding: "3px 8px", borderRadius: "99px", background: "var(--color-cq-primary)", boxShadow: "0 2px 8px rgba(29,78,216,0.3)", fontFamily: "var(--font-mono, monospace)", fontSize: "0.54rem", letterSpacing: "0.06em", color: "#ffffff", fontWeight: 600, whiteSpace: "nowrap" }}>
             {producto.marca}
           </span>
         )}
 
-        {/* ── Botón Wishlist ── */}
         <motion.button
           onClick={handleWishlistToggle}
           whileHover={{ scale: 1.12 }}
           whileTap={{ scale: 0.85 }}
           title={wished ? "Quitar de favoritos" : "Guardar en favoritos"}
           className="absolute bottom-2 left-2 flex items-center justify-center rounded-lg z-10"
-          style={{
-            width:   "28px",
-            height:  "28px",
-            background: wished
-              ? "rgba(239,68,68,0.12)"
-              : "var(--color-cq-surface)",
-            border: wished
-              ? "1px solid rgba(239,68,68,0.3)"
-              : "1px solid var(--color-cq-border)",
-            color:   wished ? "#EF4444" : "var(--color-cq-muted)",
-          }}
+          style={{ width: "28px", height: "28px", background: wished ? "rgba(239,68,68,0.12)" : "var(--color-cq-surface)", border: wished ? "1px solid rgba(239,68,68,0.3)" : "1px solid var(--color-cq-border)", color: wished ? "#EF4444" : "var(--color-cq-muted)" }}
         >
-          <svg
-            viewBox="0 0 24 24"
-            fill={wished ? "currentColor" : "none"}
-            stroke="currentColor"
-            strokeWidth={wished ? 0 : 2}
-            width="13"
-            height="13"
-          >
+          <svg viewBox="0 0 24 24" fill={wished ? "currentColor" : "none"} stroke="currentColor" strokeWidth={wished ? 0 : 2} width="13" height="13">
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
           </svg>
         </motion.button>
@@ -267,88 +196,40 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
 
       {/* ── Contenido ── */}
       <div className="flex-1 flex flex-col p-3.5 gap-2">
-        {/* Categoría */}
-        <div className="flex items-center justify-between">
-          {producto.categoria && (
-            <span
-              className="uppercase"
-              style={{
-                fontFamily:    "var(--font-mono, monospace)",
-                fontSize:      "0.6rem",
-                letterSpacing: "0.08em",
-                color:         "var(--color-cq-muted-2)",
-                fontWeight:    600,
-              }}
-            >
-              {producto.categoria}
-            </span>
-          )}
-        </div>
+        {producto.categoria && (
+          <span className="uppercase" style={{ fontFamily: "var(--font-mono, monospace)", fontSize: "0.6rem", letterSpacing: "0.08em", color: "var(--color-cq-muted-2)", fontWeight: 600 }}>
+            {producto.categoria}
+          </span>
+        )}
 
-        {/* Título */}
         <Link
           href={`/producto/${producto.slug}`}
           className="line-clamp-2 flex-1 font-semibold leading-snug hover:text-blue-500 transition-colors"
-          style={{
-            fontFamily:     "var(--font-body, sans-serif)",
-            fontSize:       "0.88rem",
-            color:          "var(--color-cq-text)",
-            textDecoration: "none",
-            minHeight:      "2.6em",
-          }}
+          style={{ fontFamily: "var(--font-body, sans-serif)", fontSize: "0.88rem", color: "var(--color-cq-text)", textDecoration: "none", minHeight: "2.6em" }}
         >
           {producto.titulo}
         </Link>
 
-        {/* Precio */}
         <div className="flex items-baseline gap-2 flex-wrap">
-          <span
-            style={{
-              fontFamily: "var(--font-display, sans-serif)",
-              fontSize:   "1.1rem",
-              fontWeight: 800,
-              color:      "var(--color-cq-text)",
-            }}
-          >
+          <span style={{ fontFamily: "var(--font-display, sans-serif)", fontSize: "1.1rem", fontWeight: 800, color: "var(--color-cq-text)" }}>
             {formatPrice(producto.precio ?? 0)}
           </span>
           {tieneDescuento && (
-            <span
-              style={{
-                fontFamily:       "var(--font-mono, monospace)",
-                fontSize:         "0.72rem",
-                color:            "var(--color-cq-muted-2)",
-                textDecoration:   "line-through",
-                textDecorationThickness: "1px",
-              }}
-            >
+            <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: "0.72rem", color: "var(--color-cq-muted-2)", textDecoration: "line-through", textDecorationThickness: "1px" }}>
               {formatPrice(producto.precio_original!)}
             </span>
           )}
         </div>
 
-        {/* ── Botón / Selector de cantidad ── */}
         <div className="mt-auto pt-2">
           {!mostrarSelector ? (
-            // Botón "Agregar al carrito"
             <motion.button
               onClick={handleAgregarAlCarrito}
               disabled={!tieneStock}
               whileHover={tieneStock ? { scale: 1.02 } : {}}
               whileTap={tieneStock ? { scale: 0.98 } : {}}
               className="flex items-center justify-center gap-1.5 rounded-lg font-bold text-xs w-full"
-              style={{
-                fontFamily:    "var(--font-display, sans-serif)",
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                height:        "38px",
-                background:    tieneStock ? "var(--color-cq-primary)" : "var(--color-cq-surface-2)",
-                color:         tieneStock ? "#ffffff" : "var(--color-cq-muted-2)",
-                border:        tieneStock ? "none" : "1px solid var(--color-cq-border)",
-                boxShadow:     tieneStock ? "0 2px 12px rgba(29,78,216,0.25)" : "none",
-                cursor:        tieneStock ? "pointer" : "not-allowed",
-                opacity:       tieneStock ? 1 : 0.6,
-              }}
+              style={{ fontFamily: "var(--font-display, sans-serif)", letterSpacing: "0.06em", textTransform: "uppercase", height: "38px", background: tieneStock ? "var(--color-cq-primary)" : "var(--color-cq-surface-2)", color: tieneStock ? "#ffffff" : "var(--color-cq-muted-2)", border: tieneStock ? "none" : "1px solid var(--color-cq-border)", boxShadow: tieneStock ? "0 2px 12px rgba(29,78,216,0.25)" : "none", cursor: tieneStock ? "pointer" : "not-allowed", opacity: tieneStock ? 1 : 0.6 }}
             >
               {tieneStock ? (
                 <>
@@ -360,59 +241,19 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
               ) : "Sin stock"}
             </motion.button>
           ) : (
-            // Selector de cantidad
-            <div 
-              className="flex items-center rounded-lg overflow-hidden w-full"
-              style={{ 
-                border: "1px solid var(--color-cq-border)",
-                height: "38px",
-                background: "var(--color-cq-surface)"
-              }}
-            >
-              <button
-                onClick={handleDecrementar}
-                className="flex items-center justify-center transition-colors hover:bg-gray-100"
-                style={{ 
-                  width: "38px", 
-                  height: "38px", 
-                  color: "var(--color-cq-text)",
-                  cursor: "pointer",
-                  border: "none",
-                  background: "transparent"
-                }}
-              >
-                <svg viewBox="0 0 448 512" fill="currentColor" width="10" height="10">
-                  <path d="M432 256c0 17.7-14.3 32-32 32L48 288c-17.7 0-32-14.3-32-32s14.3-32 32-32l352 0c17.7 0 32 14.3 32 32z"/>
-                </svg>
+            <div className="flex items-center rounded-lg overflow-hidden w-full"
+              style={{ border: "1px solid var(--color-cq-border)", height: "38px", background: "var(--color-cq-surface)" }}>
+              <button onClick={handleDecrementar} className="flex items-center justify-center transition-colors hover:bg-gray-100"
+                style={{ width: "38px", height: "38px", color: "var(--color-cq-text)", cursor: "pointer", border: "none", background: "transparent" }}>
+                <svg viewBox="0 0 448 512" fill="currentColor" width="10" height="10"><path d="M432 256c0 17.7-14.3 32-32 32L48 288c-17.7 0-32-14.3-32-32s14.3-32 32-32l352 0c17.7 0 32 14.3 32 32z"/></svg>
               </button>
-              
-              <div 
-                className="flex-1 flex items-center justify-center font-bold text-sm"
-                style={{ 
-                  color: "var(--color-cq-text)",
-                  fontFamily: "var(--font-mono)",
-                  borderLeft: "1px solid var(--color-cq-border)",
-                  borderRight: "1px solid var(--color-cq-border)"
-                }}
-              >
+              <div className="flex-1 flex items-center justify-center font-bold text-sm"
+                style={{ color: "var(--color-cq-text)", fontFamily: "var(--font-mono)", borderLeft: "1px solid var(--color-cq-border)", borderRight: "1px solid var(--color-cq-border)" }}>
                 {itemEnCarrito?.cantidad ?? 1}
               </div>
-              
-              <button
-                onClick={handleIncrementar}
-                className="flex items-center justify-center transition-colors hover:bg-gray-100"
-                style={{ 
-                  width: "38px", 
-                  height: "38px", 
-                  color: "var(--color-cq-text)",
-                  cursor: "pointer",
-                  border: "none",
-                  background: "transparent"
-                }}
-              >
-                <svg viewBox="0 0 448 512" fill="currentColor" width="10" height="10">
-                  <path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z"/>
-                </svg>
+              <button onClick={handleIncrementar} className="flex items-center justify-center transition-colors hover:bg-gray-100"
+                style={{ width: "38px", height: "38px", color: "var(--color-cq-text)", cursor: "pointer", border: "none", background: "transparent" }}>
+                <svg viewBox="0 0 448 512" fill="currentColor" width="10" height="10"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z"/></svg>
               </button>
             </div>
           )}

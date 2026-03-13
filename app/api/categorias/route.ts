@@ -1,21 +1,46 @@
 // app/api/categorias/route.ts
-import { NextResponse } from "next/server";
-import mysql from "mysql2/promise";
+// ─────────────────────────────────────────────────────────────
+// Optimizado:
+//  • Pool singleton (elimina TCP+SSL handshake por request)
+//  • Caché en memoria con TTL 5 min (proceso)
+//  • Cache-Control: CDN cachea 5 min, stale-while-revalidate 1 h
+//
+// El header ya no usa este endpoint directamente —
+// las categorías llegan como prop desde el Server Component
+// del layout. Este endpoint sigue activo para el footer y
+// cualquier otro consumidor client-side.
+// ─────────────────────────────────────────────────────────────
+import { NextResponse }   from "next/server";
+import { pool }           from "@/app/global/lib/db/pool";
+import type { RowDataPacket } from "mysql2";
 
+/* ── Caché en memoria del proceso (Node.js) ──────────────── */
+interface CacheEntry {
+  data:      RowDataPacket[];
+  expiresAt: number;
+}
+
+const CACHE_TTL_MS = 5 * 60 * 1_000; // 5 minutos
+let memCache: CacheEntry | null = null;
+
+/* ── Handler ─────────────────────────────────────────────── */
 export async function GET() {
-  let connection;
+  /* 1. Servir desde caché si no expiró */
+  if (memCache && Date.now() < memCache.expiresAt) {
+    return NextResponse.json(
+      { success: true, data: memCache.data },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=3600",
+          "X-Cache":       "HIT",
+        },
+      }
+    );
+  }
 
+  /* 2. Query a DB usando pool (sin nueva conexión TCP) */
   try {
-    connection = await mysql.createConnection({
-      host:     process.env.DB_HOST,
-      user:     process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      port:     Number(process.env.DB_PORT) || 3306,
-      ssl:      { rejectUnauthorized: false },
-    });
-
-    const [rows] = await connection.execute(`
+    const [rows] = await pool.execute<RowDataPacket[]>(`
       SELECT
         c.id,
         c.nombre,
@@ -23,7 +48,10 @@ export async function GET() {
         c.descripcion,
         c.imagen,
         c.parent_id,
-        COUNT(DISTINCT CASE WHEN p.estado = 'activo' AND p.deleted_at IS NULL THEN p.id END) AS total_productos
+        COUNT(DISTINCT CASE
+          WHEN p.estado = 'activo' AND p.deleted_at IS NULL
+          THEN p.id
+        END) AS total_productos
       FROM categorias c
       LEFT JOIN producto_categorias pc ON pc.categoria_id = c.id
       LEFT JOIN productos p            ON p.id = pc.producto_id
@@ -32,14 +60,23 @@ export async function GET() {
       ORDER BY c.id ASC
     `);
 
-    return NextResponse.json({ success: true, data: rows });
+    /* 3. Guardar en caché de proceso */
+    memCache = { data: rows, expiresAt: Date.now() + CACHE_TTL_MS };
+
+    return NextResponse.json(
+      { success: true, data: rows },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=3600",
+          "X-Cache":       "MISS",
+        },
+      }
+    );
   } catch (error) {
     console.error("[/api/categorias] DB error:", error);
     return NextResponse.json(
       { success: false, error: "Error al conectar con la base de datos" },
       { status: 500 }
     );
-  } finally {
-    if (connection) await connection.end();
   }
 }

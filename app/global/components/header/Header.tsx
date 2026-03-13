@@ -2,20 +2,21 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { usePathname } from "next/navigation";
-import Link from "next/link";
+import { usePathname }  from "next/navigation";
+import Link             from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { NavMenu }       from "./NavMenu";
-import { CartButton }    from "./CartButton";
-import { UserButton }    from "./UserButton";
-import { CraftqubeLogo } from "./CraftqubeLogo";
+import { NavMenu }        from "./NavMenu";
+import { CartButton }     from "./CartButton";
+import { UserButton }     from "./UserButton";
+import { CraftqubeLogo }  from "./CraftqubeLogo";
+import type { CategoriaNav } from "@/app/global/lib/db/getCategorias";
 
-interface CategoriaDB {
-  id: number;
-  nombre: string;
-  slug: string;
-  descripcion: string | null;
-  total_productos: number;
+// Re-export del tipo para consumidores externos
+export type { CategoriaNav };
+
+interface HeaderProps {
+  /** Categorías pre-fetched en el Server Component del layout. */
+  initialCategorias?: CategoriaNav[];
 }
 
 const mobileLinks = [
@@ -26,18 +27,7 @@ const mobileLinks = [
   { label: "Contacto",    href: "/contacto" },
 ];
 
-function CatSkeleton() {
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="animate-pulse rounded-xl p-4"
-          style={{ background: "rgba(255,255,255,0.06)", height: "76px" }} />
-      ))}
-    </div>
-  );
-}
-
-/* ── Header simplificado solo para checkout ───────────────── */
+/* ── Header simplificado solo para checkout ──────────────── */
 function CheckoutOnlyHeader() {
   return (
     <header
@@ -64,38 +54,40 @@ function CheckoutOnlyHeader() {
   );
 }
 
-/* ── Export principal ─────────────────────────────────────── */
-export function Header() {
+/* ── Export principal ────────────────────────────────────── */
+export function Header({ initialCategorias = [] }: HeaderProps) {
   const pathname = usePathname();
   if (pathname === "/checkout") return <CheckoutOnlyHeader />;
-  return <FullHeader />;
+  return <FullHeader initialCategorias={initialCategorias} />;
 }
 
-/* ── Header completo ──────────────────────────────────────── */
-function FullHeader() {
+/* ── Header completo ─────────────────────────────────────── */
+function FullHeader({ initialCategorias }: Required<HeaderProps>) {
   const [mobileOpen,   setMobileOpen]   = useState(false);
   const [searchOpen,   setSearchOpen]   = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
-  const [categorias,   setCategorias]   = useState<CategoriaDB[]>([]);
-  const [catsLoaded,   setCatsLoaded]   = useState(false);
+
+  // Categorías listas desde el servidor — sin fetch client-side
+  const [categorias, setCategorias] = useState<CategoriaNav[]>(initialCategorias);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const headerRef      = useRef<HTMLElement>(null);
 
+  /* Foco al abrir search */
   useEffect(() => {
     if (searchOpen) setTimeout(() => searchInputRef.current?.focus(), 50);
   }, [searchOpen]);
 
+  /* Fallback fetch — solo si el prop llegó vacío (ej. error de DB en SSR) */
   useEffect(() => {
-    if (productsOpen && !catsLoaded) {
-      setCatsLoaded(true);
-      fetch("/api/categorias")
-        .then((r) => r.json())
-        .then((j) => { if (j.success) setCategorias(j.data); })
-        .catch(() => {});
-    }
-  }, [productsOpen, catsLoaded]);
+    if (categorias.length > 0) return; // ya tenemos datos, no fetchar
+    fetch("/api/categorias")
+      .then((r) => r.json())
+      .then((j) => { if (j.success) setCategorias(j.data); })
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /* Cerrar al click fuera del header */
   useEffect(() => {
     const close = (e: MouseEvent) => {
       if (!headerRef.current?.contains(e.target as Node)) {
@@ -108,198 +100,258 @@ function FullHeader() {
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  const handleToggleProducts = () => { setProductsOpen((v) => !v);  setSearchOpen(false); setMobileOpen(false); };
-  const handleToggleSearch   = () => { setSearchOpen((v) => !v);    setProductsOpen(false); setMobileOpen(false); };
-  const handleToggleMobile   = () => { setMobileOpen((v) => !v);    setProductsOpen(false); setSearchOpen(false); };
+  const toggleProducts = () => setProductsOpen((p) => !p);
 
   return (
-    <motion.header
-      ref={headerRef as React.RefObject<HTMLElement>}
+    <header
+      ref={headerRef}
       className="sticky top-0 left-0 right-0 z-50"
-      initial={{ y: -80, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
-      style={{ backgroundColor: "#1224a0", boxShadow: "0 4px 24px rgba(18,36,160,0.5)" }}
+      style={{
+        backgroundColor: "#1224a0",
+        boxShadow: "0 4px 24px rgba(18,36,160,0.5)",
+      }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-16">
-
-          <Link href="/" className="flex-shrink-0" onClick={() => setProductsOpen(false)}>
+      {/* ── Barra principal ── */}
+      <div
+        className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between"
+        style={{ height: 64 }}
+      >
+        {/* Logo */}
+        <Link href="/" style={{ textDecoration: "none" }}>
+          <motion.div whileHover={{ opacity: 0.85 }} whileTap={{ scale: 0.97 }}>
             <CraftqubeLogo />
-          </Link>
+          </motion.div>
+        </Link>
 
-          <nav className="hidden lg:flex items-center gap-1">
-            <NavMenu productsOpen={productsOpen} onToggleProducts={handleToggleProducts} />
-          </nav>
+        {/* Nav desktop */}
+        <nav className="hidden md:flex items-center">
+          <NavMenu
+            productsOpen={productsOpen}
+            onToggleProducts={toggleProducts}
+          />
+        </nav>
 
-          <div className="flex items-center gap-2">
-            <motion.button
-              whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }}
-              onClick={handleToggleSearch}
-              className="flex items-center justify-center w-9 h-9 rounded-lg"
-              style={{
-                background: searchOpen ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.1)",
-                border: "1px solid rgba(255,255,255,0.15)",
-                color: "white", cursor: "pointer",
-              }}
-              aria-label="Buscar"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-              </svg>
-            </motion.button>
+        {/* Acciones */}
+        <div className="flex items-center gap-2">
+          {/* Search icon */}
+          <motion.button
+            whileTap={{ scale: 0.92 }}
+            onClick={() => { setSearchOpen((p) => !p); setProductsOpen(false); }}
+            className="flex items-center justify-center w-9 h-9 rounded-lg"
+            style={{
+              background: searchOpen ? "rgba(255,255,255,0.12)" : "transparent",
+              border: "none", cursor: "pointer", color: "white",
+            }}
+            aria-label="Buscar"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+          </motion.button>
 
-            <UserButton />
-            <CartButton />
+          <CartButton />
+          <UserButton />
 
-            <motion.button
-              whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }}
-              onClick={handleToggleMobile}
-              className="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg"
-              style={{
-                background: "rgba(255,255,255,0.1)",
-                border: "1px solid rgba(255,255,255,0.15)",
-                color: "white", cursor: "pointer",
-              }}
-              aria-label="Menú"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                {mobileOpen
-                  ? <><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>
-                  : <><path d="M4 12h16M4 6h16M4 18h16"/></>
-                }
-              </svg>
-            </motion.button>
-          </div>
+          {/* Hamburger mobile */}
+          <motion.button
+            whileTap={{ scale: 0.92 }}
+            onClick={() => { setMobileOpen((p) => !p); setProductsOpen(false); }}
+            className="flex md:hidden items-center justify-center w-9 h-9 rounded-lg"
+            style={{ background: "transparent", border: "none", cursor: "pointer", color: "white" }}
+            aria-label="Menú"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.2">
+              {mobileOpen
+                ? <><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>
+                : <><path d="M3 12h18"/><path d="M3 6h18"/><path d="M3 18h18"/></>}
+            </svg>
+          </motion.button>
         </div>
       </div>
 
+      {/* ── Panel Productos desktop ── */}
       <AnimatePresence>
-        {searchOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.25, ease: "easeInOut" }}
-            style={{
-              background: "linear-gradient(180deg, rgba(18,36,160,0.97) 0%, rgba(18,36,160,0.95) 100%)",
-              borderTop: "1px solid rgba(255,255,255,0.1)",
-            }}
-          >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-              <input
-                ref={searchInputRef}
-                type="search"
-                placeholder="Buscar productos..."
-                className="w-full px-5 py-3 rounded-xl text-base"
-                style={{
-                  background: "rgba(255,255,255,0.12)",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  color: "white", outline: "none",
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && e.currentTarget.value.trim()) {
-                    window.location.href = `/catalogo?q=${encodeURIComponent(e.currentTarget.value.trim())}`;
-                  }
-                }}
-              />
-            </div>
-          </motion.div>
-        )}
-
         {productsOpen && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            key="products-panel"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
             style={{
-              background: "linear-gradient(180deg, rgba(18,36,160,0.97) 0%, rgba(18,36,160,0.94) 100%)",
+              background: "#0f1fa8",
               borderTop: "1px solid rgba(255,255,255,0.1)",
+              padding: "24px 0 28px",
             }}
           >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-              <p className="text-xs tracking-widest uppercase mb-4"
-                style={{ color: "rgba(255,255,255,0.5)" }}>
-                Categorías
-              </p>
-              {!catsLoaded || !categorias.length ? (
-                <CatSkeleton />
+            <div className="max-w-7xl mx-auto px-4 sm:px-6">
+              {categorias.length === 0 ? (
+                /* Skeleton mínimo — sólo si el fallback fetch aún no resolvió */
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="animate-pulse rounded-xl"
+                      style={{ background: "rgba(255,255,255,0.06)", height: 76 }}
+                    />
+                  ))}
+                </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {categorias.map((cat) => (
-                    <Link
+                  {categorias.map((cat, i) => (
+                    <motion.div
                       key={cat.id}
-                      href={`/productos/${cat.slug}`}
-                      onClick={() => setProductsOpen(false)}
-                      className="group rounded-xl p-4 transition-all duration-200"
-                      style={{
-                        background: "rgba(255,255,255,0.06)",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        textDecoration: "none",
-                      }}
-                      onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.12)";
-                        (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(255,255,255,0.2)";
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.06)";
-                        (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(255,255,255,0.1)";
-                      }}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.04, duration: 0.2 }}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-sm" style={{ color: "white" }}>
+                      <Link
+                        href={`/catalogo?cat=${cat.slug}`}
+                        onClick={() => setProductsOpen(false)}
+                        className="flex flex-col gap-1 rounded-xl p-4 transition-colors"
+                        style={{
+                          textDecoration: "none",
+                          background: "rgba(255,255,255,0.06)",
+                          border: "1px solid rgba(255,255,255,0.08)",
+                        }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.12)";
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.06)";
+                        }}
+                      >
+                        <span style={{ color: "white", fontWeight: 600, fontSize: "0.88rem" }}>
                           {cat.nombre}
                         </span>
-                        <span className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-                          {cat.total_productos}
-                        </span>
-                      </div>
-                    </Link>
+                        {cat.total_productos > 0 && (
+                          <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.72rem" }}>
+                            {cat.total_productos} producto{cat.total_productos !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </Link>
+                    </motion.div>
                   ))}
+
+                  {/* Ver todo */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: categorias.length * 0.04, duration: 0.2 }}
+                  >
+                    <Link
+                      href="/catalogo"
+                      onClick={() => setProductsOpen(false)}
+                      className="flex flex-col justify-center items-center gap-1 rounded-xl p-4 transition-colors"
+                      style={{
+                        textDecoration: "none",
+                        background: "rgba(255,255,255,0.03)",
+                        border: "1px dashed rgba(255,255,255,0.15)",
+                        height: "100%",
+                        minHeight: 76,
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.08)";
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.03)";
+                      }}
+                    >
+                      <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: 600, fontSize: "0.82rem" }}>
+                        Ver todo el catálogo →
+                      </span>
+                    </Link>
+                  </motion.div>
                 </div>
               )}
             </div>
           </motion.div>
         )}
+      </AnimatePresence>
 
-        {mobileOpen && (
+      {/* ── Barra de búsqueda ── */}
+      <AnimatePresence>
+        {searchOpen && (
           <motion.div
+            key="search-bar"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.25, ease: "easeInOut" }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
             style={{
-              background: "linear-gradient(180deg, rgba(18,36,160,0.97) 0%, rgba(18,36,160,0.95) 100%)",
+              overflow: "hidden",
               borderTop: "1px solid rgba(255,255,255,0.1)",
+              background: "#0f1fa8",
             }}
           >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-              <nav className="flex flex-col gap-1">
-                {mobileLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setMobileOpen(false)}
-                    className="px-4 py-3 rounded-lg text-base font-semibold transition-colors"
-                    style={{ color: "rgba(255,255,255,0.85)", textDecoration: "none" }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLAnchorElement).style.color = "white";
-                      (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.08)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.85)";
-                      (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
-                    }}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </nav>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const q = searchInputRef.current?.value?.trim();
+                  if (q) window.location.href = `/catalogo?q=${encodeURIComponent(q)}`;
+                }}
+                className="flex gap-2"
+              >
+                <input
+                  ref={searchInputRef}
+                  type="search"
+                  placeholder="Buscar productos, SKU, categoría…"
+                  className="flex-1 rounded-lg px-4 py-2 text-sm outline-none"
+                  style={{
+                    background: "rgba(255,255,255,0.1)",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    color: "white",
+                    fontFamily: "inherit",
+                  }}
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg text-sm font-semibold"
+                  style={{ background: "white", color: "#1224a0", border: "none", cursor: "pointer" }}
+                >
+                  Buscar
+                </button>
+              </form>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.header>
+
+      {/* ── Menú mobile ── */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.nav
+            key="mobile-nav"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            style={{
+              overflow: "hidden",
+              borderTop: "1px solid rgba(255,255,255,0.1)",
+              background: "#0f1fa8",
+            }}
+            className="md:hidden"
+          >
+            <div className="flex flex-col px-4 py-4 gap-1">
+              {mobileLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="px-3 py-2.5 rounded-lg text-sm font-semibold"
+                  style={{ color: "rgba(255,255,255,0.85)", textDecoration: "none" }}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </motion.nav>
+        )}
+      </AnimatePresence>
+    </header>
   );
 }
