@@ -53,11 +53,22 @@ function BloqueSpei({ spei }: { spei: SpeiConfirmData }) {
           </p>
           <div className="flex items-center justify-between gap-3">
             <code style={{ fontFamily: "var(--font-mono)", fontSize: "1rem", fontWeight: 700, color: "var(--color-cq-text)", letterSpacing: "0.06em" }}>
-              {spei.clabe}
+              {spei.clabe ?? "—"}
             </code>
-            <button onClick={() => copiar(spei.clabe, "clabe")}
+            <button
+              onClick={() => copiar(spei.clabe ?? "", "clabe")}
+              disabled={!spei.clabe}
               className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all"
-              style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", letterSpacing: "0.06em", background: copied === "clabe" ? "rgba(34,197,94,0.1)" : "var(--color-cq-surface-2)", color: copied === "clabe" ? "#22C55E" : "var(--color-cq-accent)", border: "1px solid var(--color-cq-border)", cursor: "pointer" }}>
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.65rem",
+                letterSpacing: "0.06em",
+                background: copied === "clabe" ? "rgba(34,197,94,0.1)" : "var(--color-cq-surface-2)",
+                color: copied === "clabe" ? "#22C55E" : "var(--color-cq-accent)",
+                border: "1px solid var(--color-cq-border)",
+                cursor: spei.clabe ? "pointer" : "not-allowed",
+                opacity: spei.clabe ? 1 : 0.5,
+              }}>
               <i className={`fa-solid ${copied === "clabe" ? "fa-check" : "fa-copy"}`} style={{ fontSize: "0.7rem" }} />
               {copied === "clabe" ? "Copiado" : "Copiar"}
             </button>
@@ -84,9 +95,18 @@ function BloqueSpei({ spei }: { spei: SpeiConfirmData }) {
               <code style={{ fontFamily: "var(--font-mono)", fontSize: "0.9rem", fontWeight: 600, color: "var(--color-cq-text)" }}>
                 {spei.referencia}
               </code>
-              <button onClick={() => copiar(spei.referencia!, "ref")}
+              <button
+                onClick={() => copiar(spei.referencia!, "ref")}
                 className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all"
-                style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", letterSpacing: "0.06em", background: copied === "ref" ? "rgba(34,197,94,0.1)" : "var(--color-cq-surface-2)", color: copied === "ref" ? "#22C55E" : "var(--color-cq-accent)", border: "1px solid var(--color-cq-border)", cursor: "pointer" }}>
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "0.65rem",
+                  letterSpacing: "0.06em",
+                  background: copied === "ref" ? "rgba(34,197,94,0.1)" : "var(--color-cq-surface-2)",
+                  color: copied === "ref" ? "#22C55E" : "var(--color-cq-accent)",
+                  border: "1px solid var(--color-cq-border)",
+                  cursor: "pointer",
+                }}>
                 <i className={`fa-solid ${copied === "ref" ? "fa-check" : "fa-copy"}`} style={{ fontSize: "0.7rem" }} />
                 {copied === "ref" ? "Copiado" : "Copiar"}
               </button>
@@ -95,21 +115,33 @@ function BloqueSpei({ spei }: { spei: SpeiConfirmData }) {
         )}
 
         {/* Monto */}
-        <div style={{ height: 1, background: "var(--color-cq-border)", margin: "2px 0" }} />
-        <div className="flex items-center justify-between">
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--color-cq-muted)" }}>
-            Monto exacto a transferir
-          </span>
-          <span style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", fontWeight: 700, color: "var(--color-cq-accent)" }}>
-            {formatPrice(spei.monto)}
-          </span>
-        </div>
+        {spei.monto && (
+          <div className="flex items-center justify-between pt-2" style={{ borderTop: "1px solid rgba(37,99,235,0.12)" }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--color-cq-muted-2)" }}>
+              Monto exacto a transferir
+            </span>
+            <span style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", fontWeight: 800, color: "var(--color-cq-accent)" }}>
+              {formatPrice(spei.monto)}
+            </span>
+          </div>
+        )}
 
-        {spei.expira_en && (
-          <p style={{ fontFamily: "var(--font-body)", fontSize: "0.75rem", color: "var(--color-cq-muted-2)" }}>
-            <i className="fa-solid fa-clock" style={{ marginRight: 6, fontSize: "0.7rem" }} />
-            Válido hasta: {formatFecha(spei.expira_en)}
-          </p>
+        {/* Link instrucciones */}
+        {spei.hostedInstructionsUrl && (
+          <a href={spei.hostedInstructionsUrl} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-2 justify-center rounded-xl py-2.5 transition-all"
+            style={{
+              fontFamily: "var(--font-body)",
+              fontSize: "0.8rem",
+              fontWeight: 600,
+              color: "var(--color-cq-accent)",
+              border: "1px solid rgba(37,99,235,0.2)",
+              background: "rgba(37,99,235,0.04)",
+              textDecoration: "none",
+            }}>
+            <i className="fa-solid fa-arrow-up-right-from-square" style={{ fontSize: "0.7rem" }} />
+            Ver instrucciones completas
+          </a>
         )}
       </div>
     </motion.div>
@@ -117,7 +149,7 @@ function BloqueSpei({ spei }: { spei: SpeiConfirmData }) {
 }
 
 /* ── Bloque OXXO ─────────────────────────────────────────── */
-function BloqueOxxo({ oxxo }: { oxxo: OxxoConfirmData }) {
+function BloqueOxxo({ oxxo, totalFinal }: { oxxo: OxxoConfirmData; totalFinal: number }) {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
       className="w-full rounded-2xl overflow-hidden"
@@ -127,12 +159,12 @@ function BloqueOxxo({ oxxo }: { oxxo: OxxoConfirmData }) {
         style={{ borderBottom: "1px solid rgba(234,88,12,0.12)", background: "rgba(234,88,12,0.06)" }}>
         <i className="fa-solid fa-store" style={{ fontSize: "0.85rem", color: "#EA580C" }} />
         <span style={{ fontFamily: "var(--font-display)", fontSize: "0.85rem", fontWeight: 700, color: "var(--color-cq-text)" }}>
-          Pago en OXXO
+          Paga en OXXO
         </span>
       </div>
 
-      <div className="px-5 py-4 flex flex-col gap-3">
-        <p style={{ fontFamily: "var(--font-body)", fontSize: "0.82rem", color: "var(--color-cq-muted)", lineHeight: 1.6 }}>
+      <div className="px-5 py-4 flex flex-col items-center gap-3 text-center">
+        <p style={{ fontFamily: "var(--font-body)", fontSize: "0.8rem", color: "var(--color-cq-muted)", lineHeight: 1.6 }}>
           Presenta este número de referencia en cualquier tienda OXXO para completar tu pago.
         </p>
         <div className="flex flex-col items-center gap-2 py-4 px-5 rounded-xl"
@@ -144,7 +176,7 @@ function BloqueOxxo({ oxxo }: { oxxo: OxxoConfirmData }) {
             {oxxo.numero}
           </code>
           <span style={{ fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 700, color: "#EA580C" }}>
-            {formatPrice(oxxo.monto ?? 0)}
+            {formatPrice(totalFinal)}
           </span>
         </div>
         {oxxo.expira && (
@@ -163,9 +195,9 @@ export function StepConfirmacion({ formData, orderNumber, totalFinal, pedidoId, 
   const { usuario, autenticado } = useAuth();
   const { contacto, envio, pago } = formData;
   const metodoLabel =
-    pago.metodo === "tarjeta" ? "Tarjeta de crédito / débito" :
+    pago.metodo === "tarjeta"       ? "Tarjeta de crédito / débito" :
     pago.metodo === "transferencia" ? "Transferencia SPEI" :
-    pago.metodo === "oxxo" ? "OXXO en efectivo" : pago.metodo;
+    pago.metodo === "oxxo"          ? "OXXO en efectivo" : pago.metodo;
 
   useEffect(() => {
     onClearCart();
@@ -179,7 +211,7 @@ export function StepConfirmacion({ formData, orderNumber, totalFinal, pedidoId, 
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       className="flex flex-col items-center gap-7 py-4"
     >
-      {/* Ícono */}
+      {/* Ícono de éxito */}
       <motion.div
         initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.1 }}
@@ -205,28 +237,32 @@ export function StepConfirmacion({ formData, orderNumber, totalFinal, pedidoId, 
       </div>
 
       {/* Número de pedido */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-        className="flex flex-col items-center gap-2 py-4 px-8 rounded-2xl w-full"
-        style={{ background: "var(--color-cq-surface-2)", border: "1px solid var(--color-cq-border)", maxWidth: 360 }}>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--color-cq-muted-2)" }}>
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+        className="flex flex-col items-center gap-1.5 px-6 py-4 rounded-2xl"
+        style={{ border: "1px solid var(--color-cq-border)", background: "var(--color-cq-surface-2)" }}>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.58rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--color-cq-muted-2)" }}>
           Número de pedido
         </span>
-        <span style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: 800, color: "var(--color-cq-text)", letterSpacing: "0.04em" }}>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: "1.4rem", fontWeight: 800, color: "var(--color-cq-text)", letterSpacing: "0.06em" }}>
           {orderNumber}
         </span>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", color: "var(--color-cq-accent)" }}>
+        <span style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", fontWeight: 700, color: "var(--color-cq-accent)" }}>
           {formatPrice(totalFinal)}
         </span>
       </motion.div>
 
-      {/* Bloque SPEI o OXXO */}
-      {paymentData?.spei && <BloqueSpei spei={paymentData.spei} />}
-      {paymentData?.oxxo && <BloqueOxxo oxxo={paymentData.oxxo} />}
+      {/* Bloque de pago específico */}
+      {paymentData?.spei && (
+        <BloqueSpei spei={paymentData.spei} />
+      )}
+      {paymentData?.oxxo && (
+        <BloqueOxxo oxxo={paymentData.oxxo} totalFinal={totalFinal} />
+      )}
 
-      {/* Resumen datos */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+      {/* Resumen del pedido */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
         className="w-full rounded-2xl overflow-hidden"
-        style={{ border: "1px solid var(--color-cq-border)", maxWidth: 480 }}>
+        style={{ border: "1px solid var(--color-cq-border)", background: "var(--color-cq-surface)", maxWidth: 480 }}>
 
         {/* Dirección */}
         <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--color-cq-border)" }}>
@@ -236,7 +272,7 @@ export function StepConfirmacion({ formData, orderNumber, totalFinal, pedidoId, 
               Dirección de envío
             </span>
           </div>
-          <p style={{ fontFamily: "var(--font-body)", fontSize: "0.82rem", color: "var(--color-cq-text)", lineHeight: 1.6 }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "0.82rem", color: "var(--color-cq-text)", lineHeight: 1.7 }}>
             {contacto.nombre} {contacto.apellido}<br />
             {envio.calle} {envio.numeroExt}{envio.numeroInt ? ` Int. ${envio.numeroInt}` : ""}<br />
             {envio.colonia}, {envio.ciudad}{envio.municipio ? `, ${envio.municipio}` : ""}<br />
@@ -271,37 +307,50 @@ export function StepConfirmacion({ formData, orderNumber, totalFinal, pedidoId, 
               Crea una cuenta gratis y accede a tu historial de pedidos en cualquier momento.
             </p>
           </div>
-          <Link href={`/registro?email=${encodeURIComponent(contacto.email)}`}
-            className="flex items-center justify-center gap-2 rounded-xl"
-            style={{ height: 42, background: "var(--color-cq-accent)", color: "white", textDecoration: "none", fontFamily: "var(--font-body)", fontSize: "0.85rem", fontWeight: 600 }}>
-            <i className="fa-solid fa-user-plus" style={{ fontSize: "0.78rem" }} />
-            Crear cuenta gratis
+          <Link href={`/register?email=${encodeURIComponent(contacto.email)}`}
+            className="flex items-center justify-center gap-2 rounded-xl py-2.5 transition-all"
+            style={{
+              fontFamily: "var(--font-body)",
+              fontWeight: 600,
+              fontSize: "0.875rem",
+              background: "var(--color-cq-accent)",
+              color: "white",
+              textDecoration: "none",
+            }}>
+            <i className="fa-solid fa-user-plus" style={{ fontSize: "0.8rem" }} />
+            Crear cuenta
           </Link>
         </motion.div>
       )}
 
-      {/* Acciones */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
-        className="flex flex-col gap-3 w-full" style={{ maxWidth: 480 }}>
-        <Link href="/mi-cuenta/pedidos"
-          className="flex items-center justify-center gap-2 rounded-xl"
-          style={{ height: 44, background: "var(--color-cq-surface-2)", border: "1px solid var(--color-cq-border)", textDecoration: "none", fontFamily: "var(--font-body)", fontSize: "0.85rem", fontWeight: 500, color: "var(--color-cq-text)" }}>
-          <i className="fa-solid fa-bag-shopping" style={{ fontSize: "0.8rem", color: "var(--color-cq-accent)" }} />
-          Ver estado de mi pedido
+      {/* CTA volver al catálogo */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+        className="flex flex-col items-center gap-3">
+        <Link href="/catalogo"
+          className="flex items-center gap-2 rounded-xl px-6 py-3 transition-all"
+          style={{
+            fontFamily: "var(--font-body)",
+            fontWeight: 600,
+            fontSize: "0.9rem",
+            border: "1px solid var(--color-cq-border)",
+            color: "var(--color-cq-text)",
+            background: "var(--color-cq-surface)",
+            textDecoration: "none",
+          }}>
+          <i className="fa-solid fa-arrow-left" style={{ fontSize: "0.8rem" }} />
+          Seguir comprando
         </Link>
-        <div className="grid grid-cols-2 gap-3">
-          <Link href="/catalogo"
-            className="flex items-center justify-center gap-2 rounded-xl"
-            style={{ height: 44, background: "var(--color-cq-accent)", color: "white", textDecoration: "none", fontFamily: "var(--font-body)", fontSize: "0.85rem", fontWeight: 600 }}>
-            <i className="fa-solid fa-store" style={{ fontSize: "0.75rem" }} />
-            Seguir comprando
+        {autenticado && (
+          <Link href="/cuenta/pedidos"
+            style={{
+              fontFamily: "var(--font-body)",
+              fontSize: "0.8rem",
+              color: "var(--color-cq-muted)",
+              textDecoration: "underline",
+            }}>
+            Ver mis pedidos
           </Link>
-          <Link href="/"
-            className="flex items-center justify-center rounded-xl"
-            style={{ height: 44, background: "var(--color-cq-surface-2)", border: "1px solid var(--color-cq-border)", textDecoration: "none", fontFamily: "var(--font-body)", fontSize: "0.85rem", color: "var(--color-cq-muted)" }}>
-            Ir al inicio
-          </Link>
-        </div>
+        )}
       </motion.div>
     </motion.div>
   );
