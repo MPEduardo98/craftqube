@@ -1,8 +1,10 @@
 // app/layout.tsx
 // ─────────────────────────────────────────────────────────────
 // Server Component raíz.
-// Fetcha categorías en el servidor (unstable_cache, TTL 5 min)
-// y las pasa al Header como prop → cero waterfalls en cliente.
+// CAMBIOS SEO:
+//  - Añadido metadataBase → URLs OG y canonical son absolutas
+//  - Añadido openGraph y twitter globales
+//  - JSON-LD Organization inyectado una sola vez aquí
 // ─────────────────────────────────────────────────────────────
 import type { Metadata }  from "next";
 import { Barlow_Condensed, DM_Sans, JetBrains_Mono } from "next/font/google";
@@ -18,6 +20,9 @@ import { AuthProvider }     from "./global/context/AuthContext";
 import { AlertProvider }    from "./global/context/AlertContext";
 import { AlertContainer }   from "./global/components/alerts/AlertContainer";
 import { getCategorias }    from "./global/lib/db/getCategorias";
+import { buildOrganizationJsonLd } from "./global/lib/seo/jsonld";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.com";
 
 const barlowCondensed = Barlow_Condensed({
   variable: "--font-barlow",
@@ -40,41 +45,94 @@ const jetbrainsMono = JetBrains_Mono({
   display:  "swap",
 });
 
+// ── Metadata global ───────────────────────────────────────────
+// metadataBase es CRÍTICO: sin él, Next.js no puede construir
+// URLs absolutas para OG images ni canonical links.
 export const metadata: Metadata = {
-  title:       "Craftqube — Perfiles de Aluminio & Automatización Industrial",
+  metadataBase: new URL(SITE_URL),
+
+  title: {
+    default:  "CraftQube — Perfiles de Aluminio & Automatización Industrial",
+    template: "%s — CraftQube",
+  },
   description:
-    "Distribuidor premium de perfiles estructurales de aluminio, tornillería, escuadras y sistemas de automatización industrial. Calidad, precisión y tecnología.",
+    "Distribuidor premium de perfiles estructurales de aluminio, tornillería, escuadras y sistemas de automatización industrial en México. Calidad, precisión y tecnología.",
   keywords: [
     "perfil aluminio",
+    "perfiles estructurales aluminio",
     "automatización industrial",
-    "tornillería",
+    "tornillería industrial",
     "escuadras aluminio",
     "Craftqube",
+    "Mexico",
   ],
+
+  // ── OpenGraph global (heredado por páginas que no lo sobreescriben) ──
+  openGraph: {
+    type:      "website",
+    siteName:  "CraftQube",
+    locale:    "es_MX",
+    url:       SITE_URL,
+    title:     "CraftQube — Perfiles de Aluminio & Automatización Industrial",
+    description:
+      "Distribuidor premium de perfiles estructurales de aluminio, tornillería y accesorios industriales en México.",
+    images: [
+      {
+        url:    "/og-default.jpg", // → se resuelve a SITE_URL/og-default.jpg
+        width:  1200,
+        height: 630,
+        alt:    "CraftQube — Perfiles de Aluminio",
+      },
+    ],
+  },
+
+  // ── Twitter Card global ───────────────────────────────────
+  twitter: {
+    card:  "summary_large_image",
+    title: "CraftQube — Perfiles de Aluminio & Automatización Industrial",
+    description:
+      "Distribuidor premium de perfiles estructurales de aluminio y accesorios industriales en México.",
+    images: ["/og-default.jpg"],
+  },
+
+  // ── Índexado ─────────────────────────────────────────────
+  robots: {
+    index:             true,
+    follow:            true,
+    googleBot: {
+      index:               true,
+      follow:              true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet":       -1,
+    },
+  },
 };
 
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-
-  // Categorías resueltas en el servidor — sin fetch client-side
-  // unstable_cache devuelve la misma respuesta si no expiró el TTL
-  const categorias = await getCategorias().catch(() => []);
+  const categorias     = await getCategorias().catch(() => []);
+  const organizationLd = buildOrganizationJsonLd();
 
   return (
     <html lang="es" className="scroll-smooth">
       <body
         className={`${barlowCondensed.variable} ${dmSans.variable} ${jetbrainsMono.variable} antialiased`}
       >
+        {/* JSON-LD Organization — una sola vez en todo el sitio */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationLd) }}
+        />
+
         <AlertProvider>
           <AuthProvider>
             <ThemeProvider>
               <CartProvider>
                 <WishlistProvider>
-                  {/* initialCategorias → header las muestra al instante */}
                   <Header initialCategorias={categorias} />
                   <CartDrawer />
-                  {/* pt-16 compensa el header fixed de h-16 (64px) */}
                   <main>{children}</main>
                   <Footer />
                   <AlertContainer />

@@ -21,7 +21,20 @@ interface Meta {
 
 const LIMIT = 24;
 
-export function CatalogClient() {
+// ── CAMBIO SEO: props opcionales para hidratación SSR ────────
+interface Props {
+  initialProductos?:  Producto[];
+  initialTotal?:      number;
+  initialPages?:      number;
+  initialCategorias?: Categoria[];
+}
+
+export function CatalogClient({
+  initialProductos  = [],
+  initialTotal      = 0,
+  initialPages      = 0,
+  initialCategorias = [],
+}: Props) {
   const router       = useRouter();
   const searchParams = useSearchParams();
 
@@ -35,11 +48,32 @@ export function CatalogClient() {
   const [view,        setView]        = useState<"grid" | "list">("grid");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  /* ── CAMBIO SEO: detectar si hay filtros en URL ─────────────
+     Si no los hay, usamos los datos SSR del servidor directamente
+     y saltamos el primer fetch para evitar doble carga. */
+  const hasUrlFilters = !!(
+    searchParams.get("q")     ||
+    searchParams.get("cat")   ||
+    searchParams.get("marca") ||
+    searchParams.get("stock") ||
+    searchParams.get("sort")  ||
+    searchParams.get("page")
+  );
+
   /* ── Datos ── */
-  const [productos,  setProductos]  = useState<Producto[]>([]);
-  const [meta,       setMeta]       = useState<Meta>({ total: 0, page: 1, limit: LIMIT, pages: 0 });
-  const [loading,    setLoading]    = useState(true);
-  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [productos,  setProductos]  = useState<Producto[]>(
+    hasUrlFilters ? [] : initialProductos
+  );
+  const [meta,       setMeta]       = useState<Meta>({
+    total: hasUrlFilters ? 0 : initialTotal,
+    page:  1,
+    limit: LIMIT,
+    pages: hasUrlFilters ? 0 : initialPages,
+  });
+  const [loading,    setLoading]    = useState(hasUrlFilters);
+  const [categorias, setCategorias] = useState<Categoria[]>(
+    initialCategorias.length > 0 ? initialCategorias : []
+  );
   const [marcas,     setMarcas]     = useState<Marca[]>([]);
 
   /* ── Debounce search ── */
@@ -54,15 +88,19 @@ export function CatalogClient() {
 
   /* ── Cargar categorías y marcas una sola vez ── */
   useEffect(() => {
-    fetch("/api/categorias")
-      .then((r) => r.json())
-      .then((j) => { if (j.success) setCategorias(j.data); })
-      .catch(() => {});
+    // Solo fetch categorías si no vinieron del servidor
+    if (categorias.length === 0) {
+      fetch("/api/categorias")
+        .then((r) => r.json())
+        .then((j) => { if (j.success) setCategorias(j.data); })
+        .catch(() => {});
+    }
 
     fetch("/api/marcas")
       .then((r) => r.json())
       .then((j) => { if (j.success) setMarcas(j.data); })
       .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* ── Sincronizar URL ── */
@@ -80,7 +118,16 @@ export function CatalogClient() {
   }, [debouncedQ, cat, marca, soloStock, sort, page, router]);
 
   /* ── Fetch productos ── */
+  // CAMBIO SEO: saltamos el primer render si los datos vienen del servidor
+  const isFirstRender = useRef(true);
+
   useEffect(() => {
+    if (isFirstRender.current && !hasUrlFilters) {
+      isFirstRender.current = false;
+      return;
+    }
+    isFirstRender.current = false;
+
     const params = new URLSearchParams();
     if (debouncedQ) params.set("q",     debouncedQ);
     if (cat)        params.set("cat",   cat);
@@ -115,9 +162,9 @@ export function CatalogClient() {
 
   /* ── Active filter chips ── */
   const chips: { label: string; onRemove: () => void }[] = [];
-  if (cat)       chips.push({ label: categorias.find((c) => c.slug === cat)?.nombre ?? cat, onRemove: () => handleCat("") });
-  if (marca)     chips.push({ label: marca, onRemove: () => handleMarca("") });
-  if (soloStock) chips.push({ label: "En stock", onRemove: () => handleStock(false) });
+  if (cat)        chips.push({ label: categorias.find((c) => c.slug === cat)?.nombre ?? cat, onRemove: () => handleCat("") });
+  if (marca)      chips.push({ label: marca, onRemove: () => handleMarca("") });
+  if (soloStock)  chips.push({ label: "En stock", onRemove: () => handleStock(false) });
   if (debouncedQ) chips.push({ label: `"${debouncedQ}"`, onRemove: () => { setQ(""); setDebouncedQ(""); syncURL({ q: "" }); } });
 
   return (
@@ -151,28 +198,30 @@ export function CatalogClient() {
           className="relative mb-6"
           style={{ maxWidth: "560px" }}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15"
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: "var(--color-cq-muted)" }}>
-            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          <svg
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            width="16" height="16"
+            className="absolute pointer-events-none"
+            style={{ left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--color-cq-muted)" }}
+          >
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
           </svg>
           <input
-            type="text"
+            type="search"
+            placeholder="Buscar productos, SKU, marca…"
             value={q}
             onChange={(e) => { setQ(e.target.value); setPage(1); }}
-            placeholder="Buscar por nombre, SKU o marca..."
-            className="w-full pl-10 pr-10 py-2.5 rounded-xl"
             style={{
-              background:    "var(--color-cq-surface)",
-              border:        "1.5px solid var(--color-cq-border)",
-              color:         "var(--color-cq-text)",
-              fontFamily:    "var(--font-body)",
-              fontSize:      "0.85rem",
-              outline:       "none",
-              transition:    "border-color 0.15s ease",
+              width: "100%", paddingLeft: 40, paddingRight: q ? 36 : 16,
+              paddingTop: 10, paddingBottom: 10,
+              background:   "var(--color-cq-surface)",
+              border:       "1px solid var(--color-cq-border)",
+              borderRadius: "12px",
+              fontFamily:   "var(--font-body)",
+              fontSize:     "0.85rem",
+              color:        "var(--color-cq-text)",
+              outline:      "none",
             }}
-            onFocus={(e) => { e.currentTarget.style.borderColor = "var(--color-cq-accent)"; }}
-            onBlur={(e)  => { e.currentTarget.style.borderColor = "var(--color-cq-border)"; }}
           />
           <AnimatePresence>
             {q && (
@@ -180,9 +229,9 @@ export function CatalogClient() {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                onClick={() => { setQ(""); setDebouncedQ(""); }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full"
-                style={{ width: 18, height: 18, background: "var(--color-cq-muted-2)", color: "white", border: "none", cursor: "pointer" }}
+                onClick={() => { setQ(""); setPage(1); }}
+                className="absolute flex items-center justify-center rounded-full"
+                style={{ right: 10, top: "50%", transform: "translateY(-50%)", width: 18, height: 18, background: "var(--color-cq-muted-2)", color: "white", border: "none", cursor: "pointer" }}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="9" height="9"><path d="M18 6L6 18M6 6l12 12"/></svg>
               </motion.button>
@@ -208,13 +257,13 @@ export function CatalogClient() {
                   onClick={chip.onRemove}
                   className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
                   style={{
-                    background:  "var(--color-cq-accent-glow)",
-                    border:      "1px solid rgba(37,99,235,0.25)",
-                    color:       "var(--color-cq-accent)",
-                    fontFamily:  "var(--font-mono)",
-                    fontSize:    "0.62rem",
+                    background:    "var(--color-cq-accent-glow)",
+                    border:        "1px solid rgba(37,99,235,0.25)",
+                    color:         "var(--color-cq-accent)",
+                    fontFamily:    "var(--font-mono)",
+                    fontSize:      "0.62rem",
                     letterSpacing: "0.04em",
-                    cursor:      "pointer",
+                    cursor:        "pointer",
                   }}
                 >
                   {chip.label}
