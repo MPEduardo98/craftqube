@@ -269,4 +269,4 @@ function UserPlusIcon() {
       <line x1="23" y1="11" x2="17" y2="11"/>
     </svg>
   );
-}
+} 
