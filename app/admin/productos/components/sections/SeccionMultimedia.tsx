@@ -683,6 +683,22 @@ function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt,
                       {nombreErr}
                     </p>
                   )}
+                  {slug && (
+                    <button
+                      type="button"
+                      onClick={() => setNombre(slug)}
+                      className="mt-2 text-xs hover:underline transition"
+                      style={{ 
+                        color: "var(--color-cq-primary)",
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 0
+                      }}
+                    >
+                      Usar slug del producto como nombre
+                    </button>
+                  )}
                 </div>
 
                 <div>
