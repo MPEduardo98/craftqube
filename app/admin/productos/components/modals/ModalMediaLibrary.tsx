@@ -6,7 +6,7 @@
 // ─────────────────────────────────────────────────────────────
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { buildImageSrc } from "./producto-form-types";
+import { buildImageSrc } from "../producto-form-types";
 
 /* ── Tipos ─────────────────────────────────────────────────── */
 export interface MediaItem {

@@ -21,9 +21,9 @@ import {
 } from "./producto-form-types";
 
 import { SectionCard, Field }  from "./producto-form-ui";
-import { SeccionVariantes }    from "./SeccionVariantes";
-import { SeccionMultimedia }   from "./SeccionMultimedia";
-import { SeccionSEO }          from "./SeccionSEO";
+import { SeccionVariantes }    from "./sections/SeccionVariantes";
+import { SeccionMultimedia }   from "./sections/SeccionMultimedia";
+import { SeccionSEO }          from "./sections/SeccionSEO";
 import { SidebarProducto }     from "./SidebarProducto";
 import { EditorDescripcion }   from "./EditorDescripcion";
 
@@ -234,6 +234,7 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
           <SeccionMultimedia
             imagenes={form.imagenes}
             productoId={form.id}
+            slug={form.slug}
             onAdd={addImagenes}
             onRemove={removeImagen}
             onChangeAlt={changeAlt}

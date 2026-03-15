@@ -3,8 +3,8 @@
 // ─────────────────────────────────────────────────────────────
 // Sección de imágenes del producto + metacampos personalizados.
 // ─────────────────────────────────────────────────────────────
-import { SectionCard, Field, ImagePreview } from "./producto-form-ui";
-import { inputCls, inputSmallCls, type ImagenForm, type MetacampoForm } from "./producto-form-types";
+import { SectionCard, Field, ImagePreview } from "../producto-form-ui";
+import { inputCls, inputSmallCls, type ImagenForm, type MetacampoForm } from "../producto-form-types";
 
 /* ── Props ─────────────────────────────────────────────────── */
 interface Props {

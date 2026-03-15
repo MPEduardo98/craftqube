@@ -5,8 +5,8 @@
 // producto pero permite editar libremente cada campo.
 // ─────────────────────────────────────────────────────────────
 import { useEffect } from "react";
-import { SectionCard, Field } from "./producto-form-ui";
-import { inputCls, textareaCls } from "./producto-form-types";
+import { SectionCard, Field } from "../producto-form-ui";
+import { inputCls, textareaCls } from "../producto-form-types";
 
 interface Props {
   slug:                 string;

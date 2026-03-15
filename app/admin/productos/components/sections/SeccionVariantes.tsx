@@ -3,8 +3,8 @@
 // ─────────────────────────────────────────────────────────────
 // Sección de variantes: lista, edición inline y eliminación.
 // ─────────────────────────────────────────────────────────────
-import { SectionCard, Field } from "./producto-form-ui";
-import { inputSmallCls, type VarianteForm } from "./producto-form-types";
+import { SectionCard, Field } from "../producto-form-ui";
+import { inputSmallCls, type VarianteForm } from "../producto-form-types";
 
 interface Props {
   variantes:  VarianteForm[];
