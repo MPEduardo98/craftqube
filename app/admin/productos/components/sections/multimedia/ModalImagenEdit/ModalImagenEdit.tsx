@@ -13,6 +13,28 @@ import type { PanelTab, Handle, CropBox, ImageMetadata, ModalImagenEditProps } f
 
 const DEFAULT_CROP: CropBox = { x: 0, y: 0, w: 100, h: 100 };
 
+const generateCroppedDataUrl = (
+  imageSrc: string,
+  crop: CropBox,
+): Promise<{ dataUrl: string; width: number; height: number }> =>
+  new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const x = (crop.x / 100) * img.naturalWidth;
+      const y = (crop.y / 100) * img.naturalHeight;
+      const w = (crop.w / 100) * img.naturalWidth;
+      const h = (crop.h / 100) * img.naturalHeight;
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(w));
+      canvas.height = Math.max(1, Math.round(h));
+      canvas.getContext("2d")!.drawImage(img, x, y, w, h, 0, 0, canvas.width, canvas.height);
+      resolve({ dataUrl: canvas.toDataURL(), width: canvas.width, height: canvas.height });
+    };
+    img.onerror = reject;
+    img.src = imageSrc;
+  });
+
 export function ModalImagenEdit({
   imagen,
   productoId,
@@ -45,25 +67,33 @@ export function ModalImagenEdit({
 
   const [canvasAspect, setCanvasAspect] = useState<number | null>(null);
   const [finalCrop, setFinalCrop] = useState<CropBox | null>(null);
+  const [previewSrc, setPreviewSrc] = useState(src);
 
   const [cropBox, setCropBox] = useState<CropBox>(DEFAULT_CROP);
   const [cropRatio, setCropRatio] = useState<string | null>(null);
   const [dragging, setDragging] = useState<Handle | null>(null);
-  const [dragStart, setDragStart] = useState({ mx: 0, my: 0, box: DEFAULT_CROP });
 
+  // Ref para el drag — nunca stale, almacena escalares (no DOMRect)
+  const dragRef = useRef<{
+    mx: number;
+    my: number;
+    box: CropBox;
+    rectW: number;
+    rectH: number;
+  } | null>(null);
+
+  const canvasDivRef = useRef<HTMLDivElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [imgRect, setImgRect] = useState<DOMRect | null>(null);
 
   const [metadata, setMetadata] = useState<ImageMetadata>({});
 
   useEffect(() => {
     const img = new Image();
+    img.crossOrigin = "anonymous";
     img.onload = () => {
-      setMetadata({
-        width: img.naturalWidth,
-        height: img.naturalHeight,
-      });
+      setMetadata({ width: img.naturalWidth, height: img.naturalHeight });
+      setCanvasAspect((prev) => prev ?? img.naturalWidth / img.naturalHeight);
     };
     img.src = src;
 
@@ -75,61 +105,55 @@ export function ModalImagenEdit({
       .catch(() => {});
   }, [src]);
 
-  const measureImg = useCallback(() => {
-    if (!imgRef.current || !containerRef.current) return;
-    const r = imgRef.current.getBoundingClientRect();
-    setImgRect(r);
-  }, []);
-
   const handleImgLoad = useCallback((img: HTMLImageElement) => {
     imgRef.current = img;
-    measureImg();
-    img.addEventListener("load", measureImg);
-    window.addEventListener("resize", measureImg);
-  }, [measureImg]);
+  }, []);
 
   const handleContainerMount = useCallback((container: HTMLDivElement) => {
     containerRef.current = container;
-    measureImg();
-  }, [measureImg]);
+  }, []);
 
-  useEffect(() => {
-    return () => {
-      if (imgRef.current) {
-        imgRef.current.removeEventListener("load", measureImg);
-      }
-      window.removeEventListener("resize", measureImg);
-    };
-  }, [measureImg]);
-
-  useEffect(() => {
-    const t = setTimeout(measureImg, 250);
-    return () => clearTimeout(t);
-  }, [zoom, rotation, measureImg]);
+  const handleCanvasDivMount = useCallback((div: HTMLDivElement) => {
+    canvasDivRef.current = div;
+  }, []);
 
   const handleMouseDown = (e: React.MouseEvent, handle: Handle) => {
     e.preventDefault();
     e.stopPropagation();
+    const el = canvasDivRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return;
+    // Almacenar escalares directamente — nunca habrá problemas con DOMRect prototype
+    dragRef.current = {
+      mx: e.clientX,
+      my: e.clientY,
+      box: { ...cropBox },
+      rectW: r.width,
+      rectH: r.height,
+    };
     setDragging(handle);
-    setDragStart({ mx: e.clientX, my: e.clientY, box: { ...cropBox } });
   };
 
   useEffect(() => {
-    if (!dragging || !imgRect) return;
+    if (!dragging) return;
 
     const handleMove = (e: MouseEvent) => {
-      const dx = ((e.clientX - dragStart.mx) / imgRect.width) * 100;
-      const dy = ((e.clientY - dragStart.my) / imgRect.height) * 100;
+      const drag = dragRef.current;
+      if (!drag) return;
 
-      let { x, y, w, h } = dragStart.box;
+      const dx = ((e.clientX - drag.mx) / drag.rectW) * 100;
+      const dy = ((e.clientY - drag.my) / drag.rectH) * 100;
+
+      let { x, y, w, h } = drag.box;
 
       if (dragging === "move") {
         x = Math.max(0, Math.min(100 - w, x + dx));
         y = Math.max(0, Math.min(100 - h, y + dy));
       } else {
-        const isLeft = dragging.includes("l");
-        const isRight = dragging.includes("r");
-        const isTop = dragging.includes("t");
+        const isLeft   = dragging.includes("l");
+        const isRight  = dragging.includes("r");
+        const isTop    = dragging.includes("t");
         const isBottom = dragging.includes("b");
 
         if (isLeft) {
@@ -137,30 +161,36 @@ export function ModalImagenEdit({
           w = w + (x - newX);
           x = newX;
         }
-        if (isRight) {
-          w = Math.max(5, Math.min(100 - x, w + dx));
-        }
+        if (isRight)  w = Math.max(5, Math.min(100 - x, w + dx));
         if (isTop) {
           const newY = Math.max(0, Math.min(y + h - 5, y + dy));
           h = h + (y - newY);
           y = newY;
         }
-        if (isBottom) {
-          h = Math.max(5, Math.min(100 - y, h + dy));
-        }
+        if (isBottom) h = Math.max(5, Math.min(100 - y, h + dy));
       }
 
       setCropBox({ x, y, w, h });
     };
 
-    const handleUp = () => setDragging(null);
+    const handleUp = () => {
+      setDragging(null);
+      dragRef.current = null;
+    };
+
     document.addEventListener("mousemove", handleMove);
     document.addEventListener("mouseup", handleUp);
     return () => {
       document.removeEventListener("mousemove", handleMove);
       document.removeEventListener("mouseup", handleUp);
     };
-  }, [dragging, dragStart, imgRect, cropBox]);
+  }, [dragging]); // Solo depende de dragging — dragRef nunca es stale
+
+  const getCurrentCanvasAspect = useCallback(() => {
+    if (canvasAspect !== null) return canvasAspect;
+    if (metadata.width && metadata.height) return metadata.width / metadata.height;
+    return 1;
+  }, [canvasAspect, metadata]);
 
   const handleCropRatio = (ratio: string | null) => {
     setCropRatio(ratio);
@@ -172,36 +202,22 @@ export function ModalImagenEdit({
 
     const [rw, rh] = ratio.split(":").map(Number);
     const targetAspect = rw / rh;
-
-    // Obtener el aspect ratio real de la imagen actualmente visible
-    let currentAspect = canvasAspect || 1;
-    
-    // Si tenemos metadata de la imagen, usar sus dimensiones reales
-    if (metadata.width && metadata.height) {
-      currentAspect = metadata.width / metadata.height;
-    }
+    const currentAspect = getCurrentCanvasAspect();
 
     let w: number, h: number;
-
-    // Calcular el cropBox que tenga el targetAspect deseado
     if (targetAspect > currentAspect) {
-      // El target es más ancho que la imagen actual
       w = 100;
       h = (currentAspect / targetAspect) * 100;
     } else {
-      // El target es más alto que la imagen actual
       h = 100;
       w = (targetAspect / currentAspect) * 100;
     }
 
-    const x = (100 - w) / 2;
-    const y = (100 - h) / 2;
-
-    setCropBox({ x, y, w, h });
+    setCropBox({ x: (100 - w) / 2, y: (100 - h) / 2, w, h });
   };
 
-  const handleApplyCrop = () => {
-    // Guardar el crop acumulativo para el backend
+  const handleApplyCrop = async () => {
+    // Acumular crop para el backend
     if (finalCrop) {
       setFinalCrop({
         x: finalCrop.x + (cropBox.x * finalCrop.w) / 100,
@@ -213,11 +229,17 @@ export function ModalImagenEdit({
       setFinalCrop({ ...cropBox });
     }
 
-    // Actualizar el aspect ratio del lienzo según el cropBox
-    const newAspect = cropBox.w / cropBox.h;
-    setCanvasAspect(newAspect);
+    const fallbackAspect = (cropBox.w / cropBox.h) * getCurrentCanvasAspect();
 
-    // Resetear el cropBox
+    try {
+      const { dataUrl, width, height } = await generateCroppedDataUrl(previewSrc, cropBox);
+      setPreviewSrc(dataUrl);
+      // canvasAspect exacto desde las dimensiones reales del canvas generado
+      setCanvasAspect(width / height);
+    } catch {
+      setCanvasAspect(fallbackAspect);
+    }
+
     setCropBox(DEFAULT_CROP);
     setCropRatio(null);
   };
@@ -225,9 +247,7 @@ export function ModalImagenEdit({
   const handleApplyResize = () => {
     const w = parseInt(resizeW);
     const h = parseInt(resizeH);
-    if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) {
-      setAppliedResize({ w, h });
-    }
+    if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) setAppliedResize({ w, h });
   };
 
   const handleDownload = () => {
@@ -274,7 +294,6 @@ export function ModalImagenEdit({
         }
 
         const editJson = await editRes.json();
-
         if (!editJson.success) {
           setSaveMsg(`Error: ${editJson.error}`);
           setSaving(false);
@@ -288,22 +307,16 @@ export function ModalImagenEdit({
         const renameRes = await fetch("/api/admin/media/rename", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            url: imagen.url,
-            productoId,
-            nuevoNombre,
-          }),
+          body: JSON.stringify({ url: imagen.url, productoId, nuevoNombre }),
         });
 
         if (!renameRes.ok) {
-          const errorText = await renameRes.text();
           setSaveMsg(`Error al renombrar (HTTP ${renameRes.status})`);
           setSaving(false);
           return;
         }
 
         const renameJson = await renameRes.json();
-
         if (!renameJson.success) {
           setSaveMsg(`Error al renombrar: ${renameJson.error}`);
           setSaving(false);
@@ -312,9 +325,7 @@ export function ModalImagenEdit({
       }
 
       setSaveMsg("Guardado ✓");
-      setTimeout(() => {
-        setSaveMsg("");
-      }, 1500);
+      setTimeout(() => setSaveMsg(""), 1500);
     } catch (error) {
       setSaveMsg(`Error de conexión: ${error instanceof Error ? error.message : "Desconocido"}`);
     } finally {
@@ -333,7 +344,7 @@ export function ModalImagenEdit({
         <LoadingOverlay visible={saving} message="Guardando cambios..." mode="fixed" />
 
         <ImagePreview
-          src={src}
+          src={previewSrc}
           tab={tab}
           zoom={zoom}
           flipH={flipH}
@@ -350,6 +361,7 @@ export function ModalImagenEdit({
           handleMouseDown={handleMouseDown}
           onImgLoad={handleImgLoad}
           onContainerMount={handleContainerMount}
+          onCanvasDivMount={handleCanvasDivMount}
         />
 
         <div className="w-80 flex-shrink-0 flex flex-col border-l" style={{ borderColor: "var(--color-cq-border)", minWidth: "320px", maxWidth: "320px" }}>
@@ -368,12 +380,7 @@ export function ModalImagenEdit({
                 title="Eliminar imagen"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </button>
               <button
@@ -419,7 +426,6 @@ export function ModalImagenEdit({
                 setDesc={setDesc}
               />
             )}
-
             {tab === "recortar" && (
               <TabRecortar
                 cropRatio={cropRatio}
@@ -427,7 +433,6 @@ export function ModalImagenEdit({
                 handleApplyCrop={handleApplyCrop}
               />
             )}
-
             {tab === "tamaño" && (
               <TabTamaño
                 resizeW={resizeW}
@@ -441,20 +446,13 @@ export function ModalImagenEdit({
 
           <div
             className="border-t p-4 space-y-2"
-            style={{
-              borderColor: "var(--color-cq-border)",
-              background: "var(--color-cq-surface-2)",
-            }}
+            style={{ borderColor: "var(--color-cq-border)", background: "var(--color-cq-surface-2)" }}
           >
             {saveMsg && (
-              <p
-                className="text-xs text-center"
-                style={{ color: saveMsg.includes("Error") ? "#ef4444" : "#10b981" }}
-              >
+              <p className="text-xs text-center" style={{ color: saveMsg.includes("Error") ? "#ef4444" : "#10b981" }}>
                 {saveMsg}
               </p>
             )}
-
             <div className="flex gap-2">
               <button
                 type="button"
@@ -463,12 +461,7 @@ export function ModalImagenEdit({
                 className="btn-secondary flex-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
                 Descargar
               </button>
