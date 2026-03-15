@@ -1,9 +1,14 @@
 "use client";
-// app/(admin)/admin/productos/components/ProductoForm.tsx
+// app/admin/productos/components/ProductoForm.tsx
 // ─────────────────────────────────────────────────────────────
 // Formulario completo para crear/editar productos.
+// Fixes aplicados:
+//  1. "Descripción larga" eliminada — meta_descripcion es el campo SEO.
+//  2. Categorías: selector con búsqueda + crear nueva categoría inline.
+//  3. Imágenes: preview correcto con fallback y onError.
+//  4. Slug: movido a sección SEO, siempre readonly (no editable).
 // ─────────────────────────────────────────────────────────────
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 /* ── Tipos ─────────────────────────────────────────────────── */
@@ -37,7 +42,7 @@ export interface ProductoFormData {
   estado:             "activo" | "inactivo" | "borrador";
   marca_id:           string;
   descripcion_corta:  string;
-  descripcion_larga:  string;
+  descripcion_larga:  string; // mantenido en tipo para compatibilidad con API, no se renderiza
   meta_titulo:        string;
   meta_descripcion:   string;
   categorias:         number[];
@@ -65,6 +70,15 @@ function slugify(str: string): string {
     .trim()
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-");
+}
+
+function buildImageSrc(url: string): string {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("/")) {
+    return url;
+  }
+  const base = process.env.NEXT_PUBLIC_IMAGE_BASE_URL ?? "";
+  return base ? `${base}/${url}` : `/uploads/${url}`;
 }
 
 const emptyVariante = (): VarianteForm => ({
@@ -106,12 +120,239 @@ const inputCls      = "w-full text-sm border border-slate-200 rounded-lg px-3 py
 const textareaCls   = `${inputCls} resize-none`;
 const inputSmallCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-slate-300 tabular-nums";
 
+/* ── CategorySelector ──────────────────────────────────────── */
+// Selector de categorías con búsqueda y creación inline.
+function CategorySelector({
+  all,
+  selected,
+  onChange,
+}: {
+  all:      Categoria[];
+  selected: number[];
+  onChange: (ids: number[]) => void;
+}) {
+  const [open,       setOpen]       = useState(false);
+  const [search,     setSearch]     = useState("");
+  const [creating,   setCreating]   = useState(false);
+  const [newName,    setNewName]    = useState("");
+  const [saving,     setSaving]     = useState(false);
+  const [localAll,   setLocalAll]   = useState<Categoria[]>(all);
+  const [createErr,  setCreateErr]  = useState("");
+  const dropRef = useRef<HTMLDivElement>(null);
+
+  // Cerrar al hacer click fuera
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setCreating(false);
+        setSearch("");
+      }
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, []);
+
+  const filtered = localAll.filter((c) =>
+    c.nombre.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const toggle = (id: number) => {
+    onChange(
+      selected.includes(id)
+        ? selected.filter((x) => x !== id)
+        : [...selected, id]
+    );
+  };
+
+  const handleCreate = async () => {
+    const nombre = newName.trim();
+    if (!nombre) return;
+    setSaving(true);
+    setCreateErr("");
+    try {
+      const res  = await fetch("/api/admin/categorias", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ nombre, slug: slugify(nombre) }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setCreateErr(json.error ?? "Error al crear categoría");
+        return;
+      }
+      const nueva: Categoria = json.data;
+      setLocalAll((prev) => [...prev, nueva].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+      onChange([...selected, nueva.id]);
+      setNewName("");
+      setCreating(false);
+    } catch {
+      setCreateErr("Error de conexión");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const selectedNames = localAll
+    .filter((c) => selected.includes(c.id))
+    .map((c) => c.nombre);
+
+  return (
+    <div className="relative" ref={dropRef}>
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => { setOpen((v) => !v); setCreating(false); setSearch(""); }}
+        className={`${inputCls} text-left flex items-center justify-between gap-2`}
+      >
+        <span className={selectedNames.length ? "text-slate-700" : "text-slate-300"}>
+          {selectedNames.length
+            ? selectedNames.join(", ")
+            : "Seleccionar categorías..."}
+        </span>
+        <svg className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+
+          {/* Búsqueda */}
+          <div className="p-2 border-b border-slate-100">
+            <input
+              autoFocus
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar categoría..."
+              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-slate-300"
+            />
+          </div>
+
+          {/* Lista */}
+          <div className="max-h-48 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-4">Sin resultados</p>
+            ) : (
+              filtered.map((cat) => {
+                const checked = selected.includes(cat.id);
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => toggle(cat.id)}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-left hover:bg-slate-50 transition"
+                  >
+                    <span className={`w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center transition ${
+                      checked ? "border-indigo-500 bg-indigo-500" : "border-slate-300"
+                    }`}>
+                      {checked && (
+                        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </span>
+                    <span className={checked ? "text-slate-800 font-medium" : "text-slate-600"}>
+                      {cat.nombre}
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          {/* Footer: crear nueva */}
+          <div className="border-t border-slate-100 p-2">
+            {!creating ? (
+              <button
+                type="button"
+                onClick={() => { setCreating(true); setSearch(""); }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition font-medium"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Nueva categoría
+              </button>
+            ) : (
+              <div className="space-y-2">
+                {createErr && (
+                  <p className="text-xs text-red-500 px-1">{createErr}</p>
+                )}
+                <div className="flex gap-2">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                    placeholder="Nombre de la categoría"
+                    className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-slate-300"
+                  />
+                  <button
+                    type="button"
+                    disabled={saving || !newName.trim()}
+                    onClick={handleCreate}
+                    className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white text-xs rounded-lg font-medium transition"
+                  >
+                    {saving ? "..." : "Crear"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setCreating(false); setCreateErr(""); setNewName(""); }}
+                    className="px-3 py-2 border border-slate-200 text-slate-500 text-xs rounded-lg hover:bg-slate-50 transition"
+                  >
+                    ✕
+                  </button>
+                </div>
+                {newName.trim() && (
+                  <p className="text-xs text-slate-400 px-1">
+                    Slug: <span className="font-mono">{slugify(newName)}</span>
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── ImagePreview ──────────────────────────────────────────── */
+function ImagePreview({ url }: { url: string }) {
+  const [broken, setBroken] = useState(false);
+  const src = buildImageSrc(url);
+
+  if (!url || broken) {
+    return (
+      <div className="w-14 h-14 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0">
+        <svg className="w-5 h-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      onError={() => setBroken(true)}
+      className="w-14 h-14 rounded-lg border border-slate-200 object-cover shrink-0 bg-slate-50"
+    />
+  );
+}
+
 /* ── Componente principal ──────────────────────────────────── */
 export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
   const router = useRouter();
-  const [saving, setSaving]         = useState(false);
-  const [error, setError]           = useState("");
-  const [slugLocked, setSlugLocked] = useState(mode === "editar");
+  const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState("");
 
   const [form, setForm] = useState<ProductoFormData>({
     titulo:            initialData?.titulo            ?? "",
@@ -119,7 +360,7 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
     estado:            initialData?.estado            ?? "borrador",
     marca_id:          initialData?.marca_id          ? String(initialData.marca_id) : "",
     descripcion_corta: initialData?.descripcion_corta ?? "",
-    descripcion_larga: initialData?.descripcion_larga ?? "",
+    descripcion_larga: initialData?.descripcion_larga ?? "", // ← no renderizado, mantenido para API
     meta_titulo:       initialData?.meta_titulo       ?? "",
     meta_descripcion:  initialData?.meta_descripcion  ?? "",
     categorias:        initialData?.categorias        ?? [],
@@ -135,17 +376,10 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
     setForm((prev) => ({ ...prev, [k]: v }));
   }, []);
 
-  /* -- Título → auto-slug -- */
+  /* -- Título → auto-slug solo en modo crear -- */
   const handleTitulo = (val: string) => {
     set("titulo", val);
-    if (!slugLocked) set("slug", slugify(val));
-  };
-
-  /* -- Categorías (multi-toggle) -- */
-  const toggleCat = (id: number) => {
-    set("categorias", form.categorias.includes(id)
-      ? form.categorias.filter((c) => c !== id)
-      : [...form.categorias, id]);
+    if (mode === "crear") set("slug", slugify(val));
   };
 
   /* -- Variantes -- */
@@ -160,7 +394,6 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
   };
 
   const addVariante    = () => set("variantes", [...form.variantes, emptyVariante()]);
-
   const removeVariante = (i: number) => {
     if (form.variantes.length <= 1) return;
     const next = form.variantes.filter((_, idx) => idx !== i);
@@ -169,7 +402,7 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
   };
 
   /* -- Imágenes -- */
-  const addImagen = () =>
+  const addImagen    = () =>
     set("imagenes", [...form.imagenes, { url: "", alt: "", orden: form.imagenes.length }]);
 
   const setImagen = (i: number, k: keyof ImagenForm, v: string | number) => {
@@ -228,7 +461,6 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
       }
 
       const destId = mode === "crear" ? json.data.id : initialData?.id;
-      // ✅ Ruta correcta: /admin/productos/[id]/editar
       router.push(`/admin/productos/${destId}/editar`);
       router.refresh();
     } catch {
@@ -309,45 +541,12 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                 />
               </Field>
 
-              <Field label="Slug (URL)" required hint="Solo letras, números y guiones">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={form.slug}
-                    onChange={(e) => set("slug", e.target.value)}
-                    disabled={slugLocked}
-                    placeholder="perfil-aluminio-40x40"
-                    className={`${inputCls} flex-1 ${slugLocked ? "bg-slate-50 text-slate-400" : ""}`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setSlugLocked(!slugLocked)}
-                    className="px-3 py-2 text-xs border border-slate-200 rounded-lg hover:bg-slate-50 transition text-slate-500"
-                  >
-                    {slugLocked ? "Editar" : "Bloquear"}
-                  </button>
-                </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  /productos/{form.slug || "tu-slug-aqui"}
-                </p>
-              </Field>
-
               <Field label="Descripción corta">
                 <textarea
                   value={form.descripcion_corta}
                   onChange={(e) => set("descripcion_corta", e.target.value)}
                   rows={3}
-                  placeholder="Breve descripción del producto..."
-                  className={textareaCls}
-                />
-              </Field>
-
-              <Field label="Descripción larga">
-                <textarea
-                  value={form.descripcion_larga}
-                  onChange={(e) => set("descripcion_larga", e.target.value)}
-                  rows={8}
-                  placeholder="Descripción completa, especificaciones técnicas..."
+                  placeholder="Breve descripción visible en listados y tarjetas del producto..."
                   className={textareaCls}
                 />
               </Field>
@@ -379,7 +578,7 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                     v.es_default ? "border-indigo-300 bg-indigo-50/30" : "border-slate-200"
                   }`}
                 >
-                  {/* Cabecera de variante */}
+                  {/* Cabecera */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <button
@@ -387,109 +586,82 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                         onClick={() => setVariante(i, "es_default", true)}
                         className={`text-xs px-2.5 py-1 rounded-full border font-medium transition ${
                           v.es_default
-                            ? "bg-indigo-600 text-white border-indigo-600"
-                            : "border-slate-200 text-slate-500 hover:border-indigo-300"
+                            ? "border-indigo-300 bg-indigo-100 text-indigo-700"
+                            : "border-slate-200 text-slate-500 hover:border-indigo-200 hover:text-indigo-600"
                         }`}
                       >
-                        {v.es_default ? "★ Principal" : "Marcar principal"}
+                        {v.es_default ? "✓ Default" : "Marcar default"}
                       </button>
-                      <span className="text-xs text-slate-400">Variante {i + 1}</span>
                     </div>
                     {form.variantes.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeVariante(i)}
                         className="text-slate-400 hover:text-red-500 transition"
-                        title="Eliminar variante"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
                     )}
                   </div>
 
-                  {/* Campos de variante — fila 1 */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {/* Campos SKU / Código */}
+                  <div className="grid grid-cols-2 gap-3">
                     <Field label="SKU" required>
-                      <input
-                        type="text"
-                        value={v.sku}
-                        onChange={(e) => setVariante(i, "sku", e.target.value)}
-                        placeholder="SKU-001"
-                        className={inputSmallCls}
-                      />
+                      <input type="text" value={v.sku} onChange={(e) => setVariante(i, "sku", e.target.value)}
+                        placeholder="CQ-SKU-001" className={inputSmallCls} />
                     </Field>
                     <Field label="Código de barras">
-                      <input
-                        type="text"
-                        value={v.codigo_barras}
-                        onChange={(e) => setVariante(i, "codigo_barras", e.target.value)}
-                        placeholder="7501234567890"
-                        className={inputSmallCls}
-                      />
+                      <input type="text" value={v.codigo_barras} onChange={(e) => setVariante(i, "codigo_barras", e.target.value)}
+                        placeholder="7501234567890" className={inputSmallCls} />
                     </Field>
-                    <Field label="Stock">
-                      <input
-                        type="number"
-                        min="0"
-                        value={v.stock}
-                        onChange={(e) => setVariante(i, "stock", e.target.value)}
-                        className={inputSmallCls}
-                      />
+                  </div>
+
+                  {/* Precios */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <Field label="Precio original">
+                      <input type="number" min="0" step="0.01" value={v.precio_original}
+                        onChange={(e) => setVariante(i, "precio_original", e.target.value)}
+                        className={inputSmallCls} />
+                    </Field>
+                    <Field label="Precio final">
+                      <input type="number" min="0" step="0.01" value={v.precio_final}
+                        onChange={(e) => setVariante(i, "precio_final", e.target.value)}
+                        className={inputSmallCls} />
                     </Field>
                     <Field label="Costo">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={v.costo}
+                      <input type="number" min="0" step="0.01" value={v.costo}
                         onChange={(e) => setVariante(i, "costo", e.target.value)}
-                        className={inputSmallCls}
-                      />
+                        className={inputSmallCls} />
                     </Field>
                   </div>
 
-                  {/* Campos de variante — fila 2 */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="Precio original">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={v.precio_original}
-                        onChange={(e) => setVariante(i, "precio_original", e.target.value)}
-                        className={inputSmallCls}
-                      />
-                    </Field>
-                    <Field label="Precio final (con descuento)">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={v.precio_final}
-                        onChange={(e) => setVariante(i, "precio_final", e.target.value)}
-                        className={inputSmallCls}
-                      />
-                    </Field>
-                  </div>
-
-                  {/* Toggle: vender sin existencia */}
-                  <label className="flex items-center gap-2 cursor-pointer w-fit">
-                    <div
-                      className={`relative inline-flex w-9 h-5 items-center rounded-full transition-colors ${
-                        v.vender_sin_existencia ? "bg-indigo-600" : "bg-slate-200"
-                      }`}
-                      onClick={() => setVariante(i, "vender_sin_existencia", !v.vender_sin_existencia)}
-                    >
-                      <span
-                        className={`inline-block w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                          v.vender_sin_existencia ? "translate-x-4" : "translate-x-0.5"
-                        }`}
-                      />
+                  {/* Stock y opciones */}
+                  <div className="flex items-center gap-4">
+                    <div className="w-32">
+                      <Field label="Stock">
+                        <input type="number" min="0" value={v.stock}
+                          onChange={(e) => setVariante(i, "stock", e.target.value)}
+                          className={inputSmallCls} />
+                      </Field>
                     </div>
-                    <span className="text-xs text-slate-600">Vender sin existencia</span>
-                  </label>
+                    <label className="flex items-center gap-2 cursor-pointer mt-5">
+                      <div
+                        className={`relative w-9 h-5 rounded-full transition cursor-pointer ${
+                          v.vender_sin_existencia ? "bg-indigo-600" : "bg-slate-200"
+                        }`}
+                        onClick={() => setVariante(i, "vender_sin_existencia", !v.vender_sin_existencia)}
+                      >
+                        <span
+                          className={`inline-block w-4 h-4 bg-white rounded-full shadow transition-transform absolute top-0.5 ${
+                            v.vender_sin_existencia ? "translate-x-4" : "translate-x-0.5"
+                          }`}
+                        />
+                      </div>
+                      <span className="text-xs text-slate-600">Vender sin existencia</span>
+                    </label>
+                  </div>
                 </div>
               ))}
             </div>
@@ -514,7 +686,8 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
             {form.imagenes.length === 0 ? (
               <div className="text-center py-8 border-2 border-dashed border-slate-200 rounded-lg">
                 <svg className="w-8 h-8 text-slate-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 <p className="text-sm text-slate-400">Sin imágenes.</p>
                 <button type="button" onClick={addImagen} className="mt-2 text-sm text-indigo-600 hover:underline">
@@ -525,57 +698,40 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
               <div className="space-y-3">
                 {form.imagenes.map((img, i) => (
                   <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-slate-200">
-                    {/* Preview */}
-                    <div className="w-14 h-14 rounded-lg border border-slate-200 bg-slate-50 overflow-hidden shrink-0 flex items-center justify-center">
-                      {img.url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL ?? ""}/uploads/productos/${img.url}`}
-                          alt={img.alt || ""}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <svg className="w-5 h-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01" />
-                        </svg>
-                      )}
-                    </div>
+
+                    {/* ── Preview de imagen con fallback ── */}
+                    <ImagePreview url={img.url} />
 
                     {/* Campos */}
-                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-[1fr_1fr_80px] gap-2">
+                    <div className="flex-1 space-y-2 min-w-0">
                       <input
                         type="text"
                         value={img.url}
                         onChange={(e) => setImagen(i, "url", e.target.value)}
-                        placeholder="nombre-archivo.jpg"
+                        placeholder="URL o nombre de archivo (ej: producto.webp)"
                         className={inputCls}
                       />
                       <input
                         type="text"
                         value={img.alt}
                         onChange={(e) => setImagen(i, "alt", e.target.value)}
-                        placeholder="Texto alternativo"
+                        placeholder="Texto alternativo (alt)"
                         className={inputCls}
-                      />
-                      <input
-                        type="number"
-                        min="0"
-                        value={img.orden}
-                        onChange={(e) => setImagen(i, "orden", Number(e.target.value))}
-                        placeholder="Orden"
-                        className={inputSmallCls}
                       />
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => removeImagen(i)}
-                      className="text-slate-400 hover:text-red-500 transition shrink-0"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
+                    <div className="flex flex-col items-center gap-2 shrink-0">
+                      <span className="text-xs text-slate-400 font-mono">#{img.orden + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeImagen(i)}
+                        className="text-slate-400 hover:text-red-500 transition"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -584,7 +740,7 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
 
           {/* Especificaciones técnicas (metacampos) */}
           <SectionCard
-            title={`Especificaciones técnicas (${form.metacampos.length})`}
+            title="Especificaciones técnicas"
             action={
               <button
                 type="button"
@@ -643,75 +799,36 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
             )}
           </SectionCard>
 
-          {/* SEO */}
-          <SectionCard title="SEO">
-            <div className="space-y-4">
-              <Field label="Meta título" hint="Recomendado: menos de 60 caracteres">
-                <input
-                  type="text"
-                  value={form.meta_titulo}
-                  onChange={(e) => set("meta_titulo", e.target.value)}
-                  placeholder="Perfil de Aluminio 40×40L | Bosch Rexroth — CraftQube"
-                  className={inputCls}
-                  maxLength={100}
-                />
-                <div className="flex justify-end mt-1">
-                  <span className={`text-xs ${form.meta_titulo.length > 60 ? "text-amber-500" : "text-slate-400"}`}>
-                    {form.meta_titulo.length}/60
-                  </span>
-                </div>
-              </Field>
+        </div>{/* fin columna principal */}
 
-              <Field label="Meta descripción" hint="Recomendado: entre 120-160 caracteres">
-                <textarea
-                  value={form.meta_descripcion}
-                  onChange={(e) => set("meta_descripcion", e.target.value)}
-                  rows={3}
-                  placeholder="Descripción para motores de búsqueda..."
-                  className={textareaCls}
-                  maxLength={200}
-                />
-                <div className="flex justify-end mt-1">
-                  <span className={`text-xs ${
-                    form.meta_descripcion.length > 160 ? "text-amber-500" :
-                    form.meta_descripcion.length < 120 && form.meta_descripcion.length > 0 ? "text-slate-400" :
-                    "text-slate-400"
-                  }`}>
-                    {form.meta_descripcion.length}/160
-                  </span>
-                </div>
-              </Field>
-            </div>
-          </SectionCard>
-
-        </div>{/* /columna principal */}
-
-        {/* ── Panel lateral ──────────────────────────────── */}
+        {/* ── Sidebar derecho ────────────────────────────── */}
         <div className="space-y-5">
 
           {/* Estado */}
           <SectionCard title="Estado">
-            <div className="space-y-2">
-              {(["activo", "inactivo", "borrador"] as const).map((est) => (
-                <label key={est} className="flex items-center gap-3 cursor-pointer group">
-                  <div
-                    className={`w-4 h-4 rounded-full border-2 transition flex items-center justify-center ${
-                      form.estado === est
-                        ? "border-indigo-600 bg-indigo-600"
-                        : "border-slate-300 group-hover:border-indigo-300"
-                    }`}
-                    onClick={() => set("estado", est)}
-                  >
-                    {form.estado === est && (
-                      <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                    )}
-                  </div>
-                  <span className="text-sm text-slate-700 capitalize">{est}</span>
-                  <span className={`ml-auto w-2 h-2 rounded-full ${
+            <div className="space-y-1">
+              {(["activo", "borrador", "inactivo"] as const).map((est) => (
+                <label key={est} className={`flex items-center gap-3 cursor-pointer px-3 py-2.5 rounded-lg transition ${
+                  form.estado === est ? "bg-slate-100" : "hover:bg-slate-50"
+                }`}>
+                  <input
+                    type="radio"
+                    name="estado"
+                    value={est}
+                    checked={form.estado === est}
+                    onChange={() => set("estado", est)}
+                    className="sr-only"
+                  />
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                     est === "activo"   ? "bg-emerald-400" :
-                    est === "inactivo" ? "bg-red-400" :
-                    "bg-amber-400"
+                    est === "inactivo" ? "bg-red-400"     : "bg-amber-400"
                   }`} />
+                  <span className="text-sm text-slate-700 capitalize">{est}</span>
+                  {form.estado === est && (
+                    <svg className="w-3.5 h-3.5 text-indigo-500 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
                 </label>
               ))}
             </div>
@@ -734,59 +851,115 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                 </select>
               </Field>
 
+              {/* ── Categorías: selector con búsqueda + crear nueva ── */}
               <Field label="Categorías">
-                <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
-                  {categorias.map((cat) => (
-                    <label key={cat.id} className="flex items-center gap-2 cursor-pointer group">
-                      <div
-                        className={`w-4 h-4 rounded border-2 transition flex items-center justify-center ${
-                          form.categorias.includes(cat.id)
-                            ? "border-indigo-600 bg-indigo-600"
-                            : "border-slate-300 group-hover:border-indigo-300"
-                        }`}
-                        onClick={() => toggleCat(cat.id)}
-                      >
-                        {form.categorias.includes(cat.id) && (
-                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                      <span className="text-sm text-slate-700">{cat.nombre}</span>
-                    </label>
-                  ))}
-                  {categorias.length === 0 && (
-                    <p className="text-xs text-slate-400">No hay categorías disponibles.</p>
-                  )}
-                </div>
+                <CategorySelector
+                  all={categorias}
+                  selected={form.categorias}
+                  onChange={(ids) => set("categorias", ids)}
+                />
+                {form.categorias.length > 0 && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    {form.categorias.length} categoría{form.categorias.length !== 1 ? "s" : ""} seleccionada{form.categorias.length !== 1 ? "s" : ""}
+                  </p>
+                )}
               </Field>
 
             </div>
           </SectionCard>
 
-          {/* Resumen del producto (solo en modo editar) */}
-          {mode === "editar" && initialData?.id && (
-            <SectionCard title="Acciones">
-              <div className="space-y-2">
-                <a
-                  href={`/producto/${form.slug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm text-slate-600 hover:text-indigo-600 transition"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                  Ver en tienda
-                </a>
-                <p className="text-xs text-slate-400">ID: #{initialData.id}</p>
-              </div>
-            </SectionCard>
-          )}
+          {/* SEO ──────────────────────────────────────────── */}
+          {/* Slug siempre readonly — nunca editable */}
+          <SectionCard title="SEO">
+            <div className="space-y-4">
 
-        </div>{/* /panel lateral */}
+              {/* Slug: readonly, generado automáticamente */}
+              <Field
+                label="Slug (URL)"
+                hint={`/productos/${form.slug || "tu-slug-aqui"}`}
+              >
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={form.slug}
+                    readOnly
+                    tabIndex={-1}
+                    placeholder="se-genera-automaticamente"
+                    className={`${inputCls} bg-slate-50 text-slate-400 cursor-not-allowed pr-9`}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </span>
+                </div>
+              </Field>
 
-      </div>{/* /grid */}
+              {/* Meta título */}
+              <Field label="Meta título" hint="Recomendado: menos de 60 caracteres">
+                <input
+                  type="text"
+                  value={form.meta_titulo}
+                  onChange={(e) => set("meta_titulo", e.target.value)}
+                  placeholder="Perfil de Aluminio 40×40L | Bosch Rexroth — CraftQube"
+                  className={inputCls}
+                  maxLength={100}
+                />
+                <div className="flex justify-end mt-1">
+                  <span className={`text-xs ${form.meta_titulo.length > 60 ? "text-amber-500" : "text-slate-400"}`}>
+                    {form.meta_titulo.length}/60
+                  </span>
+                </div>
+              </Field>
+
+              {/* Meta descripción — este es el campo SEO, reemplaza a "descripción larga" */}
+              <Field
+                label="Meta descripción"
+                hint="Recomendado: entre 120 y 160 caracteres"
+              >
+                <textarea
+                  value={form.meta_descripcion}
+                  onChange={(e) => set("meta_descripcion", e.target.value)}
+                  rows={4}
+                  maxLength={160}
+                  placeholder="Descripción breve del producto para motores de búsqueda. Máximo 160 caracteres."
+                  className={textareaCls}
+                />
+                <div className="flex justify-end mt-1">
+                  <span className={`text-xs ${
+                    form.meta_descripcion.length > 160 ? "text-red-500"
+                    : form.meta_descripcion.length > 120 ? "text-emerald-500"
+                    : "text-slate-400"
+                  }`}>
+                    {form.meta_descripcion.length}/160
+                  </span>
+                </div>
+              </Field>
+
+              {/* Vista previa SERP */}
+              {(form.meta_titulo || form.titulo) && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-1">
+                  <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wide">Vista previa en Google</p>
+                  <p className="text-[13px] text-blue-700 font-medium leading-snug line-clamp-1">
+                    {form.meta_titulo || form.titulo}
+                  </p>
+                  <p className="text-[11px] text-emerald-700 font-mono">
+                    craftqube.com/productos/{form.slug || "slug"}
+                  </p>
+                  {form.meta_descripcion && (
+                    <p className="text-[12px] text-slate-600 leading-snug line-clamp-2">
+                      {form.meta_descripcion}
+                    </p>
+                  )}
+                </div>
+              )}
+
+            </div>
+          </SectionCard>
+
+        </div>{/* fin sidebar */}
+      </div>
     </form>
   );
 }
