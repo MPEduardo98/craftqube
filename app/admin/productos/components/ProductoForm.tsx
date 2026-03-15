@@ -1,9 +1,7 @@
 "use client";
-// app/(admin)/admin/productos/_components/ProductoForm.tsx
+// app/(admin)/admin/productos/components/ProductoForm.tsx
 // ─────────────────────────────────────────────────────────────
 // Formulario completo para crear/editar productos.
-// Inspirado en Shopify: secciones colapsables, panel lateral
-// de estado/organización, gestión de variantes e imágenes.
 // ─────────────────────────────────────────────────────────────
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -104,14 +102,15 @@ function Field({ label, required, children, hint }: {
   );
 }
 
-const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-slate-300";
-const textareaCls = `${inputCls} resize-none`;
+const inputCls      = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-slate-300";
+const textareaCls   = `${inputCls} resize-none`;
+const inputSmallCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-slate-300 tabular-nums";
 
 /* ── Componente principal ──────────────────────────────────── */
 export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
   const router = useRouter();
-  const [saving, setSaving]   = useState(false);
-  const [error, setError]     = useState("");
+  const [saving, setSaving]         = useState(false);
+  const [error, setError]           = useState("");
   const [slugLocked, setSlugLocked] = useState(mode === "editar");
 
   const [form, setForm] = useState<ProductoFormData>({
@@ -127,7 +126,7 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
     variantes:         initialData?.variantes?.length
       ? (initialData.variantes as VarianteForm[])
       : [{ ...emptyVariante(), es_default: true }],
-    imagenes:          (initialData?.imagenes as ImagenForm[]) ?? [],
+    imagenes:          (initialData?.imagenes   as ImagenForm[])   ?? [],
     metacampos:        (initialData?.metacampos as MetacampoForm[]) ?? [],
   });
 
@@ -153,7 +152,6 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
   const setVariante = (i: number, k: keyof VarianteForm, v: string | boolean) => {
     const next = form.variantes.map((vr, idx) => {
       if (idx !== i) {
-        // Si se está marcando otra como default, desmarcar ésta
         return k === "es_default" && v === true ? { ...vr, es_default: false } : vr;
       }
       return { ...vr, [k]: v };
@@ -161,12 +159,11 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
     set("variantes", next);
   };
 
-  const addVariante = () => set("variantes", [...form.variantes, emptyVariante()]);
+  const addVariante    = () => set("variantes", [...form.variantes, emptyVariante()]);
 
   const removeVariante = (i: number) => {
     if (form.variantes.length <= 1) return;
     const next = form.variantes.filter((_, idx) => idx !== i);
-    // garantizar que al menos una sea default
     if (!next.some((v) => v.es_default)) next[0].es_default = true;
     set("variantes", next);
   };
@@ -203,7 +200,7 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
     setError("");
 
     if (!form.titulo.trim()) { setError("El título es obligatorio"); return; }
-    if (!form.slug.trim())   { setError("El slug es obligatorio"); return; }
+    if (!form.slug.trim())   { setError("El slug es obligatorio");   return; }
     if (form.variantes.length === 0) { setError("Debe haber al menos una variante"); return; }
 
     setSaving(true);
@@ -218,7 +215,7 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
         marca_id: form.marca_id ? Number(form.marca_id) : null,
       };
 
-      const res = await fetch(url, {
+      const res  = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(payload),
@@ -231,7 +228,8 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
       }
 
       const destId = mode === "crear" ? json.data.id : initialData?.id;
-      router.push(`/admin/productos/editar/${destId}`);
+      // ✅ Ruta correcta: /admin/productos/[id]/editar
+      router.push(`/admin/productos/${destId}/editar`);
       router.refresh();
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
@@ -243,11 +241,15 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
   /* ── Render ─────────────────────────────────────────────── */
   return (
     <form onSubmit={handleSubmit}>
-      {/* Encabezado pegajoso */}
+
+      {/* ── Barra superior pegajosa ─────────────────────── */}
       <div className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-6 py-3 -mx-6 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-slate-500">
-          <button type="button" onClick={() => router.push("/admin/productos")}
-            className="hover:text-slate-700 transition">
+          <button
+            type="button"
+            onClick={() => router.push("/admin/productos")}
+            className="hover:text-slate-700 transition"
+          >
             Productos
           </button>
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -278,8 +280,8 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
           >
             {saving && (
               <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
             )}
             {saving ? "Guardando…" : mode === "crear" ? "Crear producto" : "Guardar cambios"}
@@ -287,21 +289,22 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
         </div>
       </div>
 
-      {/* Grid de dos columnas */}
+      {/* ── Grid principal ──────────────────────────────── */}
       <div className="mt-6 grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-5 items-start">
 
-        {/* ── Columna principal ────────────────────────────── */}
+        {/* ── Columna principal ──────────────────────────── */}
         <div className="space-y-5">
 
           {/* Información básica */}
           <SectionCard title="Información básica">
             <div className="space-y-4">
+
               <Field label="Título del producto" required>
                 <input
                   type="text"
                   value={form.titulo}
                   onChange={(e) => handleTitulo(e.target.value)}
-                  placeholder="Ej: Perfil de Aluminio 40x40L | Bosch Rexroth"
+                  placeholder="Ej: Perfil de Aluminio 40×40L | Bosch Rexroth"
                   className={inputCls}
                 />
               </Field>
@@ -348,6 +351,7 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                   className={textareaCls}
                 />
               </Field>
+
             </div>
           </SectionCard>
 
@@ -369,7 +373,13 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
           >
             <div className="space-y-4">
               {form.variantes.map((v, i) => (
-                <div key={i} className={`rounded-lg border p-4 space-y-3 ${v.es_default ? "border-indigo-300 bg-indigo-50/30" : "border-slate-200"}`}>
+                <div
+                  key={i}
+                  className={`rounded-lg border p-4 space-y-3 ${
+                    v.es_default ? "border-indigo-300 bg-indigo-50/30" : "border-slate-200"
+                  }`}
+                >
+                  {/* Cabecera de variante */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <button
@@ -381,15 +391,16 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                             : "border-slate-200 text-slate-500 hover:border-indigo-300"
                         }`}
                       >
-                        {v.es_default ? "✓ Default" : "Hacer default"}
+                        {v.es_default ? "★ Principal" : "Marcar principal"}
                       </button>
-                      <span className="text-xs text-slate-400">Variante #{i + 1}</span>
+                      <span className="text-xs text-slate-400">Variante {i + 1}</span>
                     </div>
                     {form.variantes.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeVariante(i)}
                         className="text-slate-400 hover:text-red-500 transition"
+                        title="Eliminar variante"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -398,65 +409,87 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* Campos de variante — fila 1 */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <Field label="SKU" required>
-                      <input type="text" value={v.sku} onChange={(e) => setVariante(i, "sku", e.target.value)}
-                        placeholder="3842529339" className={inputCls} />
+                      <input
+                        type="text"
+                        value={v.sku}
+                        onChange={(e) => setVariante(i, "sku", e.target.value)}
+                        placeholder="SKU-001"
+                        className={inputSmallCls}
+                      />
                     </Field>
                     <Field label="Código de barras">
-                      <input type="text" value={v.codigo_barras} onChange={(e) => setVariante(i, "codigo_barras", e.target.value)}
-                        placeholder="" className={inputCls} />
-                    </Field>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <Field label="Precio original" required>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-                        <input type="number" min="0" step="0.01" value={v.precio_original}
-                          onChange={(e) => setVariante(i, "precio_original", e.target.value)}
-                          className={`${inputCls} pl-6`} />
-                      </div>
-                    </Field>
-                    <Field label="Precio de venta" required>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-                        <input type="number" min="0" step="0.01" value={v.precio_final}
-                          onChange={(e) => setVariante(i, "precio_final", e.target.value)}
-                          className={`${inputCls} pl-6`} />
-                      </div>
-                    </Field>
-                    <Field label="Costo">
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-                        <input type="number" min="0" step="0.01" value={v.costo}
-                          onChange={(e) => setVariante(i, "costo", e.target.value)}
-                          className={`${inputCls} pl-6`} />
-                      </div>
+                      <input
+                        type="text"
+                        value={v.codigo_barras}
+                        onChange={(e) => setVariante(i, "codigo_barras", e.target.value)}
+                        placeholder="7501234567890"
+                        className={inputSmallCls}
+                      />
                     </Field>
                     <Field label="Stock">
-                      <input type="number" min="0" value={v.stock}
+                      <input
+                        type="number"
+                        min="0"
+                        value={v.stock}
                         onChange={(e) => setVariante(i, "stock", e.target.value)}
-                        className={inputCls} />
+                        className={inputSmallCls}
+                      />
+                    </Field>
+                    <Field label="Costo">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={v.costo}
+                        onChange={(e) => setVariante(i, "costo", e.target.value)}
+                        className={inputSmallCls}
+                      />
                     </Field>
                   </div>
 
-                  <div className="flex items-center gap-4 pt-1">
-                    <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+                  {/* Campos de variante — fila 2 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Precio original">
                       <input
-                        type="checkbox"
-                        checked={v.vender_sin_existencia}
-                        onChange={(e) => setVariante(i, "vender_sin_existencia", e.target.checked)}
-                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={v.precio_original}
+                        onChange={(e) => setVariante(i, "precio_original", e.target.value)}
+                        className={inputSmallCls}
                       />
-                      Vender sin stock
-                    </label>
-                    {v.precio_original && v.precio_final && Number(v.precio_original) > Number(v.precio_final) && (
-                      <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                        {Math.round((1 - Number(v.precio_final) / Number(v.precio_original)) * 100)}% dto.
-                      </span>
-                    )}
+                    </Field>
+                    <Field label="Precio final (con descuento)">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={v.precio_final}
+                        onChange={(e) => setVariante(i, "precio_final", e.target.value)}
+                        className={inputSmallCls}
+                      />
+                    </Field>
                   </div>
+
+                  {/* Toggle: vender sin existencia */}
+                  <label className="flex items-center gap-2 cursor-pointer w-fit">
+                    <div
+                      className={`relative inline-flex w-9 h-5 items-center rounded-full transition-colors ${
+                        v.vender_sin_existencia ? "bg-indigo-600" : "bg-slate-200"
+                      }`}
+                      onClick={() => setVariante(i, "vender_sin_existencia", !v.vender_sin_existencia)}
+                    >
+                      <span
+                        className={`inline-block w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                          v.vender_sin_existencia ? "translate-x-4" : "translate-x-0.5"
+                        }`}
+                      />
+                    </div>
+                    <span className="text-xs text-slate-600">Vender sin existencia</span>
+                  </label>
                 </div>
               ))}
             </div>
@@ -466,8 +499,11 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
           <SectionCard
             title={`Imágenes (${form.imagenes.length})`}
             action={
-              <button type="button" onClick={addImagen}
-                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1">
+              <button
+                type="button"
+                onClick={addImagen}
+                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+              >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
@@ -480,9 +516,10 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                 <svg className="w-8 h-8 text-slate-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <p className="text-sm text-slate-400">Sin imágenes. Añade el nombre del archivo.</p>
-                <button type="button" onClick={addImagen}
-                  className="mt-2 text-sm text-indigo-600 hover:underline">Añadir imagen</button>
+                <p className="text-sm text-slate-400">Sin imágenes.</p>
+                <button type="button" onClick={addImagen} className="mt-2 text-sm text-indigo-600 hover:underline">
+                  Añadir imagen
+                </button>
               </div>
             ) : (
               <div className="space-y-3">
@@ -493,24 +530,24 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                       {img.url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL ?? "/uploads/"}${img.url}`}
+                          src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL ?? ""}/uploads/productos/${img.url}`}
                           alt={img.alt || ""}
                           className="w-full h-full object-cover"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                         />
                       ) : (
                         <svg className="w-5 h-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01" />
                         </svg>
                       )}
                     </div>
 
-                    <div className="flex-1 grid grid-cols-2 gap-2">
+                    {/* Campos */}
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-[1fr_1fr_80px] gap-2">
                       <input
                         type="text"
                         value={img.url}
                         onChange={(e) => setImagen(i, "url", e.target.value)}
-                        placeholder="nombre-del-archivo.webp"
+                        placeholder="nombre-archivo.jpg"
                         className={inputCls}
                       />
                       <input
@@ -520,17 +557,21 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                         placeholder="Texto alternativo"
                         className={inputCls}
                       />
+                      <input
+                        type="number"
+                        min="0"
+                        value={img.orden}
+                        onChange={(e) => setImagen(i, "orden", Number(e.target.value))}
+                        placeholder="Orden"
+                        className={inputSmallCls}
+                      />
                     </div>
-                    <input
-                      type="number"
-                      value={img.orden}
-                      onChange={(e) => setImagen(i, "orden", Number(e.target.value))}
-                      min={0}
-                      title="Orden"
-                      className="w-14 text-sm border border-slate-200 rounded-lg px-2 py-2 text-center focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
-                    />
-                    <button type="button" onClick={() => removeImagen(i)}
-                      className="text-slate-400 hover:text-red-500 transition shrink-0">
+
+                    <button
+                      type="button"
+                      onClick={() => removeImagen(i)}
+                      className="text-slate-400 hover:text-red-500 transition shrink-0"
+                    >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
@@ -541,12 +582,15 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
             )}
           </SectionCard>
 
-          {/* Metacampos / Especificaciones técnicas */}
+          {/* Especificaciones técnicas (metacampos) */}
           <SectionCard
             title={`Especificaciones técnicas (${form.metacampos.length})`}
             action={
-              <button type="button" onClick={addMetacampo}
-                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1">
+              <button
+                type="button"
+                onClick={addMetacampo}
+                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+              >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
@@ -557,12 +601,12 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
             {form.metacampos.length === 0 ? (
               <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-lg">
                 <p className="text-sm text-slate-400 mb-2">Sin especificaciones técnicas</p>
-                <button type="button" onClick={addMetacampo}
-                  className="text-sm text-indigo-600 hover:underline">Añadir campo</button>
+                <button type="button" onClick={addMetacampo} className="text-sm text-indigo-600 hover:underline">
+                  Añadir campo
+                </button>
               </div>
             ) : (
               <div className="space-y-2">
-                {/* Header */}
                 <div className="grid grid-cols-[1fr_1fr_32px] gap-2 text-xs font-medium text-slate-500 px-1">
                   <span>Propiedad</span>
                   <span>Valor</span>
@@ -584,8 +628,11 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                       placeholder="Ej: 3842529339"
                       className={inputCls}
                     />
-                    <button type="button" onClick={() => removeMetacampo(i)}
-                      className="text-slate-400 hover:text-red-500 transition w-8 h-8 flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={() => removeMetacampo(i)}
+                      className="text-slate-400 hover:text-red-500 transition w-8 h-8 flex items-center justify-center"
+                    >
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
@@ -604,7 +651,7 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                   type="text"
                   value={form.meta_titulo}
                   onChange={(e) => set("meta_titulo", e.target.value)}
-                  placeholder="Perfil de Aluminio 40x40L | Bosch Rexroth — CraftQube"
+                  placeholder="Perfil de Aluminio 40×40L | Bosch Rexroth — CraftQube"
                   className={inputCls}
                   maxLength={100}
                 />
@@ -615,7 +662,7 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                 </div>
               </Field>
 
-              <Field label="Meta descripción" hint="Recomendado: entre 120–160 caracteres">
+              <Field label="Meta descripción" hint="Recomendado: entre 120-160 caracteres">
                 <textarea
                   value={form.meta_descripcion}
                   onChange={(e) => set("meta_descripcion", e.target.value)}
@@ -625,164 +672,121 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                   maxLength={200}
                 />
                 <div className="flex justify-end mt-1">
-                  <span className={`text-xs ${form.meta_descripcion.length > 160 ? "text-amber-500" : "text-slate-400"}`}>
+                  <span className={`text-xs ${
+                    form.meta_descripcion.length > 160 ? "text-amber-500" :
+                    form.meta_descripcion.length < 120 && form.meta_descripcion.length > 0 ? "text-slate-400" :
+                    "text-slate-400"
+                  }`}>
                     {form.meta_descripcion.length}/160
                   </span>
                 </div>
               </Field>
-
-              {/* Preview */}
-              {(form.meta_titulo || form.titulo) && (
-                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-                  <p className="text-[11px] text-slate-400 mb-1 uppercase tracking-wide">Previsualización en Google</p>
-                  <p className="text-indigo-700 text-sm font-medium truncate">
-                    {form.meta_titulo || form.titulo} — CraftQube
-                  </p>
-                  <p className="text-green-700 text-xs">
-                    craftqube.com/productos/{form.slug}
-                  </p>
-                  <p className="text-slate-600 text-xs mt-0.5 line-clamp-2">
-                    {form.meta_descripcion || form.descripcion_corta || "Sin descripción"}
-                  </p>
-                </div>
-              )}
             </div>
           </SectionCard>
-        </div>
 
-        {/* ── Columna lateral ──────────────────────────────── */}
-        <div className="space-y-4">
+        </div>{/* /columna principal */}
 
-          {/* Estado y visibilidad */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-slate-700">Estado</h3>
+        {/* ── Panel lateral ──────────────────────────────── */}
+        <div className="space-y-5">
+
+          {/* Estado */}
+          <SectionCard title="Estado">
             <div className="space-y-2">
-              {(["activo", "inactivo", "borrador"] as const).map((e) => {
-                const labels = { activo: "Activo", inactivo: "Inactivo", borrador: "Borrador" };
-                const colors = {
-                  activo:   "text-green-700 bg-green-50 border-green-200",
-                  inactivo: "text-slate-500 bg-slate-50 border-slate-200",
-                  borrador: "text-amber-700 bg-amber-50 border-amber-200",
-                };
-                return (
-                  <button
-                    key={e}
-                    type="button"
-                    onClick={() => set("estado", e)}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-sm font-medium transition ${
-                      form.estado === e ? colors[e] : "text-slate-500 border-slate-200 hover:bg-slate-50"
+              {(["activo", "inactivo", "borrador"] as const).map((est) => (
+                <label key={est} className="flex items-center gap-3 cursor-pointer group">
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 transition flex items-center justify-center ${
+                      form.estado === est
+                        ? "border-indigo-600 bg-indigo-600"
+                        : "border-slate-300 group-hover:border-indigo-300"
                     }`}
+                    onClick={() => set("estado", est)}
                   >
-                    <span>{labels[e]}</span>
-                    {form.estado === e && (
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
+                    {form.estado === est && (
+                      <div className="w-1.5 h-1.5 bg-white rounded-full" />
                     )}
-                  </button>
-                );
-              })}
+                  </div>
+                  <span className="text-sm text-slate-700 capitalize">{est}</span>
+                  <span className={`ml-auto w-2 h-2 rounded-full ${
+                    est === "activo"   ? "bg-emerald-400" :
+                    est === "inactivo" ? "bg-red-400" :
+                    "bg-amber-400"
+                  }`} />
+                </label>
+              ))}
             </div>
-          </div>
+          </SectionCard>
 
           {/* Organización */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-4">
-            <h3 className="text-sm font-semibold text-slate-700">Organización</h3>
+          <SectionCard title="Organización">
+            <div className="space-y-4">
 
-            <Field label="Marca">
-              <select
-                value={form.marca_id}
-                onChange={(e) => set("marca_id", e.target.value)}
-                className={inputCls}
-              >
-                <option value="">Sin marca</option>
-                {marcas.map((m) => (
-                  <option key={m.id} value={m.id}>{m.nombre}</option>
-                ))}
-              </select>
-            </Field>
+              <Field label="Marca">
+                <select
+                  value={form.marca_id}
+                  onChange={(e) => set("marca_id", e.target.value)}
+                  className={inputCls}
+                >
+                  <option value="">Sin marca</option>
+                  {marcas.map((m) => (
+                    <option key={m.id} value={String(m.id)}>{m.nombre}</option>
+                  ))}
+                </select>
+              </Field>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-slate-700">Categorías</label>
-              <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
-                {categorias.map((c) => (
-                  <label key={c.id} className="flex items-center gap-2.5 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={form.categorias.includes(c.id)}
-                      onChange={() => toggleCat(c.id)}
-                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span className="text-sm text-slate-600 group-hover:text-slate-800 transition">
-                      {c.nombre}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Resumen de variante default */}
-          {(() => {
-            const def = form.variantes.find((v) => v.es_default) ?? form.variantes[0];
-            if (!def) return null;
-            const margen = def.precio_final && def.costo
-              ? ((Number(def.precio_final) - Number(def.costo)) / Number(def.precio_final) * 100)
-              : null;
-            return (
-              <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-                <h3 className="text-sm font-semibold text-slate-700">Resumen de precios</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Precio de venta</span>
-                    <span className="font-semibold text-slate-800">
-                      ${Number(def.precio_final || 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Costo</span>
-                    <span className="text-slate-600">
-                      ${Number(def.costo || 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  {margen !== null && margen > 0 && (
-                    <div className="flex justify-between border-t border-slate-100 pt-2 mt-2">
-                      <span className="text-slate-500">Margen bruto</span>
-                      <span className={`font-semibold ${margen >= 30 ? "text-green-600" : margen >= 15 ? "text-amber-600" : "text-red-600"}`}>
-                        {margen.toFixed(1)}%
-                      </span>
-                    </div>
+              <Field label="Categorías">
+                <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
+                  {categorias.map((cat) => (
+                    <label key={cat.id} className="flex items-center gap-2 cursor-pointer group">
+                      <div
+                        className={`w-4 h-4 rounded border-2 transition flex items-center justify-center ${
+                          form.categorias.includes(cat.id)
+                            ? "border-indigo-600 bg-indigo-600"
+                            : "border-slate-300 group-hover:border-indigo-300"
+                        }`}
+                        onClick={() => toggleCat(cat.id)}
+                      >
+                        {form.categorias.includes(cat.id) && (
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-sm text-slate-700">{cat.nombre}</span>
+                    </label>
+                  ))}
+                  {categorias.length === 0 && (
+                    <p className="text-xs text-slate-400">No hay categorías disponibles.</p>
                   )}
                 </div>
-              </div>
-            );
-          })()}
+              </Field>
 
-          {/* Guardar (sticky bottom en sidebar) */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="w-full text-sm px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-lg font-medium transition flex items-center justify-center gap-2"
-            >
-              {saving && (
-                <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-              )}
-              {saving ? "Guardando…" : mode === "crear" ? "Crear producto" : "Guardar cambios"}
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push("/admin/productos")}
-              className="w-full text-sm px-4 py-2 text-slate-600 hover:text-slate-800 transition"
-            >
-              Descartar cambios
-            </button>
-          </div>
-        </div>
-      </div>
+            </div>
+          </SectionCard>
+
+          {/* Resumen del producto (solo en modo editar) */}
+          {mode === "editar" && initialData?.id && (
+            <SectionCard title="Acciones">
+              <div className="space-y-2">
+                <a
+                  href={`/producto/${form.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-slate-600 hover:text-indigo-600 transition"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  Ver en tienda
+                </a>
+                <p className="text-xs text-slate-400">ID: #{initialData.id}</p>
+              </div>
+            </SectionCard>
+          )}
+
+        </div>{/* /panel lateral */}
+
+      </div>{/* /grid */}
     </form>
   );
 }
