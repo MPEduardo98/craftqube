@@ -264,11 +264,23 @@ function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt,
     }
     setNombreErr("");
     setSaving(true);
+    setSaveMsg("");
 
     const hasTransform = !!finalCrop || !!appliedResize || flipH || flipV || rotation !== 0;
 
     try {
+      // Aplicar transformaciones si existen
       if (hasTransform) {
+        console.log("[SeccionMultimedia] Enviando transformaciones:", {
+          url: imagen.url,
+          productoId,
+          crop: finalCrop,
+          resize: appliedResize,
+          flipH,
+          flipV,
+          rotation
+        });
+
         const editRes = await fetch("/api/admin/media/edit", {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
@@ -282,7 +294,18 @@ function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt,
             rotation: rotation !== 0 ? rotation : undefined,
           }),
         });
+
+        if (!editRes.ok) {
+          const errorText = await editRes.text();
+          console.error("[SeccionMultimedia] Error HTTP:", editRes.status, errorText);
+          setSaveMsg(`Error HTTP ${editRes.status}: ${errorText}`);
+          setSaving(false);
+          return;
+        }
+
         const editJson = await editRes.json();
+        console.log("[SeccionMultimedia] Respuesta edit:", editJson);
+
         if (!editJson.success) {
           setSaveMsg(`Error: ${editJson.error}`);
           setSaving(false);
@@ -290,9 +313,17 @@ function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt,
         }
       }
 
+      // Actualizar alt text
       onChangeAlt(desc);
 
+      // Renombrar si cambió el nombre
       if (nombre.trim() !== nameOnly) {
+        console.log("[SeccionMultimedia] Renombrando:", { 
+          url: imagen.url, 
+          productoId, 
+          nuevoNombre 
+        });
+
         const renameRes = await fetch("/api/admin/media/rename", {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
@@ -302,7 +333,18 @@ function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt,
             nuevoNombre 
           }),
         });
+
+        if (!renameRes.ok) {
+          const errorText = await renameRes.text();
+          console.error("[SeccionMultimedia] Error rename HTTP:", renameRes.status, errorText);
+          setSaveMsg(`Error al renombrar (HTTP ${renameRes.status})`);
+          setSaving(false);
+          return;
+        }
+
         const renameJson = await renameRes.json();
+        console.log("[SeccionMultimedia] Respuesta rename:", renameJson);
+
         if (!renameJson.success) {
           setSaveMsg(`Error al renombrar: ${renameJson.error}`);
           setSaving(false);
@@ -310,12 +352,14 @@ function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt,
         }
       }
 
+      console.log("[SeccionMultimedia] Guardado exitoso");
       setSaveMsg("Guardado ✓");
       setTimeout(() => { 
         setSaveMsg(""); 
       }, 1500);
-    } catch {
-      setSaveMsg("Error de conexión");
+    } catch (error) {
+      console.error("[SeccionMultimedia] Error catch:", error);
+      setSaveMsg(`Error de conexión: ${error instanceof Error ? error.message : "Desconocido"}`);
     } finally {
       setSaving(false);
     }
