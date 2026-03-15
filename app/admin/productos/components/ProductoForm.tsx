@@ -22,7 +22,7 @@ import {
 
 import { SectionCard, Field }  from "./producto-form-ui";
 import { SeccionVariantes }    from "./sections/SeccionVariantes";
-import { SeccionMultimedia }   from "./sections/SeccionMultimedia";
+import { SeccionMultimedia }   from "./sections/multimedia/SeccionMultimedia";
 import { SeccionSEO }          from "./sections/SeccionSEO";
 import { SidebarProducto }     from "./SidebarProducto";
 import { EditorDescripcion }   from "./EditorDescripcion";
