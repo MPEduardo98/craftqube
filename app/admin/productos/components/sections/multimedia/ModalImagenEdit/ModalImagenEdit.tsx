@@ -51,8 +51,8 @@ export function ModalImagenEdit({
   const [dragging, setDragging] = useState<Handle | null>(null);
   const [dragStart, setDragStart] = useState({ mx: 0, my: 0, box: DEFAULT_CROP });
 
-  const imgRef = useRef<HTMLImageElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [imgRect, setImgRect] = useState<DOMRect | null>(null);
 
   const [metadata, setMetadata] = useState<ImageMetadata>({});
@@ -81,14 +81,23 @@ export function ModalImagenEdit({
     setImgRect(r);
   }, []);
 
-  useEffect(() => {
-    const img = imgRef.current;
-    if (!img) return;
-    if (img.complete) measureImg();
+  const handleImgLoad = useCallback((img: HTMLImageElement) => {
+    imgRef.current = img;
+    measureImg();
     img.addEventListener("load", measureImg);
     window.addEventListener("resize", measureImg);
+  }, [measureImg]);
+
+  const handleContainerMount = useCallback((container: HTMLDivElement) => {
+    containerRef.current = container;
+    measureImg();
+  }, [measureImg]);
+
+  useEffect(() => {
     return () => {
-      img.removeEventListener("load", measureImg);
+      if (imgRef.current) {
+        imgRef.current.removeEventListener("load", measureImg);
+      }
       window.removeEventListener("resize", measureImg);
     };
   }, [measureImg]);
@@ -163,16 +172,26 @@ export function ModalImagenEdit({
 
     const [rw, rh] = ratio.split(":").map(Number);
     const targetAspect = rw / rh;
-    const currentCanvasAspect = canvasAspect || 1;
+
+    // Obtener el aspect ratio real de la imagen actualmente visible
+    let currentAspect = canvasAspect || 1;
+    
+    // Si tenemos metadata de la imagen, usar sus dimensiones reales
+    if (metadata.width && metadata.height) {
+      currentAspect = metadata.width / metadata.height;
+    }
 
     let w: number, h: number;
 
-    if (targetAspect >= currentCanvasAspect) {
+    // Calcular el cropBox que tenga el targetAspect deseado
+    if (targetAspect > currentAspect) {
+      // El target es más ancho que la imagen actual
       w = 100;
-      h = (100 * currentCanvasAspect) / targetAspect;
+      h = (currentAspect / targetAspect) * 100;
     } else {
+      // El target es más alto que la imagen actual
       h = 100;
-      w = (100 * targetAspect) / currentCanvasAspect;
+      w = (targetAspect / currentAspect) * 100;
     }
 
     const x = (100 - w) / 2;
@@ -182,12 +201,7 @@ export function ModalImagenEdit({
   };
 
   const handleApplyCrop = () => {
-    const currentCanvasAspect = canvasAspect || 1;
-    const cropAspectInCanvas = cropBox.w / cropBox.h;
-    const newCanvasAspect = currentCanvasAspect * cropAspectInCanvas;
-
-    setCanvasAspect(newCanvasAspect);
-
+    // Guardar el crop acumulativo para el backend
     if (finalCrop) {
       setFinalCrop({
         x: finalCrop.x + (cropBox.x * finalCrop.w) / 100,
@@ -199,6 +213,11 @@ export function ModalImagenEdit({
       setFinalCrop({ ...cropBox });
     }
 
+    // Actualizar el aspect ratio del lienzo según el cropBox
+    const newAspect = cropBox.w / cropBox.h;
+    setCanvasAspect(newAspect);
+
+    // Resetear el cropBox
     setCropBox(DEFAULT_CROP);
     setCropRatio(null);
   };
@@ -322,18 +341,18 @@ export function ModalImagenEdit({
           rotation={rotation}
           canvasAspect={canvasAspect}
           cropBox={cropBox}
+          finalCrop={finalCrop}
           dragging={dragging}
-          imgRect={imgRect}
           setZoom={setZoom}
           setFlipH={setFlipH}
           setFlipV={setFlipV}
           setRotation={setRotation}
-          setImgRect={setImgRect}
           handleMouseDown={handleMouseDown}
-          measureImg={measureImg}
+          onImgLoad={handleImgLoad}
+          onContainerMount={handleContainerMount}
         />
 
-        <div className="w-80 flex flex-col border-l" style={{ borderColor: "var(--color-cq-border)" }}>
+        <div className="w-80 flex-shrink-0 flex flex-col border-l" style={{ borderColor: "var(--color-cq-border)", minWidth: "320px", maxWidth: "320px" }}>
           <div
             className="flex items-center justify-between px-5 py-4 border-b"
             style={{ borderColor: "var(--color-cq-border)" }}

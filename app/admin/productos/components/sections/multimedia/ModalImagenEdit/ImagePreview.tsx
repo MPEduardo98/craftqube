@@ -13,26 +13,26 @@ interface ImagePreviewProps {
   rotation: number;
   canvasAspect: number | null;
   cropBox: CropBox;
+  finalCrop: CropBox | null;
   dragging: Handle | null;
-  imgRect: DOMRect | null;
   setZoom: (val: number) => void;
   setFlipH: (val: boolean) => void;
   setFlipV: (val: boolean) => void;
   setRotation: (val: number) => void;
-  setImgRect: (rect: DOMRect | null) => void;
   handleMouseDown: (e: React.MouseEvent, handle: Handle) => void;
-  measureImg: () => void;
+  onImgLoad: (img: HTMLImageElement) => void;
+  onContainerMount: (container: HTMLDivElement) => void;
 }
 
 const handles: { handle: Handle; style: React.CSSProperties; cursor: string }[] = [
-  { handle: "tl", style: { top: -5, left: -5 }, cursor: "nwse-resize" },
-  { handle: "t", style: { top: -5, left: "calc(50% - 5px)" }, cursor: "ns-resize" },
-  { handle: "tr", style: { top: -5, right: -5 }, cursor: "nesw-resize" },
-  { handle: "r", style: { top: "calc(50% - 5px)", right: -5 }, cursor: "ew-resize" },
-  { handle: "br", style: { bottom: -5, right: -5 }, cursor: "nwse-resize" },
-  { handle: "b", style: { bottom: -5, left: "calc(50% - 5px)" }, cursor: "ns-resize" },
-  { handle: "bl", style: { bottom: -5, left: -5 }, cursor: "nesw-resize" },
-  { handle: "l", style: { top: "calc(50% - 5px)", left: -5 }, cursor: "ew-resize" },
+  { handle: "tl", style: { top: -8, left: -8 }, cursor: "nwse-resize" },
+  { handle: "t", style: { top: -8, left: "calc(50% - 8px)" }, cursor: "ns-resize" },
+  { handle: "tr", style: { top: -8, right: -8 }, cursor: "nesw-resize" },
+  { handle: "r", style: { top: "calc(50% - 8px)", right: -8 }, cursor: "ew-resize" },
+  { handle: "br", style: { bottom: -8, right: -8 }, cursor: "nwse-resize" },
+  { handle: "b", style: { bottom: -8, left: "calc(50% - 8px)" }, cursor: "ns-resize" },
+  { handle: "bl", style: { bottom: -8, left: -8 }, cursor: "nesw-resize" },
+  { handle: "l", style: { top: "calc(50% - 8px)", left: -8 }, cursor: "ew-resize" },
 ];
 
 export function ImagePreview({
@@ -44,18 +44,26 @@ export function ImagePreview({
   rotation,
   canvasAspect,
   cropBox,
+  finalCrop,
   dragging,
-  imgRect,
   setZoom,
   setFlipH,
   setFlipV,
   setRotation,
-  setImgRect,
   handleMouseDown,
-  measureImg,
+  onImgLoad,
+  onContainerMount,
 }: ImagePreviewProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (imgRef.current) onImgLoad(imgRef.current);
+  }, [onImgLoad]);
+
+  useEffect(() => {
+    if (containerRef.current) onContainerMount(containerRef.current);
+  }, [onContainerMount]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-[#111] min-w-0">
@@ -76,28 +84,30 @@ export function ImagePreview({
             outline: "1px solid rgba(255,255,255,0.12)",
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            ref={imgRef}
-            src={src}
-            alt=""
-            onLoad={measureImg}
-            className="block w-full h-full object-contain pointer-events-none"
-            style={{
-              transform: [
-                `scale(${zoom})`,
-                flipH ? "scaleX(-1)" : "",
-                flipV ? "scaleY(-1)" : "",
-                `rotate(${rotation}deg)`,
-              ]
-                .filter(Boolean)
-                .join(" "),
-              transformOrigin: "center center",
-              transition: dragging ? "none" : "transform 0.2s ease",
-            }}
-          />
+          {/* Imagen SIN TOCAR - solo object-contain dentro del lienzo */}
+          <div className="relative w-full h-full">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              ref={imgRef}
+              src={src}
+              alt=""
+              className="block w-full h-full object-contain pointer-events-none"
+              style={{
+                transform: [
+                  `scale(${zoom})`,
+                  flipH ? "scaleX(-1)" : "",
+                  flipV ? "scaleY(-1)" : "",
+                  `rotate(${rotation}deg)`,
+                ]
+                  .filter(Boolean)
+                  .join(" "),
+                transformOrigin: "center center",
+                transition: dragging ? "none" : "transform 0.2s ease",
+              }}
+            />
+          </div>
 
-          {/* Overlay crop */}
+          {/* Overlay crop - en el mismo nivel que la imagen */}
           {tab === "recortar" && (
             <div className="absolute inset-0 pointer-events-none">
               <div
@@ -142,7 +152,7 @@ export function ImagePreview({
               />
 
               <div
-                className="absolute border-2 border-white"
+                className="absolute border-[3px] border-white"
                 style={{
                   left: `${cropBox.x}%`,
                   top: `${cropBox.y}%`,
@@ -150,6 +160,7 @@ export function ImagePreview({
                   height: `${cropBox.h}%`,
                   cursor: "move",
                   pointerEvents: "all",
+                  boxShadow: "0 0 0 1px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(0,0,0,0.3)",
                 }}
                 onMouseDown={(e) => handleMouseDown(e, "move")}
               >
@@ -162,13 +173,16 @@ export function ImagePreview({
                 {handles.map(({ handle, style, cursor }) => (
                   <div
                     key={handle}
-                    className="absolute w-[10px] h-[10px] rounded-full border"
+                    className="absolute rounded-full"
                     style={{
                       ...style,
                       cursor,
                       pointerEvents: "all",
-                      background: "var(--color-cq-surface)",
-                      borderColor: "var(--color-cq-text)",
+                      width: '16px',
+                      height: '16px',
+                      background: "white",
+                      border: "2px solid #2563eb",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
                     }}
                     onMouseDown={(e) => handleMouseDown(e, handle)}
                   />
