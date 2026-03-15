@@ -1,10 +1,11 @@
+// app/admin/productos/components/sections/SeccionMultimedia.tsx
 "use client";
-// app/admin/productos/components/SeccionMultimedia.tsx
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { SectionCard } from "../producto-form-ui";
 import { buildImageSrc, type ImagenForm } from "../producto-form-types";
 import { ModalMediaLibrary, type MediaItem } from "../modals/ModalMediaLibrary";
+import { LoadingOverlay } from "@/app/global/components/ui/LoadingOverlay";
 
 interface Props {
   imagenes:    ImagenForm[];
@@ -18,7 +19,21 @@ interface Props {
 type PanelTab = "informacion" | "recortar" | "tamaño";
 type Handle   = "move" | "tl" | "t" | "tr" | "r" | "br" | "b" | "bl" | "l";
 
-interface CropBox { x: number; y: number; w: number; h: number; } // % relativos a la imagen
+interface CropBox { x: number; y: number; w: number; h: number; }
+
+/* ── Helpers ───────────────────────────────────────────────── */
+function formatBytes(bytes?: number) {
+  if (!bytes) return "—";
+  if (bytes < 1024)        return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} kB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function formatDate(dateStr?: string) {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+}
 
 /* ── Modal ─────────────────────────────────────────────────── */
 function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt, onRemove, onClose }: {
@@ -32,7 +47,7 @@ function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt,
 
   /* ── Estado ──────────────────────────────────────────────── */
   const [tab,      setTab]      = useState<PanelTab>("informacion");
-  const [nombre,   setNombre]   = useState(nameOnly); // default: nombre del archivo
+  const [nombre,   setNombre]   = useState(nameOnly);
   const [nombreErr,setNombreErr]= useState("");
   const [desc,     setDesc]     = useState(imagen.alt);
   const [saving,   setSaving]   = useState(false);
@@ -47,9 +62,7 @@ function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt,
   const [resizeH,  setResizeH]  = useState("800");
   const [appliedResize, setAppliedResize] = useState<{ w: number; h: number } | null>(null);
 
-  // Aspect ratio del lienzo (w/h). null = ratio natural de la imagen
   const [canvasAspect, setCanvasAspect] = useState<number | null>(null);
-  // Crop acumulado en coords de imagen para enviar al API
   const [finalCrop, setFinalCrop] = useState<CropBox | null>(null);
 
   const DEFAULT_CROP: CropBox = { x: 0, y: 0, w: 100, h: 100 };
@@ -58,13 +71,37 @@ function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt,
   const [dragging,  setDragging]  = useState<Handle | null>(null);
   const [dragStart, setDragStart] = useState({ mx: 0, my: 0, box: DEFAULT_CROP });
 
-  /* Ref a la imagen real para medir su tamaño renderizado */
   const imgRef       = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  /* Rect de la imagen dentro del contenedor */
   const [imgRect, setImgRect] = useState<DOMRect | null>(null);
 
-  /* Medir imagen al cargar y al cambiar zoom/rotación */
+  const [metadata, setMetadata] = useState<{
+    width?: number;
+    height?: number;
+    size?: number;
+    created?: string;
+  }>({});
+
+  /* Cargar metadata */
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      setMetadata({
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+      });
+    };
+    img.src = src;
+
+    fetch(src, { method: "HEAD" })
+      .then(res => {
+        const size = res.headers.get("content-length");
+        if (size) setMetadata(prev => ({ ...prev, size: parseInt(size) }));
+      })
+      .catch(() => {});
+  }, [src]);
+
+  /* Medir imagen */
   const measureImg = useCallback(() => {
     if (!imgRef.current || !containerRef.current) return;
     const r = imgRef.current.getBoundingClientRect();
@@ -96,83 +133,104 @@ function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt,
     setDragStart({ mx: e.clientX, my: e.clientY, box: { ...cropBox } });
   };
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!dragging || !containerRef.current) return;
-    const rect = containerRef.current.querySelector("div")?.getBoundingClientRect();
-    if (!rect) return;
-    const dx = ((e.clientX - dragStart.mx) / rect.width)  * 100;
-    const dy = ((e.clientY - dragStart.my) / rect.height) * 100;
-    const b  = dragStart.box;
-    let { x, y, w, h } = b;
-    const MIN = 5;
-
-    if (dragging === "move") {
-      x = Math.max(0, Math.min(100 - w, b.x + dx));
-      y = Math.max(0, Math.min(100 - h, b.y + dy));
-    } else {
-      if (dragging.includes("l")) {
-        const nx = Math.max(0, Math.min(b.x + b.w - MIN, b.x + dx));
-        w = b.w - (nx - b.x); x = nx;
-      }
-      if (dragging.includes("r")) {
-        w = Math.max(MIN, Math.min(100 - b.x, b.w + dx));
-      }
-      if (dragging.includes("t")) {
-        const ny = Math.max(0, Math.min(b.y + b.h - MIN, b.y + dy));
-        h = b.h - (ny - b.y); y = ny;
-      }
-      if (dragging.includes("b")) {
-        h = Math.max(MIN, Math.min(100 - b.y, b.h + dy));
-      }
-    }
-    setCropBox({ x, y, w, h });
-  }, [dragging, dragStart, imgRect]);
-
-  const handleMouseUp = useCallback(() => setDragging(null), []);
-
   useEffect(() => {
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup",   handleMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup",   handleMouseUp);
+    if (!dragging || !imgRect) return;
+
+    const handleMove = (e: MouseEvent) => {
+      const dx = ((e.clientX - dragStart.mx) / imgRect.width)  * 100;
+      const dy = ((e.clientY - dragStart.my) / imgRect.height) * 100;
+
+      let { x, y, w, h } = dragStart.box;
+
+      if (dragging === "move") {
+        x = Math.max(0, Math.min(100 - w, x + dx));
+        y = Math.max(0, Math.min(100 - h, y + dy));
+      } else {
+        const isLeft   = dragging.includes("l");
+        const isRight  = dragging.includes("r");
+        const isTop    = dragging.includes("t");
+        const isBottom = dragging.includes("b");
+
+        if (isLeft) {
+          const newX = Math.max(0, Math.min(x + w - 5, x + dx));
+          w = w + (x - newX);
+          x = newX;
+        }
+        if (isRight)  { w = Math.max(5, Math.min(100 - x, w + dx)); }
+        if (isTop) {
+          const newY = Math.max(0, Math.min(y + h - 5, y + dy));
+          h = h + (y - newY);
+          y = newY;
+        }
+        if (isBottom) { h = Math.max(5, Math.min(100 - y, h + dy)); }
+      }
+
+      setCropBox({ x, y, w, h });
     };
-  }, [handleMouseMove, handleMouseUp]);
 
-  /* ── Aplicar ratio ───────────────────────────────────────── */
-  const applyRatio = (ratio: string | null) => {
+    const handleUp = () => setDragging(null);
+    document.addEventListener("mousemove", handleMove);
+    document.addEventListener("mouseup",   handleUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMove);
+      document.removeEventListener("mouseup",   handleUp);
+    };
+  }, [dragging, dragStart, imgRect, cropBox]);
+
+  /* ── Crop ratio ──────────────────────────────────────────── */
+  const handleCropRatio = (ratio: string | null) => {
     setCropRatio(ratio);
-    if (!ratio) { setCropBox(DEFAULT_CROP); return; }
+    
+    if (!ratio) { 
+      // Formato libre: resetear el cropBox a 100% del lienzo actual
+      setCropBox(DEFAULT_CROP);
+      return; 
+    }
+    
     const [rw, rh] = ratio.split(":").map(Number);
-    const aspect   = rw / rh;
+    const targetAspect = rw / rh; // aspect ratio deseado (ej: 16/9 = 1.777)
 
-    // Calcular el mayor recuadro que quepa en el lienzo (100×100)
-    // El lienzo es cuadrado en %, así que comparamos directamente
+    // El lienzo actual tiene su propio aspect ratio
+    // Si ya se aplicó un crop, canvasAspect tiene ese valor
+    // Si no, el lienzo es cuadrado (1:1)
+    const currentCanvasAspect = canvasAspect || 1;
+
     let w: number, h: number;
-    if (aspect >= 1) {
-      // Más ancho que alto: limitar por ancho
+    
+    // Necesitamos crear un cropBox que tenga el targetAspect
+    // pero que quepa dentro del lienzo actual
+    
+    // Si el target es más ancho que el canvas actual, limitamos por ancho
+    if (targetAspect >= currentCanvasAspect) {
       w = 100;
-      h = 100 / aspect;
-      if (h > 100) { h = 100; w = 100 * aspect; }
+      h = (100 * currentCanvasAspect) / targetAspect;
     } else {
-      // Más alto que ancho: limitar por alto
+      // Si el target es más alto, limitamos por alto
       h = 100;
-      w = 100 * aspect;
-      if (w > 100) { w = 100; h = 100 / aspect; }
+      w = (100 * targetAspect) / currentCanvasAspect;
     }
 
     // Centrar
     const x = (100 - w) / 2;
     const y = (100 - h) / 2;
+    
     setCropBox({ x, y, w, h });
   };
 
-  /* ── Aplicar recorte: cambia el lienzo y acumula para API ── */
+  /* ── Aplicar recorte ─────────────────────────────────────── */
   const handleApplyCrop = () => {
-    // Cambiar el aspect ratio del lienzo al del crop seleccionado
-    setCanvasAspect(cropBox.w / cropBox.h);
+    // El nuevo aspect ratio del lienzo será el del cropBox aplicado sobre el lienzo actual
+    const currentCanvasAspect = canvasAspect || 1;
+    
+    // Si el cropBox es 100x100, no hay cambio
+    // Si el cropBox es 100x56.25 (16:9), el nuevo aspect será 100/56.25 = 1.777...
+    const cropAspectInCanvas = cropBox.w / cropBox.h;
+    
+    // El aspect final combina el aspect del canvas actual con el del crop
+    const newCanvasAspect = currentCanvasAspect * cropAspectInCanvas;
+    
+    setCanvasAspect(newCanvasAspect);
 
-    // Acumular el crop en coordenadas de imagen para el API
     if (finalCrop) {
       setFinalCrop({
         x: finalCrop.x + cropBox.x * finalCrop.w / 100,
@@ -185,12 +243,19 @@ function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt,
     }
 
     setCropBox(DEFAULT_CROP);
-    setCropRatio(null);
+    setCropRatio(null); // Resetear para poder volver a seleccionar el mismo ratio
+  };
+
+  /* ── Descargar ───────────────────────────────────────────── */
+  const handleDownload = () => {
+    const link = document.createElement("a");
+    link.href = src;
+    link.download = fileName;
+    link.click();
   };
 
   /* ── Guardar ─────────────────────────────────────────────── */
   const handleSave = async () => {
-    // Validar nombre único (contra otras imágenes del producto)
     const nuevoNombre = nombre.trim() + ext;
     const dupes = existingNames.filter(n => n !== fileName && n === nuevoNombre);
     if (dupes.length > 0) {
@@ -228,17 +293,27 @@ function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt,
       onChangeAlt(desc);
 
       if (nombre.trim() !== nameOnly) {
-        try {
-          await fetch("/api/admin/media/rename", {
-            method:  "POST",
-            headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ url: imagen.url, productoId, nuevoNombre }),
-          });
-        } catch { /* silencioso */ }
+        const renameRes = await fetch("/api/admin/media/rename", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ 
+            url: imagen.url, 
+            productoId, 
+            nuevoNombre 
+          }),
+        });
+        const renameJson = await renameRes.json();
+        if (!renameJson.success) {
+          setSaveMsg(`Error al renombrar: ${renameJson.error}`);
+          setSaving(false);
+          return;
+        }
       }
 
       setSaveMsg("Guardado ✓");
-      setTimeout(() => { setSaveMsg(""); onClose(); }, 900);
+      setTimeout(() => { 
+        setSaveMsg(""); 
+      }, 1500);
     } catch {
       setSaveMsg("Error de conexión");
     } finally {
@@ -246,9 +321,7 @@ function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt,
     }
   };
 
-  const imgTransform = ""; // kept for TS, unused — transform applied inline
-
-  /* ── Handle positions: 8 puntos ─────────────────────────── */
+  /* ── Handles ─────────────────────────────────────────────── */
   const handles: { handle: Handle; style: React.CSSProperties; cursor: string }[] = [
     { handle: "tl", style: { top: -5, left: -5 },                cursor: "nwse-resize" },
     { handle: "t",  style: { top: -5, left: "calc(50% - 5px)" }, cursor: "ns-resize"   },
@@ -261,30 +334,35 @@ function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt,
   ];
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative bg-white rounded-2xl shadow-2xl flex overflow-hidden w-full max-w-[90vw] mx-4"
-        style={{ maxHeight: "92vh" }}>
+      {/* Modal pantalla completa */}
+      <div 
+        className="relative rounded-none shadow-2xl flex overflow-hidden w-full h-full"
+        style={{ background: "var(--color-cq-surface)" }}
+      >
 
-        {/* ── Área preview ─────────────────────────────────── */}
+        {/* Loader global */}
+        <LoadingOverlay visible={saving} message="Guardando cambios..." mode="fixed" />
+
+        {/* ── Área preview ───────────────────────────────────── */}
         <div className="flex-1 flex flex-col overflow-hidden bg-[#111] min-w-0">
 
-          {/* Imagen + overlay crop — lienzo fijo */}
+          {/* Imagen + overlay */}
           <div
             ref={containerRef}
             className="relative flex-1 flex items-center justify-center overflow-hidden select-none"
             style={{ background: "#1a1a1a" }}
           >
-            {/* Lienzo: aspect ratio controlado, overflow hidden clipa lo que queda fuera */}
             <div
               className="relative shrink-0 overflow-hidden"
               style={{
-                aspectRatio:     canvasAspect ? String(canvasAspect) : undefined,
-                maxHeight:       "62vh",
-                maxWidth:        "100%",
+                aspectRatio: canvasAspect ? String(canvasAspect) : undefined,
+                maxHeight: "100%",
+                maxWidth: "100%",
                 backgroundImage: "repeating-conic-gradient(#333 0% 25%, #222 0% 50%) 0 0 / 16px 16px",
-                outline:         "1px solid rgba(255,255,255,0.12)",
+                outline: "1px solid rgba(255,255,255,0.12)",
               }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -306,46 +384,42 @@ function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt,
                 }}
               />
 
-              {/* Overlay crop — sobre el lienzo, no sobre la imagen escalada */}
+              {/* Overlay crop */}
               {tab === "recortar" && (
                 <div className="absolute inset-0 pointer-events-none">
-                  {/* Oscurecer exterior */}
                   <div className="absolute" style={{ left: 0, right: 0, top: 0, height: `${cropBox.y}%`, background: "rgba(0,0,0,0.55)" }} />
                   <div className="absolute" style={{ left: 0, right: 0, bottom: 0, height: `${100 - cropBox.y - cropBox.h}%`, background: "rgba(0,0,0,0.55)" }} />
                   <div className="absolute" style={{ left: 0, top: `${cropBox.y}%`, width: `${cropBox.x}%`, height: `${cropBox.h}%`, background: "rgba(0,0,0,0.55)" }} />
                   <div className="absolute" style={{ right: 0, top: `${cropBox.y}%`, width: `${100 - cropBox.x - cropBox.w}%`, height: `${cropBox.h}%`, background: "rgba(0,0,0,0.55)" }} />
 
-                  {/* Rectángulo de recorte */}
                   <div
                     className="absolute border-2 border-white"
                     style={{
-                      left:          `${cropBox.x}%`,
-                      top:           `${cropBox.y}%`,
-                      width:         `${cropBox.w}%`,
-                      height:        `${cropBox.h}%`,
-                      cursor:        "move",
+                      left:   `${cropBox.x}%`,
+                      top:    `${cropBox.y}%`,
+                      width:  `${cropBox.w}%`,
+                      height: `${cropBox.h}%`,
+                      cursor: "move",
                       pointerEvents: "all",
                     }}
                     onMouseDown={(e) => handleMouseDown(e, "move")}
                   >
-                    {/* Grid tercios */}
                     <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
                       {Array.from({ length: 9 }).map((_, i) => (
                         <div key={i} className="border border-white/25" />
                       ))}
                     </div>
 
-                    {/* 8 handles — tamaño fijo 10px, no escalan con zoom */}
                     {handles.map(({ handle, style, cursor }) => (
                       <div
                         key={handle}
-                        className="absolute bg-white rounded-sm shadow-md pointer-events-auto"
-                        style={{
-                          ...style,
-                          cursor,
-                          zIndex: 10,
-                          width:  10,
-                          height: 10,
+                        className="absolute w-[10px] h-[10px] rounded-full border"
+                        style={{ 
+                          ...style, 
+                          cursor, 
+                          pointerEvents: "all",
+                          background: "var(--color-cq-surface)",
+                          borderColor: "var(--color-cq-text)"
                         }}
                         onMouseDown={(e) => handleMouseDown(e, handle)}
                       />
@@ -353,46 +427,85 @@ function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt,
                   </div>
                 </div>
               )}
-            </div>{/* fin lienzo */}
-          </div>{/* fin containerRef */}
-
-          {/* Barra inferior: zoom — solo en tab recortar */}
-          {tab === "recortar" && (
-            <div className="bg-[#161616] border-t border-white/8 px-5 py-2.5 flex items-center justify-center shrink-0">
-              <div className="flex items-center gap-2">
-                <button type="button"
-                  onClick={() => setZoom(z => Math.max(0.25, Math.round((z - 0.25) * 100) / 100))}
-                  className="w-5 h-5 rounded bg-white/10 text-white/50 hover:bg-white/20 transition text-xs flex items-center justify-center">
-                  −
-                </button>
-                <input
-                  type="range" min={25} max={300} step={5} value={Math.round(zoom * 100)}
-                  onChange={(e) => setZoom(Number(e.target.value) / 100)}
-                  className="w-28 accent-indigo-400 cursor-pointer"
-                  style={{ height: 3 }}
-                />
-                <button type="button"
-                  onClick={() => setZoom(z => Math.min(3, Math.round((z + 0.25) * 100) / 100))}
-                  className="w-5 h-5 rounded bg-white/10 text-white/50 hover:bg-white/20 transition text-xs flex items-center justify-center">
-                  +
-                </button>
-                <span className="text-[10px] text-white/30 font-mono w-8">{Math.round(zoom * 100)}%</span>
-                <button type="button" onClick={() => setZoom(1)}
-                  className="text-[10px] text-white/25 hover:text-white/50 transition">
-                  ↺
-                </button>
-              </div>
             </div>
-          )}
+          </div>
+
+          {/* Footer con zoom y controles */}
+          <div className="flex items-center justify-between gap-4 px-6 py-3 bg-[#0a0a0a] border-t border-white/5">
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-white/40">Zoom</span>
+              <input
+                type="range"
+                min="0.5"
+                max="3"
+                step="0.1"
+                value={zoom}
+                onChange={(e) => setZoom(parseFloat(e.target.value))}
+                className="w-32"
+              />
+              <span className="text-xs text-white/60 font-mono">{Math.round(zoom * 100)}%</span>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setFlipH(!flipH)}
+                className={`px-3 py-1.5 text-xs rounded transition ${flipH ? "bg-white/20 text-white" : "bg-white/5 text-white/60 hover:bg-white/10"}`}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFlipV(!flipV)}
+                className={`px-3 py-1.5 text-xs rounded transition ${flipV ? "bg-white/20 text-white" : "bg-white/5 text-white/60 hover:bg-white/10"}`}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRotation((rotation - 90) % 360)}
+                className="px-3 py-1.5 text-xs bg-white/5 text-white/60 rounded hover:bg-white/10 transition"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* ── Panel lateral ────────────────────────────────── */}
-        <div className="w-96 shrink-0 flex flex-col border-l border-slate-100 bg-white">
-
+        {/* ── Panel lateral ──────────────────────────────────── */}
+        <div 
+          className="flex flex-col border-l"
+          style={{ 
+            width: "380px",
+            minWidth: "380px",
+            maxWidth: "380px",
+            background: "var(--color-cq-surface)",
+            borderColor: "var(--color-cq-border)"
+          }}
+        >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 shrink-0">
-            <p className="text-sm font-semibold text-slate-700 truncate max-w-[260px]" title={fileName}>{fileName}</p>
-            <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 transition shrink-0 ml-2">
+          <div 
+            className="flex items-center justify-between px-5 py-4 border-b"
+            style={{ borderColor: "var(--color-cq-border)" }}
+          >
+            <h3 
+              className="text-sm font-semibold"
+              style={{ color: "var(--color-cq-text)" }}
+            >
+              Editor de imagen
+            </h3>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-lg transition"
+              style={{ color: "var(--color-cq-muted)" }}
+            >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -400,220 +513,313 @@ function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt,
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-slate-100 shrink-0">
-            {([
-              { id: "informacion", label: "Información" },
-              { id: "recortar",   label: "Recortar" },
-              { id: "tamaño",     label: "Tamaño" },
-            ] as { id: PanelTab; label: string }[]).map((t) => (
-              <button key={t.id} type="button" onClick={() => setTab(t.id)}
-                className={`flex-1 text-xs py-3 font-medium transition border-b-2 ${
-                  tab === t.id
-                    ? "border-indigo-500 text-indigo-600"
-                    : "border-transparent text-slate-500 hover:text-slate-700"
-                }`}>
-                {t.label}
+          <div 
+            className="flex border-b"
+            style={{ borderColor: "var(--color-cq-border)" }}
+          >
+            {(["informacion", "recortar", "tamaño"] as PanelTab[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                className="flex-1 px-4 py-3 text-xs font-medium transition"
+                style={{
+                  color: tab === t ? "var(--color-cq-primary)" : "var(--color-cq-muted)",
+                  borderBottom: tab === t ? "2px solid var(--color-cq-primary)" : "none"
+                }}
+              >
+                {t === "informacion" ? "Información" : t === "recortar" ? "Recortar" : "Tamaño"}
               </button>
             ))}
           </div>
 
-          {/* Contenido tab */}
-          <div className="flex-1 overflow-y-auto">
+          {/* Contenido */}
+          <div className="flex-1 overflow-y-auto p-5 space-y-5">
 
+            {/* ── Tab: Información ────────────────────────── */}
             {tab === "informacion" && (
-              <div className="p-5 space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-600">Nombre</label>
-                  <div className={`flex items-center border rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-400 transition ${nombreErr ? "border-red-300" : "border-slate-200"}`}>
-                    <input type="text" value={nombre} onChange={(e) => { setNombre(e.target.value); setNombreErr(""); }}
-                      className="flex-1 text-sm px-3 py-2 focus:outline-none min-w-0" />
-                    {ext && <span className="px-2.5 text-xs text-slate-400 bg-slate-50 border-l border-slate-200 py-2 shrink-0">{ext}</span>}
-                  </div>
-                  {nombreErr && <p className="text-xs text-red-500">{nombreErr}</p>}
-                  {slug && nombre !== slug && (
-                    <button type="button" onClick={() => { setNombre(slug); setNombreErr(""); }}
-                      className="text-xs text-indigo-500 hover:text-indigo-700 transition">
-                      Usar slug del producto: <span className="font-mono">{slug}</span>
-                    </button>
-                  )}
-                  {slug && nombre === slug && (
-                    <p className="text-xs text-emerald-500">✓ Usando el slug del producto</p>
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-600">Descripción</label>
-                  <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={5}
-                    placeholder="Describe la imagen para accesibilidad y SEO"
-                    className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-slate-300" />
-                  <p className="text-xs text-slate-400">Se usa como atributo alt en HTML y por motores de búsqueda.</p>
-                </div>
-              </div>
-            )}
-
-            {tab === "recortar" && (
-              <div className="p-5 space-y-5">
-                {/* Proporción */}
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-slate-600">Proporción</p>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { label: "Libre", value: null },
-                      { label: "1:1",   value: "1:1" },
-                      { label: "16:9",  value: "16:9" },
-                      { label: "4:3",   value: "4:3" },
-                      { label: "3:2",   value: "3:2" },
-                    ].map(({ label, value }) => (
-                      <button key={label} type="button" onClick={() => applyRatio(value)}
-                        className={`px-4 py-2 text-xs rounded-lg border font-medium transition ${
-                          cropRatio === value
-                            ? "border-indigo-500 bg-indigo-50 text-indigo-600"
-                            : "border-slate-200 text-slate-600 hover:border-indigo-300 hover:bg-indigo-50/50"
-                        }`}>
-                        {label}
-                      </button>
-                    ))}
+              <>
+                <div className="space-y-3">
+                  <h4 
+                    className="text-xs font-semibold uppercase tracking-wider"
+                    style={{ color: "var(--color-cq-text)" }}
+                  >
+                    Detalles
+                  </h4>
+                  <div 
+                    className="rounded-lg p-4 space-y-2 text-xs"
+                    style={{ background: "var(--color-cq-surface-2)" }}
+                  >
+                    <div className="flex justify-between">
+                      <span style={{ color: "var(--color-cq-muted)" }}>Formato:</span>
+                      <span 
+                        className="font-mono uppercase"
+                        style={{ color: "var(--color-cq-text)" }}
+                      >
+                        {ext.replace(".", "")}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span style={{ color: "var(--color-cq-muted)" }}>Dimensiones:</span>
+                      <span 
+                        className="font-mono"
+                        style={{ color: "var(--color-cq-text)" }}
+                      >
+                        {metadata.width && metadata.height
+                          ? `${metadata.width} × ${metadata.height}`
+                          : "Cargando..."}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span style={{ color: "var(--color-cq-muted)" }}>Tamaño:</span>
+                      <span 
+                        className="font-mono"
+                        style={{ color: "var(--color-cq-text)" }}
+                      >
+                        {formatBytes(metadata.size)}
+                      </span>
+                    </div>
+                    {metadata.created && (
+                      <div className="flex justify-between">
+                        <span style={{ color: "var(--color-cq-muted)" }}>Agregado:</span>
+                        <span style={{ color: "var(--color-cq-text)" }}>
+                          {formatDate(metadata.created)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Voltear */}
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-slate-600">Voltear</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button type="button" onClick={() => setFlipH(v => !v)}
-                      className={`flex items-center justify-center gap-2 py-2.5 text-xs rounded-lg border font-medium transition ${
-                        flipH ? "border-indigo-500 bg-indigo-50 text-indigo-600" : "border-slate-200 text-slate-600 hover:border-indigo-300"
-                      }`}>
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                      </svg>
-                      Horizontal
-                    </button>
-                    <button type="button" onClick={() => setFlipV(v => !v)}
-                      className={`flex items-center justify-center gap-2 py-2.5 text-xs rounded-lg border font-medium transition ${
-                        flipV ? "border-indigo-500 bg-indigo-50 text-indigo-600" : "border-slate-200 text-slate-600 hover:border-indigo-300"
-                      }`}>
-                      <svg className="w-4 h-4 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                      </svg>
-                      Vertical
-                    </button>
+                <div className="space-y-3">
+                  <h4 
+                    className="text-xs font-semibold uppercase tracking-wider"
+                    style={{ color: "var(--color-cq-text)" }}
+                  >
+                    Usado en
+                  </h4>
+                  <div 
+                    className="rounded-lg p-4 text-xs"
+                    style={{ 
+                      background: "var(--color-cq-surface-2)",
+                      color: "var(--color-cq-muted)"
+                    }}
+                  >
+                    Productos (1)
                   </div>
                 </div>
 
-                {/* Girar */}
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-slate-600">Girar</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { label: "−90°", delta: -90, icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9" },
-                      { label: "+90°", delta:  90, icon: "M20 4v5h-.582M4.644 11A8.001 8.001 0 0019.418 9m0 0H15" },
-                    ].map(({ label, delta, icon }) => (
-                      <button key={label} type="button"
-                        onClick={() => setRotation(r => (r + delta + 360) % 360)}
-                        className="flex items-center justify-center gap-2 py-2.5 text-xs rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-300 hover:bg-indigo-50/50 font-medium transition">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
-                        </svg>
-                        {label}
-                      </button>
-                    ))}
+                <div>
+                  <label 
+                    className="block text-xs font-medium mb-2"
+                    style={{ color: "var(--color-cq-text)" }}
+                  >
+                    Nombre del archivo
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={nombre}
+                      onChange={(e) => setNombre(e.target.value)}
+                      className="flex-1 text-sm rounded-lg px-3 py-2 border focus:outline-none focus:ring-2 transition"
+                      style={{
+                        background: "var(--color-cq-surface)",
+                        borderColor: "var(--color-cq-border)",
+                        color: "var(--color-cq-text)"
+                      }}
+                    />
+                    <span 
+                      className="text-xs font-mono"
+                      style={{ color: "var(--color-cq-muted)" }}
+                    >
+                      {ext}
+                    </span>
                   </div>
-                  {rotation !== 0 && (
-                    <p className="text-xs text-indigo-500 font-mono text-center">{rotation}° aplicado</p>
-                  )}
-                </div>
-
-                <div className="space-y-2 pt-1">
-                  {finalCrop && (
-                    <p className="text-xs text-indigo-500 text-center font-medium">
-                      ✓ Lienzo {Math.round(cropBox.w / cropBox.h * 10) / 10}:1 — ajusta más o guarda
+                  {nombreErr && (
+                    <p className="text-xs mt-1" style={{ color: "#ef4444" }}>
+                      {nombreErr}
                     </p>
                   )}
-                  <button type="button" onClick={handleApplyCrop}
-                    className="w-full py-2.5 text-sm font-medium bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition">
-                    Aplicar recorte
-                  </button>
-                  <button type="button"
-                    onClick={() => {
-                      setCropBox(DEFAULT_CROP);
-                      setFinalCrop(null);
-                      setCanvasAspect(null);
-                      setCropRatio(null);
-                      setFlipH(false);
-                      setFlipV(false);
-                      setRotation(0);
-                      setZoom(1);
-                    }}
-                    className="w-full py-2 text-xs text-slate-500 hover:text-slate-700 transition rounded-lg hover:bg-slate-50">
-                    Restablecer todo
-                  </button>
                 </div>
-              </div>
+
+                <div>
+                  <label 
+                    className="block text-xs font-medium mb-2"
+                    style={{ color: "var(--color-cq-text)" }}
+                  >
+                    Descripción (texto alternativo)
+                  </label>
+                  <textarea
+                    value={desc}
+                    onChange={(e) => setDesc(e.target.value)}
+                    rows={3}
+                    placeholder="Describe la imagen para SEO y accesibilidad"
+                    className="w-full text-sm rounded-lg px-3 py-2 border resize-none focus:outline-none focus:ring-2 transition"
+                    style={{
+                      background: "var(--color-cq-surface)",
+                      borderColor: "var(--color-cq-border)",
+                      color: "var(--color-cq-text)"
+                    }}
+                  />
+                </div>
+              </>
             )}
 
-            {tab === "tamaño" && (
-              <div className="p-5 space-y-5">
-                <div className="space-y-3">
-                  <p className="text-xs font-medium text-slate-600">Dimensiones (px)</p>
-                  <div className="space-y-2">
+            {/* ── Tab: Recortar ───────────────────────────── */}
+            {tab === "recortar" && (
+              <>
+                <div>
+                  <label 
+                    className="block text-xs font-medium mb-2"
+                    style={{ color: "var(--color-cq-text)" }}
+                  >
+                    Relación de aspecto
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
                     {[
-                      { label: "Ancho", val: resizeW, set: setResizeW },
-                      { label: "Alto",  val: resizeH, set: setResizeH },
-                    ].map(({ label, val, set }) => (
-                      <div key={label} className="flex items-center gap-3">
-                        <label className="text-xs text-slate-500 w-12 shrink-0">{label}</label>
-                        <input type="number" value={val} onChange={(e) => set(e.target.value)}
-                          className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition" />
-                        <span className="text-xs text-slate-400 shrink-0">px</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-slate-600">Tamaños predefinidos</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { label: "Miniatura",  w: "150",  h: "150"  },
-                      { label: "Pequeño",    w: "300",  h: "300"  },
-                      { label: "Mediano",    w: "600",  h: "600"  },
-                      { label: "Grande",     w: "800",  h: "800"  },
-                      { label: "HD",         w: "1280", h: "720"  },
-                      { label: "Full HD",    w: "1920", h: "1080" },
-                    ].map(({ label, w, h }) => (
-                      <button key={label} type="button" onClick={() => { setResizeW(w); setResizeH(h); }}
-                        className={`py-2.5 text-xs rounded-lg border font-medium transition ${
-                          resizeW === w && resizeH === h
-                            ? "border-indigo-500 bg-indigo-50 text-indigo-600"
-                            : "border-slate-200 text-slate-600 hover:border-indigo-300 hover:bg-indigo-50/50"
-                        }`}>
-                        <span className="block">{label}</span>
-                        <span className="block text-[10px] opacity-60 font-mono mt-0.5">{w}×{h}</span>
+                      { ratio: "1:1", label: "Cuadrado" },
+                      { ratio: "3:2", label: "3:2" },
+                      { ratio: "5:4", label: "5:4" },
+                      { ratio: "7:5", label: "7:5" },
+                      { ratio: "16:9", label: "16:9" },
+                    ].map((item) => (
+                      <button
+                        key={item.ratio}
+                        type="button"
+                        onClick={() => handleCropRatio(item.ratio)}
+                        className="px-3 py-2 text-xs font-medium rounded border transition"
+                        style={{
+                          background: cropRatio === item.ratio ? "var(--color-cq-accent-glow)" : "var(--color-cq-surface)",
+                          borderColor: cropRatio === item.ratio ? "var(--color-cq-primary)" : "var(--color-cq-border)",
+                          color: cropRatio === item.ratio ? "var(--color-cq-primary)" : "var(--color-cq-text)"
+                        }}
+                      >
+                        {item.label}
                       </button>
                     ))}
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCropRatio(null)}
+                    className="w-full mt-2 px-3 py-2 text-xs font-medium rounded border transition"
+                    style={{
+                      background: "var(--color-cq-surface)",
+                      borderColor: "var(--color-cq-border)",
+                      color: "var(--color-cq-text)"
+                    }}
+                  >
+                    Formato libre
+                  </button>
                 </div>
 
-                {appliedResize && (
-                  <p className="text-xs text-indigo-500 text-center font-medium">
-                    ✓ {appliedResize.w}×{appliedResize.h}px aplicado
-                  </p>
-                )}
-                <button type="button"
-                  onClick={() => setAppliedResize({ w: Number(resizeW), h: Number(resizeH) })}
-                  className="w-full py-2.5 text-sm font-medium bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition">
+                <button
+                  type="button"
+                  onClick={handleApplyCrop}
+                  className="btn-primary w-full justify-center"
+                >
+                  Aplicar recorte
+                </button>
+              </>
+            )}
+
+            {/* ── Tab: Tamaño ─────────────────────────────── */}
+            {tab === "tamaño" && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label 
+                      className="block text-xs font-medium mb-2"
+                      style={{ color: "var(--color-cq-text)" }}
+                    >
+                      Ancho (px)
+                    </label>
+                    <input
+                      type="number"
+                      value={resizeW}
+                      onChange={(e) => setResizeW(e.target.value)}
+                      className="w-full text-sm rounded-lg px-3 py-2 border focus:outline-none focus:ring-2 transition"
+                      style={{
+                        background: "var(--color-cq-surface)",
+                        borderColor: "var(--color-cq-border)",
+                        color: "var(--color-cq-text)"
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label 
+                      className="block text-xs font-medium mb-2"
+                      style={{ color: "var(--color-cq-text)" }}
+                    >
+                      Alto (px)
+                    </label>
+                    <input
+                      type="number"
+                      value={resizeH}
+                      onChange={(e) => setResizeH(e.target.value)}
+                      className="w-full text-sm rounded-lg px-3 py-2 border focus:outline-none focus:ring-2 transition"
+                      style={{
+                        background: "var(--color-cq-surface)",
+                        borderColor: "var(--color-cq-border)",
+                        color: "var(--color-cq-text)"
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const w = parseInt(resizeW);
+                    const h = parseInt(resizeH);
+                    if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) {
+                      setAppliedResize({ w, h });
+                    }
+                  }}
+                  className="btn-primary w-full justify-center"
+                >
                   Aplicar tamaño
                 </button>
-              </div>
+              </>
             )}
           </div>
 
-          {/* Acciones fijas */}
-          <div className="p-5 border-t border-slate-100 shrink-0">
-            <button type="button" onClick={handleSave} disabled={saving}
-              className="w-full px-4 py-2.5 text-sm font-medium bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-60 transition">
-              {saveMsg || (saving ? "Guardando…" : "Guardar")}
-            </button>
+          {/* Footer con acciones */}
+          <div 
+            className="border-t p-4 space-y-2"
+            style={{ 
+              borderColor: "var(--color-cq-border)",
+              background: "var(--color-cq-surface-2)"
+            }}
+          >
+            {saveMsg && (
+              <p 
+                className="text-xs text-center"
+                style={{ color: saveMsg.includes("Error") ? "#ef4444" : "#10b981" }}
+              >
+                {saveMsg}
+              </p>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleDownload}
+                disabled={!!finalCrop || !!appliedResize || flipH || flipV || rotation !== 0}
+                className="btn-secondary flex-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Descargar
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="btn-primary flex-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Guardar cambios
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -622,6 +828,7 @@ function ModalImagenEdit({ imagen, productoId, slug, existingNames, onChangeAlt,
   );
 }
 
+/* ── Thumbnail ─────────────────────────────────────────────── */
 function Thumbnail({ imagen, productoId, slug, existingNames, onRemove, onChangeAlt }: {
   imagen: ImagenForm; productoId?: number; slug?: string; existingNames: string[];
   onRemove: () => void; onChangeAlt: (alt: string) => void;
@@ -633,7 +840,11 @@ function Thumbnail({ imagen, productoId, slug, existingNames, onRemove, onChange
   return (
     <>
       <div
-        className="relative group aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100 cursor-pointer"
+        className="relative group aspect-square rounded-xl overflow-hidden border cursor-pointer"
+        style={{
+          borderColor: "var(--color-cq-border)",
+          background: "var(--color-cq-surface-2)"
+        }}
         onClick={() => setEditing(true)}
       >
         {!broken ? (
@@ -641,7 +852,13 @@ function Thumbnail({ imagen, productoId, slug, existingNames, onRemove, onChange
           <img src={src} alt={imagen.alt || ""} onError={() => setBroken(true)} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <svg className="w-8 h-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg 
+              className="w-8 h-8" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+              style={{ color: "var(--color-cq-muted)" }}
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                 d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
@@ -669,7 +886,6 @@ function Thumbnail({ imagen, productoId, slug, existingNames, onRemove, onChange
 export function SeccionMultimedia({ imagenes, productoId, slug, onAdd, onRemove, onChangeAlt }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Nombres de archivo de todas las imágenes del producto (para validación de unicidad)
   const existingNames = imagenes.map(img => img.url.split("/").pop() ?? img.url);
 
   return (
@@ -687,8 +903,15 @@ export function SeccionMultimedia({ imagenes, productoId, slug, onAdd, onRemove,
               onChangeAlt={(alt) => onChangeAlt(i, alt)}
             />
           ))}
-          <button type="button" onClick={() => setModalOpen(true)}
-            className="aspect-square rounded-xl border-2 border-dashed border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/40 flex items-center justify-center text-slate-300 hover:text-indigo-400 transition">
+          <button 
+            type="button" 
+            onClick={() => setModalOpen(true)}
+            className="aspect-square rounded-xl border-2 border-dashed flex items-center justify-center transition"
+            style={{
+              borderColor: "var(--color-cq-border)",
+              color: "var(--color-cq-muted)"
+            }}
+          >
             <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
             </svg>
