@@ -69,24 +69,32 @@ function ListRow({ producto }: { producto: Producto }) {
           </span>
         )}
         <Link href={`/producto/${producto.slug}`} style={{ textDecoration: "none" }}>
-          <p className="font-bold leading-snug line-clamp-1 hover:text-blue-500 transition-colors"
-            style={{ fontFamily: "var(--font-display)", fontSize: "0.9rem", color: "var(--color-cq-text)", letterSpacing: "0.01em" }}>
+          <p
+            className="font-bold leading-snug line-clamp-1 hover:text-blue-500 transition-colors"
+            style={{ fontFamily: "var(--font-display)", fontSize: "0.9rem", color: "var(--color-cq-text)", letterSpacing: "0.01em" }}
+          >
             {producto.titulo}
           </p>
         </Link>
-        {producto.descripcion_corta && (
+        {producto.descripcion && (
           <p className="line-clamp-1" style={{ fontFamily: "var(--font-body)", fontSize: "0.72rem", color: "var(--color-cq-muted)", marginTop: "2px" }}>
-            {producto.descripcion_corta}
+            {producto.descripcion}
           </p>
         )}
         <div className="flex items-center gap-2 mt-1">
           {producto.categoria && (
-            <span className="px-1.5 py-0.5 rounded text-xs" style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", letterSpacing: "0.04em", background: "var(--color-cq-surface-2)", color: "var(--color-cq-muted)", border: "1px solid var(--color-cq-border)" }}>
+            <span
+              className="px-1.5 py-0.5 rounded text-xs"
+              style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", letterSpacing: "0.04em", background: "var(--color-cq-surface-2)", color: "var(--color-cq-muted)", border: "1px solid var(--color-cq-border)" }}
+            >
               {producto.categoria}
             </span>
           )}
           {producto.marca && (
-            <span className="px-1.5 py-0.5 rounded text-xs" style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", letterSpacing: "0.04em", background: "var(--color-cq-accent-glow)", color: "var(--color-cq-accent)", border: "1px solid rgba(37,99,235,0.15)" }}>
+            <span
+              className="px-1.5 py-0.5 rounded text-xs"
+              style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", letterSpacing: "0.04em", background: "var(--color-cq-accent-glow)", color: "var(--color-cq-accent)", border: "1px solid rgba(37,99,235,0.15)" }}
+            >
               {producto.marca}
             </span>
           )}
@@ -141,29 +149,41 @@ function Pagination({ page, pages, onChange }: { page: number; pages: number; on
   }
   return (
     <div className="flex items-center justify-center gap-1 pt-8">
-      <button onClick={() => onChange(page - 1)} disabled={page <= 1}
+      <button
+        onClick={() => onChange(page - 1)}
+        disabled={page <= 1}
         className="flex items-center justify-center rounded-lg disabled:opacity-30"
-        style={{ width: 36, height: 36, background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)", cursor: page <= 1 ? "not-allowed" : "pointer", color: "var(--color-cq-muted)" }}>
+        style={{ width: 36, height: 36, background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)", cursor: page <= 1 ? "not-allowed" : "pointer", color: "var(--color-cq-muted)" }}
+      >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
-      {range.map((r, i) => r === "..." ? (
-        <span key={`e${i}`} style={{ width: 36, textAlign: "center", fontFamily: "var(--font-mono)", fontSize: "0.7rem", color: "var(--color-cq-muted-2)" }}>…</span>
-      ) : (
-        <button key={r} onClick={() => onChange(r as number)}
-          className="flex items-center justify-center rounded-lg font-bold"
-          style={{
-            width: 36, height: 36, cursor: "pointer",
-            fontFamily: "var(--font-mono)", fontSize: "0.72rem", letterSpacing: "0.04em",
-            background: r === page ? "var(--color-cq-accent)" : "var(--color-cq-surface)",
-            color: r === page ? "white" : "var(--color-cq-muted)",
-            border: r === page ? "none" : "1px solid var(--color-cq-border)",
-          }}>
-          {r}
-        </button>
-      ))}
-      <button onClick={() => onChange(page + 1)} disabled={page >= pages}
+      {range.map((r, i) =>
+        r === "..." ? (
+          <span key={`ellipsis-${i}`} style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-cq-muted)", fontFamily: "var(--font-mono)", fontSize: "0.7rem" }}>…</span>
+        ) : (
+          <button
+            key={r}
+            onClick={() => onChange(r as number)}
+            className="flex items-center justify-center rounded-lg"
+            style={{
+              width: 36, height: 36,
+              fontFamily: "var(--font-mono)", fontSize: "0.72rem",
+              cursor: "pointer",
+              background: r === page ? "var(--color-cq-accent)" : "var(--color-cq-surface)",
+              color: r === page ? "white" : "var(--color-cq-muted)",
+              border: r === page ? "none" : "1px solid var(--color-cq-border)",
+            }}
+          >
+            {r}
+          </button>
+        )
+      )}
+      <button
+        onClick={() => onChange(page + 1)}
+        disabled={page >= pages}
         className="flex items-center justify-center rounded-lg disabled:opacity-30"
-        style={{ width: 36, height: 36, background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)", cursor: page >= pages ? "not-allowed" : "pointer", color: "var(--color-cq-muted)" }}>
+        style={{ width: 36, height: 36, background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)", cursor: page >= pages ? "not-allowed" : "pointer", color: "var(--color-cq-muted)" }}
+      >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><path d="M9 18l6-6-6-6"/></svg>
       </button>
     </div>
@@ -172,11 +192,11 @@ function Pagination({ page, pages, onChange }: { page: number; pages: number; on
 
 /* ── Main export ── */
 interface CatalogGridProps {
-  productos: Producto[];
-  loading:   boolean;
-  view:      "grid" | "list";
-  page:      number;
-  pages:     number;
+  productos:    Producto[];
+  loading:      boolean;
+  view:         "grid" | "list";
+  page:         number;
+  pages:        number;
   onPageChange: (p: number) => void;
 }
 
