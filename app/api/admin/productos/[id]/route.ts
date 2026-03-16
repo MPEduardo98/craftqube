@@ -1,9 +1,4 @@
 // app/api/admin/productos/[id]/route.ts
-// ─────────────────────────────────────────────────────────────
-// GET    /api/admin/productos/[id]  — Producto completo con relaciones
-// PUT    /api/admin/productos/[id]  — Actualizar producto
-// DELETE /api/admin/productos/[id]  — Soft delete
-// ─────────────────────────────────────────────────────────────
 import { NextRequest, NextResponse } from "next/server";
 import { pool }                       from "@/app/global/lib/db/pool";
 import type { RowDataPacket, ResultSetHeader } from "mysql2";
@@ -67,7 +62,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const body = await req.json();
     const {
       titulo, slug, estado,
-      marca_id, descripcion_corta, descripcion_larga,
+      marca_id, descripcion,
       meta_titulo, meta_descripcion,
       categorias = [], variantes = [], imagenes = [], metacampos = [],
     } = body;
@@ -82,12 +77,12 @@ export async function PUT(req: NextRequest, { params }: Params) {
     await conn.execute(
       `UPDATE productos SET
          titulo = ?, slug = ?, estado = ?, marca_id = ?,
-         descripcion_corta = ?, descripcion_larga = ?,
+         descripcion = ?,
          meta_titulo = ?, meta_descripcion = ?,
          updated_at = NOW()
        WHERE id = ?`,
       [titulo, slug, estado, marca_id ?? null,
-       descripcion_corta ?? null, descripcion_larga ?? null,
+       descripcion ?? null,
        meta_titulo ?? null, meta_descripcion ?? null,
        productoId]
     );

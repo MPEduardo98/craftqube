@@ -3,7 +3,7 @@
 export interface Producto {
   id: number;
   titulo: string;
-  descripcion_corta: string | null;
+  descripcion: string | null;
   slug: string;
   categoria: string | null;
   categoria_slug: string | null;

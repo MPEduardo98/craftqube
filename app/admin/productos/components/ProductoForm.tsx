@@ -18,6 +18,7 @@ import {
 import { SectionCard, Field }  from "./producto-form-ui";
 import { SeccionVariantes }    from "./sections/SeccionVariantes";
 import { SeccionMultimedia }   from "./sections/multimedia/SeccionMultimedia";
+import type { MediaItem }      from "./modals/ModalMediaLibrary";
 import { SeccionSEO }          from "./sections/SeccionSEO";
 import { SidebarProducto }     from "./SidebarProducto";
 import { EditorDescripcion }   from "./EditorDescripcion";
@@ -35,17 +36,16 @@ interface Props {
 
 function buildInitialForm(initialData: Partial<ProductoFormData> | undefined, mode: "crear" | "editar"): ProductoFormData {
   return {
-    id:                initialData?.id,
-    titulo:            initialData?.titulo            ?? "",
-    slug:              initialData?.slug              ?? "",
-    estado:            initialData?.estado            ?? "borrador",
-    marca_id:          initialData?.marca_id          ? String(initialData.marca_id) : "",
-    descripcion_corta: initialData?.descripcion_corta ?? "",
-    descripcion_larga: initialData?.descripcion_larga ?? "",
-    meta_titulo:       initialData?.meta_titulo       ?? "",
-    meta_descripcion:  initialData?.meta_descripcion  ?? "",
-    categorias:        initialData?.categorias        ?? [],
-    variantes:         initialData?.variantes?.length
+    id:               initialData?.id,
+    titulo:           initialData?.titulo           ?? "",
+    slug:             initialData?.slug             ?? "",
+    estado:           initialData?.estado           ?? "borrador",
+    marca_id:         initialData?.marca_id         ? String(initialData.marca_id) : "",
+    descripcion:      initialData?.descripcion      ?? "",
+    meta_titulo:      initialData?.meta_titulo      ?? "",
+    meta_descripcion: initialData?.meta_descripcion ?? "",
+    categorias:       initialData?.categorias       ?? [],
+    variantes:        initialData?.variantes?.length
       ? (initialData.variantes as VarianteForm[])
       : [{ ...emptyVariante(), es_default: true }],
     imagenes:   (initialData?.imagenes   as ImagenForm[])   ?? [],
@@ -70,12 +70,10 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
     [form, savedForm]
   );
 
-  /* ── Setter genérico ───────────────────────────────────── */
   const set = useCallback(<K extends keyof ProductoFormData>(k: K, v: ProductoFormData[K]) => {
     setForm((prev) => ({ ...prev, [k]: v }));
   }, []);
 
-  /* ── Título → auto-slug en modo crear ──────────────────── */
   const handleTitulo = (val: string) => {
     set("titulo", val);
     if (mode === "crear") set("slug", slugify(val));
@@ -84,79 +82,44 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
   /* ── Variantes ─────────────────────────────────────────── */
   const handleVarianteChange = (i: number, k: keyof VarianteForm, v: string | boolean) => {
     const next = form.variantes.map((vr, idx) => {
-      if (idx !== i) return k === "es_default" && v === true ?
-        { ...vr, es_default: false } : vr;
+      if (idx !== i) return k === "es_default" && v === true ? { ...vr, es_default: false } : vr;
       return { ...vr, [k]: v };
     });
     set("variantes", next);
   };
-
-  const addVariante = () => set("variantes", [...form.variantes, emptyVariante()]);
-
-  const removeVariante = (i: number) => {
-    if (form.variantes.length <= 1) return;
-    const next = form.variantes.filter((_, idx) => idx !== i);
-    if (!next.some((v) => v.es_default)) next[0].es_default = true;
-    set("variantes", next);
-  };
+  const addVariante    = ()          => set("variantes", [...form.variantes, { ...emptyVariante() }]);
+  const removeVariante = (i: number) => set("variantes", form.variantes.filter((_, idx) => idx !== i));
 
   /* ── Imágenes ──────────────────────────────────────────── */
-  const addImagenes = (items: { url: string; nombre: string }[]) =>
-    set("imagenes", [
-      ...form.imagenes,
-      ...items.map((item, idx) => ({
-        url:   item.url,
-        alt:   "",
-        orden: form.imagenes.length + idx,
-      })),
-    ]);
-
-  const removeImagen = (i: number) =>
-    set("imagenes", form.imagenes.filter((_, idx) => idx !== i));
-
-  const changeAlt = (i: number, alt: string) => {
-    const next = [...form.imagenes];
-    next[i] = { ...next[i], alt };
-    set("imagenes", next);
+  const addImagenes = (items: MediaItem[]) => {
+    const nuevas: ImagenForm[] = items.map((item) => ({ url: item.url, alt: "", orden: 0 }));
+    set("imagenes", [...form.imagenes, ...nuevas].map((img, i) => ({ ...img, orden: i })));
   };
-
-  const reorderImagenes = useCallback((from: number, to: number) => {
-    setForm((prev) => {
-      const next = [...prev.imagenes];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return { ...prev, imagenes: next.map((img, idx) => ({ ...img, orden: idx })) };
-    });
-  }, []);
+  const removeImagen = (i: number) =>
+    set("imagenes", form.imagenes.filter((_, idx) => idx !== i).map((img, o) => ({ ...img, orden: o })));
+  const changeAlt = (i: number, alt: string) =>
+    set("imagenes", form.imagenes.map((img, idx) => idx === i ? { ...img, alt } : img));
+  const reorderImagenes = (from: number, to: number) => {
+    const next = [...form.imagenes];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    set("imagenes", next.map((img, i) => ({ ...img, orden: i })));
+  };
 
   /* ── Metacampos ────────────────────────────────────────── */
-  const addMetacampo = () =>
-    set("metacampos", [...form.metacampos, { llave: "", valor: "" }]);
+  const addMetacampo    = ()          => set("metacampos", [...form.metacampos, { llave: "", valor: "" }]);
+  const removeMetacampo = (i: number) => set("metacampos", form.metacampos.filter((_, idx) => idx !== i));
+  const changeMetacampo = (i: number, k: "llave" | "valor", v: string) =>
+    set("metacampos", form.metacampos.map((m, idx) => idx === i ? { ...m, [k]: v } : m));
 
-  const removeMetacampo = (i: number) =>
-    set("metacampos", form.metacampos.filter((_, idx) => idx !== i));
-
-  const changeMetacampo = (i: number, k: keyof MetacampoForm, v: string) => {
-    const next = [...form.metacampos];
-    next[i] = { ...next[i], [k]: v };
-    set("metacampos", next);
-  };
-
-  /* ── Descartar cambios ─────────────────────────────────── */
-  const handleDiscard = () => {
-    setForm(savedForm);
-    alert.info("Cambios descartados");
-  };
-
-  /* ── Eliminar producto ─────────────────────────────────── */
+  /* ── Delete ────────────────────────────────────────────── */
   const handleDeleteClick = () => {
-    if (!form.id) return;
     if (!confirmDelete) {
       setConfirmDelete(true);
-      confirmTimer.current = setTimeout(() => setConfirmDelete(false), 3000);
+      confirmTimer.current = setTimeout(() => setConfirmDelete(false), 4000);
       return;
     }
-    clearTimeout(confirmTimer.current ?? undefined);
+    if (confirmTimer.current) clearTimeout(confirmTimer.current ?? undefined);
     setConfirmDelete(false);
     void handleDeleteConfirm();
   };
@@ -165,7 +128,7 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
     if (!form.id) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/productos/${form.id}`, { method: "DELETE" });
+      const res  = await fetch(`/api/admin/productos/${form.id}`, { method: "DELETE" });
       const json = await res.json();
       if (json.success) {
         alert.success("Producto eliminado correctamente");
@@ -241,199 +204,55 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
       <LoadingOverlay
         visible={isProcessing}
         message={deleting ? "Eliminando…" : "Guardando…"}
-        mode="fixed"
       />
 
       {/* ── Header ─────────────────────────────────────────── */}
-      <div
-        className="flex flex-wrap items-start justify-between gap-3 mb-6 pb-5"
-        style={{ borderBottom: "1px solid var(--color-cq-border)" }}
-      >
-        {/* Título + slug */}
+      <div className="flex items-center justify-between gap-4 mb-6">
         <div>
-          <h1 style={{
-            fontFamily: "var(--font-display)",
-            fontSize:   "1.25rem",
-            fontWeight: 700,
-            color:      "var(--color-cq-text)",
-            margin:     0,
-          }}>
+          <h1 className="text-display" style={{ fontSize: "1.25rem", color: "var(--color-cq-text)" }}>
             {mode === "crear" ? "Nuevo producto" : "Editar producto"}
           </h1>
-          {form.slug && (
-            <p style={{
-              fontFamily: "var(--font-mono)",
-              fontSize:   "0.68rem",
-              color:      "var(--color-cq-muted)",
-              marginTop:  "2px",
-            }}>
-              /producto/{form.slug}
+          {isDirty && (
+            <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.62rem", color: "var(--color-cq-muted)", marginTop: 4 }}>
+              Cambios sin guardar
             </p>
           )}
         </div>
 
-        {/* Botones de acción */}
-        <div className="flex flex-wrap items-center gap-2">
-
-          {/* Ver en tienda */}
+        <div className="flex items-center gap-2">
           {storeSlug && (
             <a
               href={storeSlug}
               target="_blank"
-              rel="noopener noreferrer"
-              title="Ver en tienda"
-              style={{
-                display:        "inline-flex",
-                alignItems:     "center",
-                gap:            "6px",
-                padding:        "7px 13px",
-                borderRadius:   "8px",
-                border:         "1px solid var(--color-cq-border)",
-                background:     "transparent",
-                color:          "var(--color-cq-muted)",
-                fontFamily:     "var(--font-body)",
-                fontSize:       "0.78rem",
-                fontWeight:     500,
-                cursor:         "pointer",
-                textDecoration: "none",
-                transition:     "all .15s",
-              }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.color = "var(--color-cq-text)";
-                (e.currentTarget as HTMLElement).style.borderColor = "var(--color-cq-border-2)";
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.color = "var(--color-cq-muted)";
-                (e.currentTarget as HTMLElement).style.borderColor = "var(--color-cq-border)";
-              }}
+              rel="noreferrer"
+              className="rounded-lg px-3 py-2 text-sm"
+              style={{ border: "1px solid var(--color-cq-border)", color: "var(--color-cq-muted)", textDecoration: "none" }}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                <polyline points="15 3 21 3 21 9"/>
-                <line x1="10" y1="14" x2="21" y2="3"/>
-              </svg>
-              Ver en tienda
+              Ver tienda ↗
             </a>
           )}
-
-          {/* Descartar — solo si hay cambios */}
-          {isDirty && (
-            <button
-              type="button"
-              onClick={handleDiscard}
-              disabled={isProcessing}
-              style={{
-                display:      "inline-flex",
-                alignItems:   "center",
-                gap:          "6px",
-                padding:      "7px 13px",
-                borderRadius: "8px",
-                border:       "1px solid var(--color-cq-border)",
-                background:   "transparent",
-                color:        "var(--color-cq-muted)",
-                fontFamily:   "var(--font-body)",
-                fontSize:     "0.78rem",
-                fontWeight:   500,
-                cursor:       "pointer",
-                transition:   "all .15s",
-                opacity:      isProcessing ? 0.5 : 1,
-              }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.color = "var(--color-cq-text)";
-                (e.currentTarget as HTMLElement).style.borderColor = "var(--color-cq-border-2)";
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.color = "var(--color-cq-muted)";
-                (e.currentTarget as HTMLElement).style.borderColor = "var(--color-cq-border)";
-              }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                <path d="M3 3v5h5"/>
-              </svg>
-              Descartar
-            </button>
-          )}
-
-          {/* Eliminar — solo en modo editar */}
           {mode === "editar" && form.id && (
             <button
               type="button"
               onClick={handleDeleteClick}
-              disabled={isProcessing}
+              className="rounded-lg px-3 py-2 text-sm transition-colors"
               style={{
-                display:      "inline-flex",
-                alignItems:   "center",
-                gap:          "6px",
-                padding:      "7px 13px",
-                borderRadius: "8px",
-                border:       `1px solid ${confirmDelete ? "rgba(239,68,68,0.4)" : "var(--color-cq-border)"}`,
-                background:   confirmDelete ? "rgba(239,68,68,0.06)" : "transparent",
-                color:        confirmDelete ? "#ef4444" : "var(--color-cq-muted)",
-                fontFamily:   "var(--font-body)",
-                fontSize:     "0.78rem",
-                fontWeight:   confirmDelete ? 600 : 500,
-                cursor:       "pointer",
-                transition:   "all .15s",
-                opacity:      isProcessing ? 0.5 : 1,
-              }}
-              onMouseEnter={e => {
-                if (!confirmDelete) {
-                  (e.currentTarget as HTMLElement).style.color = "#ef4444";
-                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(239,68,68,0.3)";
-                  (e.currentTarget as HTMLElement).style.background = "rgba(239,68,68,0.05)";
-                }
-              }}
-              onMouseLeave={e => {
-                if (!confirmDelete) {
-                  (e.currentTarget as HTMLElement).style.color = "var(--color-cq-muted)";
-                  (e.currentTarget as HTMLElement).style.borderColor = "var(--color-cq-border)";
-                  (e.currentTarget as HTMLElement).style.background = "transparent";
-                }
+                border:     "1px solid",
+                borderColor: confirmDelete ? "rgba(239,68,68,0.5)" : "var(--color-cq-border)",
+                color:       confirmDelete ? "#EF4444" : "var(--color-cq-muted)",
+                background:  confirmDelete ? "rgba(239,68,68,0.07)" : "transparent",
+                cursor:      "pointer",
               }}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-              </svg>
-              {confirmDelete ? "¿Confirmar?" : "Eliminar"}
+              {confirmDelete ? "¿Confirmar eliminación?" : "Eliminar"}
             </button>
           )}
-
-          {/* Guardar */}
           <button
             type="submit"
-            disabled={isProcessing || (!isDirty && mode === "editar")}
-            style={{
-              display:      "inline-flex",
-              alignItems:   "center",
-              gap:          "6px",
-              padding:      "7px 16px",
-              borderRadius: "8px",
-              border:       "none",
-              background:   isDirty || mode === "crear" ? "var(--color-cq-accent)" : "var(--color-cq-surface-2)",
-              color:        isDirty || mode === "crear" ? "white" : "var(--color-cq-muted-2)",
-              fontFamily:   "var(--font-body)",
-              fontSize:     "0.78rem",
-              fontWeight:   600,
-              cursor:       isProcessing || (!isDirty && mode === "editar") ? "not-allowed" : "pointer",
-              transition:   "all .15s",
-              opacity:      isProcessing ? 0.7 : 1,
-            }}
-            onMouseEnter={e => {
-              if (!isProcessing && (isDirty || mode === "crear")) {
-                (e.currentTarget as HTMLElement).style.background = "var(--color-cq-accent-dim)";
-              }
-            }}
-            onMouseLeave={e => {
-              if (!isProcessing && (isDirty || mode === "crear")) {
-                (e.currentTarget as HTMLElement).style.background = "var(--color-cq-accent)";
-              }
-            }}
+            disabled={isProcessing}
+            className="rounded-lg px-4 py-2 text-sm font-semibold transition-colors"
+            style={{ background: "var(--color-cq-accent)", color: "#fff", border: "none", cursor: isProcessing ? "not-allowed" : "pointer", opacity: isProcessing ? 0.7 : 1 }}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
             {saving ? "Guardando…" : mode === "crear" ? "Crear producto" : "Guardar cambios"}
           </button>
         </div>
@@ -464,20 +283,10 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                 className={inputCls}
               />
             </Field>
-            <Field label="Descripción corta">
-              <textarea
-                value={form.descripcion_corta}
-                onChange={(e) => set("descripcion_corta", e.target.value)}
-                placeholder="Resumen breve del producto"
-                rows={3}
-                className={inputCls}
-                style={{ resize: "none" }}
-              />
-            </Field>
-            <Field label="Descripción larga">
+            <Field label="Descripción">
               <EditorDescripcion
-                value={form.descripcion_larga}
-                onChange={(v) => set("descripcion_larga", v)}
+                value={form.descripcion}
+                onChange={(v) => set("descripcion", v)}
               />
             </Field>
           </SectionCard>
@@ -502,10 +311,13 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
 
           {/* SEO */}
           <SeccionSEO
+            slug={form.slug}
             meta_titulo={form.meta_titulo}
             meta_descripcion={form.meta_descripcion}
-            slug={form.slug}
-            onChange={(k, v) => set(k, v)}
+            tituloFallback={form.titulo}
+            descripcionFallback={form.descripcion}
+            onMetaTitulo={(v) => set("meta_titulo", v)}
+            onMetaDescripcion={(v) => set("meta_descripcion", v)}
           />
 
           {/* Metacampos */}
@@ -543,48 +355,44 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                     justifyContent: "center",
                   }}
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                  </svg>
+                  ×
                 </button>
               </div>
             ))}
             <button
               type="button"
               onClick={addMetacampo}
+              className="text-sm"
               style={{
-                display:      "inline-flex",
-                alignItems:   "center",
-                gap:          "6px",
-                padding:      "7px 13px",
-                borderRadius: "8px",
-                border:       "1px dashed var(--color-cq-border-2)",
-                background:   "transparent",
-                color:        "var(--color-cq-muted)",
-                fontFamily:   "var(--font-body)",
-                fontSize:     "0.78rem",
-                cursor:       "pointer",
+                marginTop:  4,
+                color:      "var(--color-cq-accent)",
+                background: "none",
+                border:     "none",
+                cursor:     "pointer",
+                padding:    0,
+                fontFamily: "var(--font-mono)",
+                fontSize:   "0.72rem",
+                letterSpacing: "0.06em",
               }}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              Agregar metacampo
+              + Agregar metacampo
             </button>
           </SectionCard>
         </div>
 
         {/* Sidebar */}
-        <SidebarProducto
-          estado={form.estado}
-          marca_id={form.marca_id}
-          categorias={form.categorias}
-          marcas={marcas}
-          categoriasOpts={categorias}
-          onEstado={(v) => set("estado", v)}
-          onMarca={(v) => set("marca_id", v)}
-          onCategorias={(v) => set("categorias", v)}
-        />
+        <div style={{ width: "320px", flexShrink: 0 }}>
+          <SidebarProducto
+            estado={form.estado}
+            marca_id={form.marca_id}
+            categorias={form.categorias}
+            marcas={marcas}
+            todasCategorias={categorias}
+            onEstado={(v) => set("estado", v)}
+            onMarca={(v) => set("marca_id", v)}
+            onCategorias={(v) => set("categorias", v)}
+          />
+        </div>
       </div>
     </form>
   );

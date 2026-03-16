@@ -13,7 +13,6 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-// SSG: pre-genera todas las páginas de producto en build
 export async function generateStaticParams() {
   const slugs = await getAllProductoSlugs();
   return slugs.map(({ slug }) => ({ slug }));
@@ -26,7 +25,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!producto) return { title: "Producto no encontrado — Craftqube" };
 
   const title        = producto.meta_titulo      ?? `${producto.titulo} — Craftqube`;
-  const description  = producto.meta_descripcion ?? producto.descripcion_corta ?? undefined;
+  const description  = producto.meta_descripcion ?? producto.descripcion ?? undefined;
   const canonicalUrl = `${SITE_URL}/producto/${slug}`;
 
   const imagenPrincipal = producto.imagenes[0];
@@ -82,7 +81,6 @@ export default async function ProductoPage({ params }: PageProps) {
 
   const categoriaSlug = producto.categorias[0]?.slug ?? "";
 
-  // JSON-LD
   const productJsonLd    = buildProductJsonLd(producto);
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: "Inicio",   url: SITE_URL },
@@ -96,7 +94,6 @@ export default async function ProductoPage({ params }: PageProps) {
 
   return (
     <>
-      {/* JSON-LD invisible — solo para crawlers */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
@@ -106,7 +103,6 @@ export default async function ProductoPage({ params }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
 
-      {/* Tu componente original intacto */}
       <ProductDetailClient producto={producto} />
 
       {categoriaSlug && (

@@ -55,23 +55,22 @@ export interface ProductoEtiqueta {
 }
 
 export interface ProductoDetalle {
-  id:                number;
-  titulo:            string;
-  descripcion_corta: string | null;
-  descripcion_larga: string | null;
-  slug:              string;
-  estado:            string;
-  meta_titulo:       string | null;
-  meta_descripcion:  string | null;
-  created_at:        string;
-  updated_at:        string;
-  marca_id:          number | null;
-  marca:             string | null;
-  marca_slug:        string | null;
-  marca_logo:        string | null;
-  categorias:        ProductoCategoria[];
-  imagenes:          ProductoImagen[];
-  variantes:         ProductoVariante[];
-  metacampos:        Metacampo[];
-  etiquetas:         ProductoEtiqueta[];
+  id:               number;
+  titulo:           string;
+  descripcion:      string | null;
+  slug:             string;
+  estado:           string;
+  meta_titulo:      string | null;
+  meta_descripcion: string | null;
+  created_at:       string;
+  updated_at:       string;
+  marca_id:         number | null;
+  marca:            string | null;
+  marca_slug:       string | null;
+  marca_logo:       string | null;
+  categorias:       ProductoCategoria[];
+  imagenes:         ProductoImagen[];
+  variantes:        ProductoVariante[];
+  metacampos:       Metacampo[];
+  etiquetas:        ProductoEtiqueta[];
 }

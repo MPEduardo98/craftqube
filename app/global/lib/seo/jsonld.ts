@@ -1,11 +1,4 @@
 // app/global/lib/seo/jsonld.ts
-// ─────────────────────────────────────────────────────────────
-// Constructores de JSON-LD para Schema.org.
-// - buildProductJsonLd     → Product + Offer/AggregateOffer
-// - buildBreadcrumbJsonLd  → BreadcrumbList
-// - buildCategoryJsonLd    → ItemList
-// - buildOrganizationJsonLd → Organization (usado en layout)
-// ─────────────────────────────────────────────────────────────
 import type { ProductoDetalle } from "@/app/global/types/product-detail";
 import type { Producto }        from "@/app/global/types/product";
 
@@ -18,7 +11,6 @@ export function buildProductJsonLd(producto: ProductoDetalle): object {
   const varianteDefault =
     producto.variantes.find((v) => v.es_default) ?? producto.variantes[0];
 
-  // Imagen principal — construye URL absoluta
   const imagenPrincipal = producto.imagenes[0];
   const imageUrl = imagenPrincipal
     ? `${SITE_URL}/uploads/productos/${producto.id}/${imagenPrincipal.url.split("/").pop()}`
@@ -26,12 +18,10 @@ export function buildProductJsonLd(producto: ProductoDetalle): object {
 
   const canonicalUrl = `${SITE_URL}/producto/${producto.slug}`;
 
-  // Fecha de expiración de precio (7 días)
   const priceValidUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     .toISOString()
     .split("T")[0];
 
-  // MySQL devuelve DECIMAL como string — Number() normaliza ambos casos
   const offers = producto.variantes.map((v) => ({
     "@type":           "Offer",
     sku:               v.sku,
@@ -62,7 +52,7 @@ export function buildProductJsonLd(producto: ProductoDetalle): object {
     "@context":   "https://schema.org",
     "@type":      "Product",
     name:         producto.titulo,
-    description:  producto.descripcion_corta ?? undefined,
+    description:  producto.descripcion ?? undefined,
     sku:          varianteDefault?.sku,
     url:          canonicalUrl,
     image:        imageUrl,

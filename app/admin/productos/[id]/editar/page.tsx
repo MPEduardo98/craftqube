@@ -33,21 +33,10 @@ interface VarianteRow extends RowDataPacket {
   vender_sin_existencia: number;
 }
 
-interface ImagenRow extends RowDataPacket {
-  url: string; alt: string | null; orden: number;
-}
-
-interface MetacampoRow extends RowDataPacket {
-  llave: string; valor: string;
-}
-
-interface CategoriaRow extends RowDataPacket {
-  id: number; nombre: string; slug: string;
-}
-
-interface MarcaRow extends RowDataPacket {
-  id: number; nombre: string;
-}
+interface ImagenRow   extends RowDataPacket { url: string; alt: string | null; orden: number; }
+interface MetacampoRow extends RowDataPacket { llave: string; valor: string; }
+interface CategoriaRow extends RowDataPacket { id: number; nombre: string; slug: string; }
+interface MarcaRow     extends RowDataPacket { id: number; nombre: string; }
 
 async function fetchProducto(id: number): Promise<ProductoFormData | null> {
   const [[producto]] = await pool.execute<ProductoRow[]>(

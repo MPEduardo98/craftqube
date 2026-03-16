@@ -1,7 +1,4 @@
 // app/admin/productos/components/producto-form-types.ts
-// ─────────────────────────────────────────────────────────────
-// Tipos, helpers y constantes CSS compartidas del formulario.
-// ─────────────────────────────────────────────────────────────
 
 /* ── Tipos exportados ──────────────────────────────────────── */
 export interface VarianteForm {
@@ -28,19 +25,18 @@ export interface MetacampoForm {
 }
 
 export interface ProductoFormData {
-  id?:               number;
-  titulo:            string;
-  slug:              string;
-  estado:            "activo" | "inactivo" | "borrador";
-  marca_id:          string;
-  descripcion_corta: string;
-  descripcion_larga: string; // mantenido en tipo para compatibilidad con API, no se renderiza
-  meta_titulo:       string;
-  meta_descripcion:  string;
-  categorias:        number[];
-  variantes:         VarianteForm[];
-  imagenes:          ImagenForm[];
-  metacampos:        MetacampoForm[];
+  id?:              number;
+  titulo:           string;
+  slug:             string;
+  estado:           "activo" | "inactivo" | "borrador";
+  marca_id:         string;
+  descripcion:      string;
+  meta_titulo:      string;
+  meta_descripcion: string;
+  categorias:       number[];
+  variantes:        VarianteForm[];
+  imagenes:         ImagenForm[];
+  metacampos:       MetacampoForm[];
 }
 
 export interface Categoria { id: number; nombre: string; slug: string; }
@@ -59,44 +55,39 @@ export function slugify(str: string): string {
 
 export function buildImageSrc(url: string, productoId?: number): string {
   if (!url) return "";
-
-  // Normalizar separadores Windows → Unix
-  const normalized = url.replace(/\\/g, "/");
-
-  // URLs absolutas o ya relativas a la raíz
-  if (
-    normalized.startsWith("http://") ||
-    normalized.startsWith("https://") ||
-    normalized.startsWith("/")
-  ) {
-    return normalized;
-  }
-
-  // Rutas que vienen con "public/" al inicio → quitar el prefijo
-  if (normalized.startsWith("public/")) {
-    return "/" + normalized.slice("public/".length);
-  }
-
-  // Patrón del proyecto: solo nombre de archivo → /productos/{id}/{nombre}
-  if (productoId && !normalized.includes("/")) {
-    return `/productos/${productoId}/${normalized}`;
-  }
-
-  // Ruta relativa con carpetas ya incluidas
-  return `/${normalized}`;
+  if (url.startsWith("http") || url.startsWith("/")) return url;
+  if (productoId) return `/productos/${productoId}/${url}`;
+  return url;
 }
 
-export const emptyVariante = (): VarianteForm => ({
-  sku: "", codigo_barras: "", precio_original: "0",
-  precio_final: "0", costo: "0", stock: "0",
-  es_default: false, vender_sin_existencia: false,
-});
+export function emptyVariante(): VarianteForm {
+  return {
+    sku:                   "",
+    codigo_barras:         "",
+    precio_original:       "",
+    precio_final:          "",
+    costo:                 "",
+    stock:                 "",
+    es_default:            false,
+    vender_sin_existencia: false,
+  };
+}
 
-/* ── Constantes CSS ────────────────────────────────────────── */
+/* ── CSS classes ───────────────────────────────────────────── */
 export const inputCls =
-  "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-slate-300";
-
-export const textareaCls = `${inputCls} resize-none`;
+  "w-full rounded-lg px-3 py-2 text-sm transition-colors " +
+  "bg-white border border-slate-200 " +
+  "text-slate-800 placeholder:text-slate-300 " +
+  "focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100";
 
 export const inputSmallCls =
-  "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-slate-300 tabular-nums";
+  "w-full rounded-md px-2.5 py-1.5 text-xs transition-colors " +
+  "bg-white border border-slate-200 " +
+  "text-slate-800 placeholder:text-slate-300 " +
+  "focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100";
+
+export const textareaCls =
+  "w-full rounded-lg px-3 py-2 text-sm transition-colors resize-none " +
+  "bg-white border border-slate-200 " +
+  "text-slate-800 placeholder:text-slate-300 " +
+  "focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100";

@@ -1,9 +1,4 @@
 // app/global/lib/db/getProductosCatalogo.ts
-// ─────────────────────────────────────────────────────────────
-// Versión server-side de /api/catalogo para SSR.
-// Usado por: catalogo/page.tsx y categoria/[slug]/page.tsx
-// El API route sigue existiendo para las llamadas client-side.
-// ─────────────────────────────────────────────────────────────
 import { pool } from "./pool";
 import type { RowDataPacket } from "mysql2";
 import type { Producto }      from "@/app/global/types/product";
@@ -69,59 +64,57 @@ export async function getProductosCatalogo({
     wheres.push("(v.stock > 0 OR v.vender_sin_existencia = 1)");
   }
 
-  const whereSQL = `WHERE ${wheres.join(" AND ")}`;
+  const whereSQL = wheres.length ? `WHERE ${wheres.join(" AND ")}` : "";
 
-  const baseQuery = `
-    FROM   productos p
-    LEFT   JOIN producto_categorias pc ON pc.producto_id  = p.id
-    LEFT   JOIN categorias c           ON c.id            = pc.categoria_id
-    LEFT   JOIN marcas m               ON m.id            = p.marca_id
-    LEFT   JOIN producto_variantes v   ON v.producto_id   = p.id AND v.es_default = 1
-    LEFT   JOIN producto_imagenes img  ON img.producto_id = p.id
-                                       AND img.variante_id IS NULL
-                                       AND img.id = (
-                                         SELECT MIN(id) FROM producto_imagenes
-                                         WHERE  producto_id = p.id AND variante_id IS NULL
-                                       )
+  const baseSQL = `
+    FROM productos p
+    LEFT JOIN producto_categorias pc ON pc.producto_id = p.id
+    LEFT JOIN categorias c           ON c.id = pc.categoria_id
+    LEFT JOIN marcas m               ON m.id = p.marca_id
+    LEFT JOIN producto_variantes v   ON v.producto_id = p.id AND v.es_default = 1
+    LEFT JOIN producto_imagenes img  ON img.producto_id = p.id
+                                     AND img.variante_id IS NULL
+                                     AND img.id = (
+                                       SELECT MIN(id) FROM producto_imagenes
+                                       WHERE producto_id = p.id AND variante_id IS NULL
+                                     )
     ${whereSQL}
   `;
 
-  const [countRows, dataRows] = await Promise.all([
+  const [[countRows], [rows]] = await Promise.all([
     pool.execute<RowDataPacket[]>(
-      `SELECT COUNT(DISTINCT p.id) AS total ${baseQuery}`,
+      `SELECT COUNT(DISTINCT p.id) AS total ${baseSQL}`,
       params
     ),
     pool.execute<RowDataPacket[]>(
       `SELECT
-         p.id,
-         p.titulo,
-         p.descripcion_corta,
-         p.slug,
-         MIN(c.nombre)                          AS categoria,
-         MIN(c.slug)                            AS categoria_slug,
-         m.nombre                               AS marca,
-         v.sku,
-         v.precio_final                         AS precio,
-         v.precio_original,
-         v.stock,
-         v.es_default,
-         SUBSTRING_INDEX(MIN(img.url), '/', -1) AS imagen_nombre,
-         MIN(img.alt)                           AS imagen_alt
-       ${baseQuery}
-       GROUP BY p.id, p.titulo, p.descripcion_corta, p.slug,
-                m.nombre, v.sku, v.precio_final, v.precio_original,
-                v.stock, v.es_default
-       ORDER BY ${order}
-       LIMIT ? OFFSET ?`,
+        p.id,
+        p.titulo,
+        p.descripcion,
+        p.slug,
+        MIN(c.nombre)                          AS categoria,
+        MIN(c.slug)                            AS categoria_slug,
+        m.nombre                               AS marca,
+        v.sku,
+        v.precio_final                         AS precio,
+        v.precio_original,
+        v.stock,
+        v.es_default,
+        SUBSTRING_INDEX(MIN(img.url), '/', -1) AS imagen_nombre,
+        MIN(img.alt)                           AS imagen_alt
+      ${baseSQL}
+      GROUP BY
+        p.id, p.titulo, p.descripcion, p.slug,
+        m.nombre, v.sku, v.precio_final, v.precio_original,
+        v.stock, v.es_default, p.created_at
+      ORDER BY ${order}
+      LIMIT ? OFFSET ?`,
       [...params, safeLimit, offset]
     ),
   ]);
 
-  const total = (countRows[0][0]?.total as number) ?? 0;
+  const total = (countRows[0]?.total as number) ?? 0;
+  const pages = Math.ceil(total / safeLimit);
 
-  return {
-    productos: dataRows[0] as Producto[],
-    total,
-    pages:     Math.ceil(total / safeLimit),
-  };
+  return { productos: rows as Producto[], total, pages };
 }

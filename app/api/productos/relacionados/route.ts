@@ -1,42 +1,31 @@
 // app/api/productos/relacionados/route.ts
-// ─────────────────────────────────────────────────────────────
-// Optimizado:
-// • Pool singleton
-// • ORDER BY RAND() reemplazado por offset aleatorio (O(n) → O(1))
-// • Cache-Control 2 min
-// ─────────────────────────────────────────────────────────────
-import { NextResponse } from "next/server";
-import { pool }         from "@/app/global/lib/db/pool";
-import type { RowDataPacket } from "mysql2";
+import { NextRequest, NextResponse } from "next/server";
+import { pool }                       from "@/app/global/lib/db/pool";
+import type { RowDataPacket }         from "mysql2";
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const categoriaSlug = searchParams.get("categoria") ?? "";
   const excluirSlug   = searchParams.get("excluir")   ?? "";
-  const limit         = Math.min(parseInt(searchParams.get("limit") ?? "6", 10), 12);
+  const limit         = Math.min(12, Math.max(1, Number(searchParams.get("limit") ?? 4)));
 
   if (!categoriaSlug) {
-    return NextResponse.json(
-      { success: false, error: "Parámetro 'categoria' requerido" },
-      { status: 400 }
-    );
+    return NextResponse.json({ success: false, error: "categoria requerida" }, { status: 400 });
   }
 
   try {
-    // ── Contar candidatos ─────────────────────────────────
     const [[countRows]] = await pool.execute<RowDataPacket[]>(`
       SELECT COUNT(DISTINCT p.id) AS total
       FROM productos p
-      INNER JOIN producto_categorias pc ON pc.producto_id = p.id
-      INNER JOIN categorias c           ON c.id = pc.categoria_id
-      WHERE p.estado    = 'activo'
+      LEFT JOIN producto_categorias pc ON pc.producto_id = p.id
+      LEFT JOIN categorias c           ON c.id = pc.categoria_id
+      WHERE p.estado     = 'activo'
         AND p.deleted_at IS NULL
         AND p.slug      != ?
         AND c.slug      = ?
     `, [excluirSlug, categoriaSlug]);
 
     const total  = (countRows[0]?.total as number) ?? 0;
-    // Offset aleatorio para variedad sin ORDER BY RAND()
     const maxOff = Math.max(0, total - limit);
     const offset = maxOff > 0 ? Math.floor(Math.random() * maxOff) : 0;
 
@@ -44,7 +33,7 @@ export async function GET(req: Request) {
       SELECT
         p.id,
         p.titulo,
-        p.descripcion_corta,
+        p.descripcion,
         p.slug,
         MIN(c.nombre)                          AS categoria,
         MIN(c.slug)                            AS categoria_slug,
@@ -77,7 +66,7 @@ export async function GET(req: Request) {
           WHERE pc2.producto_id = p.id AND c2.slug = ?
         )
       GROUP BY
-        p.id, p.titulo, p.descripcion_corta, p.slug,
+        p.id, p.titulo, p.descripcion, p.slug,
         m.nombre, v.sku, v.precio_final, v.precio_original, v.stock, v.es_default
       ORDER BY p.id ASC
       LIMIT ? OFFSET ?

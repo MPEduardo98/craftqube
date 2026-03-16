@@ -1,18 +1,12 @@
 // app/global/lib/db/getProductoBySlug.ts
-// ─────────────────────────────────────────────────────────────
-// Optimizado:
-// • Usa el pool singleton (sin TCP overhead por request)
-// • Queries secundarias en paralelo con Promise.all
-// ─────────────────────────────────────────────────────────────
 import { pool }    from "./pool";
 import type { ProductoDetalle } from "@/app/global/types/product-detail";
 
 export async function getProductoBySlug(slug: string): Promise<ProductoDetalle | null> {
   try {
-    // ── 1. Query principal ────────────────────────────────
     const [productoRows] = await pool.execute<any[]>(`
       SELECT
-        p.id, p.titulo, p.descripcion_corta, p.descripcion_larga,
+        p.id, p.titulo, p.descripcion,
         p.slug, p.estado, p.meta_titulo, p.meta_descripcion,
         p.created_at, p.updated_at,
         m.id       AS marca_id,
@@ -29,7 +23,6 @@ export async function getProductoBySlug(slug: string): Promise<ProductoDetalle |
 
     const producto = productoRows[0];
 
-    // ── 2. Queries secundarias EN PARALELO ────────────────
     const [
       [categorias],
       [imagenes],
@@ -94,7 +87,6 @@ export async function getProductoBySlug(slug: string): Promise<ProductoDetalle |
       `, [producto.id]),
     ]);
 
-    // ── 3. Mapeo atributos por variante ───────────────────
     const atributosPorVariante: Record<number, { atributo_id: number; atributo: string; valor_id: number; valor: string }[]> = {};
     for (const row of varianteAtributos) {
       if (!atributosPorVariante[row.variante_id]) atributosPorVariante[row.variante_id] = [];
