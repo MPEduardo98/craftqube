@@ -3,6 +3,7 @@
 /* ── Tipos exportados ──────────────────────────────────────── */
 export interface VarianteForm {
   id?:                   number;
+  nombre:                string;
   sku:                   string;
   codigo_barras:         string;
   precio_original:       string;
@@ -11,6 +12,14 @@ export interface VarianteForm {
   stock:                 string;
   es_default:            boolean;
   vender_sin_existencia: boolean;
+  // Dimensiones (producto_dimensiones)
+  largo:                 string;
+  ancho:                 string;
+  alto:                  string;
+  peso:                  string;
+  medida_unidad:         string;
+  peso_unidad:           string;
+  es_fisico:             boolean;
 }
 
 export interface ImagenForm {
@@ -55,13 +64,19 @@ export function slugify(str: string): string {
 
 export function buildImageSrc(url: string, productoId?: number): string {
   if (!url) return "";
-  if (url.startsWith("http") || url.startsWith("/")) return url;
-  if (productoId) return `/productos/${productoId}/${url}`;
-  return url;
+  const normalized = url.replace(/\\/g, "/");
+  if (normalized.startsWith("http") || normalized.startsWith("/")) return normalized;
+  if (normalized.startsWith("public/")) return "/" + normalized.slice("public/".length);
+  // Ruta relativa con carpetas (ej: "productos/2/img.png") → añadir /
+  if (normalized.includes("/")) return "/" + normalized;
+  // Solo nombre de archivo + productoId → construir ruta
+  if (productoId) return `/productos/${productoId}/${normalized}`;
+  return "/" + normalized;
 }
 
 export function emptyVariante(): VarianteForm {
   return {
+    nombre:                "",
     sku:                   "",
     codigo_barras:         "",
     precio_original:       "",
@@ -70,6 +85,13 @@ export function emptyVariante(): VarianteForm {
     stock:                 "",
     es_default:            false,
     vender_sin_existencia: false,
+    largo:                 "",
+    ancho:                 "",
+    alto:                  "",
+    peso:                  "",
+    medida_unidad:         "cm",
+    peso_unidad:           "kg",
+    es_fisico:             true,
   };
 }
 

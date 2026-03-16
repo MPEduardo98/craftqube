@@ -4,10 +4,11 @@ import path                          from "path";
 import fs                            from "fs/promises";
 import { writeFile }                 from "fs/promises";
 import type { Dirent }               from "fs";
+import { pool }                      from "@/app/global/lib/db/pool";
 
 const IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".svg"]);
 
-/* ── GET /api/admin/media?productoId=X ─────────────────────── */
+/* ── GET /api/admin/media ───────────────────────────────────── */
 export async function GET(req: NextRequest) {
   const productoId = req.nextUrl.searchParams.get("productoId");
 
@@ -15,72 +16,49 @@ export async function GET(req: NextRequest) {
     if (productoId) {
       const dir = path.join(process.cwd(), "public", "productos", productoId);
       let entries: Dirent[] = [];
-      try {
-        entries = await fs.readdir(dir, { withFileTypes: true }) as Dirent[];
-      } catch {
-        return NextResponse.json({ success: true, data: [] });
-      }
+      try { entries = await fs.readdir(dir, { withFileTypes: true }) as Dirent[]; }
+      catch { return NextResponse.json({ success: true, data: [] }); }
 
       const files = await Promise.all(
         entries
           .filter(e => e.isFile() && IMAGE_EXTS.has(path.extname(e.name).toLowerCase()))
           .map(async (e) => {
             const stat = await fs.stat(path.join(dir, e.name));
-            return {
-              url:    e.name,
-              nombre: e.name,
-              tipo:   path.extname(e.name).slice(1).toUpperCase(),
-              tamaño: stat.size,
-            };
+            return { url: e.name, nombre: e.name, tipo: path.extname(e.name).slice(1).toUpperCase(), tamaño: stat.size };
           })
       );
-
       return NextResponse.json({ success: true, data: files });
     }
 
-    // Sin productoId: recorre todas las subcarpetas de /public/productos/
     const base = path.join(process.cwd(), "public", "productos");
     let productoDirs: Dirent[] = [];
-    try {
-      productoDirs = await fs.readdir(base, { withFileTypes: true }) as Dirent[];
-    } catch {
-      return NextResponse.json({ success: true, data: [] });
-    }
+    try { productoDirs = await fs.readdir(base, { withFileTypes: true }) as Dirent[]; }
+    catch { return NextResponse.json({ success: true, data: [] }); }
 
     const allFiles: { url: string; nombre: string; tipo: string; tamaño: number }[] = [];
 
     await Promise.all(
-      productoDirs
-        .filter(d => d.isDirectory())
-        .map(async (d) => {
-          const dirPath = path.join(base, d.name);
-          try {
-            const entries = await fs.readdir(dirPath, { withFileTypes: true });
-            const images = await Promise.all(
-              entries
-                .filter(e => e.isFile() && IMAGE_EXTS.has(path.extname(e.name).toLowerCase()))
-                .map(async (e) => {
-                  const stat = await fs.stat(path.join(dirPath, e.name));
-                  return {
-                    url:    `productos/${d.name}/${e.name}`,
-                    nombre: e.name,
-                    tipo:   path.extname(e.name).slice(1).toUpperCase(),
-                    tamaño: stat.size,
-                  };
-                })
-            );
-            allFiles.push(...images);
-          } catch { /* carpeta vacía o sin permisos */ }
-        })
+      productoDirs.filter(d => d.isDirectory()).map(async (d) => {
+        const dirPath = path.join(base, d.name);
+        try {
+          const entries = await fs.readdir(dirPath, { withFileTypes: true });
+          const images = await Promise.all(
+            entries
+              .filter(e => e.isFile() && IMAGE_EXTS.has(path.extname(e.name).toLowerCase()))
+              .map(async (e) => {
+                const stat = await fs.stat(path.join(dirPath, e.name));
+                return { url: `productos/${d.name}/${e.name}`, nombre: e.name, tipo: path.extname(e.name).slice(1).toUpperCase(), tamaño: stat.size };
+              })
+          );
+          allFiles.push(...images);
+        } catch { /* carpeta vacía o sin permisos */ }
+      })
     );
 
     return NextResponse.json({ success: true, data: allFiles });
   } catch (err) {
     console.error("[GET /api/admin/media]", err);
-    return NextResponse.json(
-      { success: false, error: err instanceof Error ? err.message : "Error interno" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: err instanceof Error ? err.message : "Error interno" }, { status: 500 });
   }
 }
 
@@ -92,12 +70,10 @@ export async function POST(req: NextRequest) {
     const productoId = formData.get("productoId") as string | null;
 
     if (!file)       return NextResponse.json({ success: false, error: "No se recibió archivo" }, { status: 400 });
-    if (!productoId) return NextResponse.json({ success: false, error: "productoId requerido" },  { status: 400 });
+    if (!productoId) return NextResponse.json({ success: false, error: "productoId requerido" }, { status: 400 });
 
     const ext = path.extname(file.name).toLowerCase();
-    if (!IMAGE_EXTS.has(ext)) {
-      return NextResponse.json({ success: false, error: "Tipo de archivo no permitido" }, { status: 400 });
-    }
+    if (!IMAGE_EXTS.has(ext)) return NextResponse.json({ success: false, error: "Tipo de archivo no permitido" }, { status: 400 });
 
     const dir = path.join(process.cwd(), "public", "productos", productoId);
     await fs.mkdir(dir, { recursive: true });
@@ -107,23 +83,53 @@ export async function POST(req: NextRequest) {
     const filePath = path.join(dir, fileName);
 
     await writeFile(filePath, Buffer.from(await file.arrayBuffer()));
-
     const stat = await fs.stat(filePath);
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        url:    fileName,
-        nombre: fileName,
-        tipo:   ext.slice(1).toUpperCase(),
-        tamaño: stat.size,
-      },
-    });
+    return NextResponse.json({ success: true, data: { url: `productos/${productoId}/${fileName}`, nombre: fileName, tipo: ext.slice(1).toUpperCase(), tamaño: stat.size } });
   } catch (err) {
     console.error("[POST /api/admin/media]", err);
-    return NextResponse.json(
-      { success: false, error: err instanceof Error ? err.message : "Error interno" },
-      { status: 500 }
+    return NextResponse.json({ success: false, error: err instanceof Error ? err.message : "Error interno" }, { status: 500 });
+  }
+}
+
+/* ── DELETE /api/admin/media ────────────────────────────────── */
+// Body: { url: "productos/2/imagen.png" }
+export async function DELETE(req: NextRequest) {
+  try {
+    const { url } = await req.json() as { url: string };
+
+    if (!url) return NextResponse.json({ success: false, error: "url requerida" }, { status: 400 });
+
+    // Resolver ruta absoluta
+    const normalized = url.replace(/\\/g, "/").replace(/^\//, "");
+    const filePath   = path.join(process.cwd(), "public", normalized);
+
+    // Seguridad: solo dentro de /public/productos/
+    const publicProductos = path.join(process.cwd(), "public", "productos");
+    if (!filePath.startsWith(publicProductos)) {
+      return NextResponse.json({ success: false, error: "Ruta no permitida" }, { status: 403 });
+    }
+
+    // Eliminar archivo físico
+    try {
+      await fs.unlink(filePath);
+    } catch (e: unknown) {
+      if ((e as NodeJS.ErrnoException).code !== "ENOENT") {
+        return NextResponse.json({ success: false, error: "No se pudo eliminar el archivo" }, { status: 500 });
+      }
+      // ENOENT → ya no existía, seguimos para limpiar la BD igualmente
+    }
+
+    // Eliminar referencias en producto_imagenes
+    const fileName = path.basename(normalized);
+    await pool.execute(
+      `DELETE FROM producto_imagenes WHERE url = ? OR url LIKE ? OR url = ?`,
+      [normalized, `%/${fileName}`, fileName]
     );
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("[DELETE /api/admin/media]", err);
+    return NextResponse.json({ success: false, error: err instanceof Error ? err.message : "Error interno" }, { status: 500 });
   }
 }

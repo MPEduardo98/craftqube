@@ -92,41 +92,51 @@ export function SeccionMultimedia({
                     draggable={false}
                   />
 
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition pointer-events-none" />
+                  {/* Overlay oscuro al hover */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-150 pointer-events-none" />
 
+                  {/* Badge "Principal" */}
                   {isFirst && (
-                    <span className="absolute bottom-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-black/50 text-white backdrop-blur-sm pointer-events-none">
+                    <span className="absolute bottom-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-black/60 text-white backdrop-blur-sm pointer-events-none select-none">
                       Principal
                     </span>
                   )}
 
-                  {/* X quitar imagen */}
+                  {/* ── Drag handle — esquina superior izquierda ── */}
+                  <div
+                    className="absolute top-2 left-2 w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-150 pointer-events-none"
+                    style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+                  >
+                    <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <circle cx="6.5"  cy="4"  r="1.5" />
+                      <circle cx="13.5" cy="4"  r="1.5" />
+                      <circle cx="6.5"  cy="10" r="1.5" />
+                      <circle cx="13.5" cy="10" r="1.5" />
+                      <circle cx="6.5"  cy="16" r="1.5" />
+                      <circle cx="13.5" cy="16" r="1.5" />
+                    </svg>
+                  </div>
+
+                  {/* ── Botón eliminar — esquina superior derecha ── */}
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onRemove(i); }}
-                    className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/55 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-500 transition z-10"
+                    className="absolute top-2 right-2 w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-150 z-10 hover:scale-110"
+                    style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+                    title="Eliminar imagen"
                   >
-                    <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
-
-                  {/* Icono drag handle */}
-                  <div className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full bg-black/45 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition pointer-events-none">
-                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
-                      <circle cx="7" cy="4"  r="1.5" /><circle cx="13" cy="4"  r="1.5" />
-                      <circle cx="7" cy="10" r="1.5" /><circle cx="13" cy="10" r="1.5" />
-                      <circle cx="7" cy="16" r="1.5" /><circle cx="13" cy="16" r="1.5" />
-                    </svg>
-                  </div>
                 </div>
               );
             })}
 
-            {/* Botón agregar */}
+            {/* Botón agregar nueva imagen */}
             <div
               onClick={() => setModalOpen(true)}
-              className="col-span-1 row-span-1 aspect-square rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition hover:bg-slate-50"
+              className="col-span-1 row-span-1 aspect-square rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition hover:bg-slate-50 hover:border-slate-300"
               style={{ borderColor: "var(--color-cq-border)", color: "var(--color-cq-muted)" }}
             >
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

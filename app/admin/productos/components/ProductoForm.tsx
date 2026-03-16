@@ -17,6 +17,9 @@ import {
 
 import { SectionCard, Field }  from "./producto-form-ui";
 import { SeccionVariantes }    from "./sections/SeccionVariantes";
+import { SeccionPrecios }      from "./sections/SeccionPrecios";
+import { SeccionInventario }   from "./sections/SeccionInventario";
+import { SeccionEnvio }        from "./sections/SeccionEnvio";
 import { SeccionMultimedia }   from "./sections/multimedia/SeccionMultimedia";
 import type { MediaItem }      from "./modals/ModalMediaLibrary";
 import { SeccionSEO }          from "./sections/SeccionSEO";
@@ -265,6 +268,7 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
 
           {/* Información básica */}
           <SectionCard title="Información básica">
+            <div className="flex flex-col gap-5">
             <Field label="Título *">
               <input
                 type="text"
@@ -283,23 +287,14 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                 className={inputCls}
               />
             </Field>
-            <Field label="Descripción">
-              <EditorDescripcion
+            <EditorDescripcion
                 value={form.descripcion}
                 onChange={(v) => set("descripcion", v)}
               />
-            </Field>
+            </div>
           </SectionCard>
 
-          {/* Variantes */}
-          <SeccionVariantes
-            variantes={form.variantes}
-            onChange={handleVarianteChange}
-            onAdd={addVariante}
-            onRemove={removeVariante}
-          />
-
-          {/* Multimedia */}
+          {/* 2. Multimedia */}
           <SeccionMultimedia
             imagenes={form.imagenes}
             productoId={form.id}
@@ -309,18 +304,33 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
             onReorder={reorderImagenes}
           />
 
-          {/* SEO */}
-          <SeccionSEO
-            slug={form.slug}
-            meta_titulo={form.meta_titulo}
-            meta_descripcion={form.meta_descripcion}
-            tituloFallback={form.titulo}
-            descripcionFallback={form.descripcion}
-            onMetaTitulo={(v) => set("meta_titulo", v)}
-            onMetaDescripcion={(v) => set("meta_descripcion", v)}
+          {/* 3. Precios */}
+          <SeccionPrecios
+            variantes={form.variantes}
+            onChange={handleVarianteChange}
           />
 
-          {/* Metacampos */}
+          {/* 4. Inventario */}
+          <SeccionInventario
+            variantes={form.variantes}
+            onChange={handleVarianteChange}
+          />
+
+          {/* 5. Envío */}
+          <SeccionEnvio
+            variantes={form.variantes}
+            onChange={handleVarianteChange}
+          />
+
+          {/* 6. Variantes */}
+          <SeccionVariantes
+            variantes={form.variantes}
+            onChange={handleVarianteChange}
+            onAdd={addVariante}
+            onRemove={removeVariante}
+          />
+
+          {/* 7. Metacampos */}
           <SectionCard title="Metacampos">
             {form.metacampos.map((m, i) => (
               <div key={i} className="flex gap-2 items-center">
@@ -342,17 +352,10 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                   type="button"
                   onClick={() => removeMetacampo(i)}
                   style={{
-                    flexShrink:   0,
-                    width:        "32px",
-                    height:       "32px",
-                    borderRadius: "8px",
-                    border:       "1px solid var(--color-cq-border)",
-                    background:   "transparent",
-                    color:        "var(--color-cq-muted)",
-                    cursor:       "pointer",
-                    display:      "flex",
-                    alignItems:   "center",
-                    justifyContent: "center",
+                    flexShrink: 0, width: "32px", height: "32px", borderRadius: "8px",
+                    border: "1px solid var(--color-cq-border)", background: "transparent",
+                    color: "var(--color-cq-muted)", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
                   }}
                 >
                   ×
@@ -364,20 +367,25 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
               onClick={addMetacampo}
               className="text-sm"
               style={{
-                marginTop:  4,
-                color:      "var(--color-cq-accent)",
-                background: "none",
-                border:     "none",
-                cursor:     "pointer",
-                padding:    0,
-                fontFamily: "var(--font-mono)",
-                fontSize:   "0.72rem",
-                letterSpacing: "0.06em",
+                marginTop: 4, color: "var(--color-cq-accent)", background: "none",
+                border: "none", cursor: "pointer", padding: 0,
+                fontFamily: "var(--font-mono)", fontSize: "0.72rem", letterSpacing: "0.06em",
               }}
             >
               + Agregar metacampo
             </button>
           </SectionCard>
+
+          {/* 8. SEO */}
+          <SeccionSEO
+            slug={form.slug}
+            meta_titulo={form.meta_titulo}
+            meta_descripcion={form.meta_descripcion}
+            tituloFallback={form.titulo}
+            descripcionFallback={form.descripcion}
+            onMetaTitulo={(v) => set("meta_titulo", v)}
+            onMetaDescripcion={(v) => set("meta_descripcion", v)}
+          />
         </div>
 
         {/* Sidebar */}

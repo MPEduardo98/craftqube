@@ -1,22 +1,19 @@
+// app/admin/productos/components/sections/SeccionSEO.tsx
 "use client";
-// app/admin/productos/components/SeccionSEO.tsx
-// ─────────────────────────────────────────────────────────────
-// Sección SEO: pre-popula desde titulo/descripcion/slug del
-// producto pero permite editar libremente cada campo.
-// ─────────────────────────────────────────────────────────────
+
 import { useEffect } from "react";
-import { SectionCard, Field } from "../producto-form-ui";
+import { SectionCard } from "../producto-form-ui";
 import { inputCls, textareaCls } from "../producto-form-types";
 
 interface Props {
-  slug:                 string;
-  meta_titulo:          string;
-  meta_descripcion:     string;
-  precio?:              string;
-  tituloFallback:       string;
-  descripcionFallback:  string;
-  onMetaTitulo:         (v: string) => void;
-  onMetaDescripcion:    (v: string) => void;
+  slug:                string;
+  meta_titulo:         string;
+  meta_descripcion:    string;
+  precio?:             string;
+  tituloFallback:      string;
+  descripcionFallback: string;
+  onMetaTitulo:        (v: string) => void;
+  onMetaDescripcion:   (v: string) => void;
 }
 
 export function SeccionSEO({
@@ -30,7 +27,6 @@ export function SeccionSEO({
   onMetaDescripcion,
 }: Props) {
 
-  /* Pre-popular desde fallbacks solo si el campo está vacío */
   useEffect(() => {
     if (!meta_titulo && tituloFallback) onMetaTitulo(tituloFallback);
   }, [tituloFallback]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -38,19 +34,20 @@ export function SeccionSEO({
   useEffect(() => {
     if (!meta_descripcion && descripcionFallback) {
       const texto = descripcionFallback.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-      onMetaDescripcion(texto);
+      onMetaDescripcion(texto.slice(0, 160));
     }
   }, [descripcionFallback]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const tituloDisplay      = meta_titulo      || tituloFallback      || "";
+  const tituloDisplay      = meta_titulo      || tituloFallback || "";
   const descripcionDisplay = meta_descripcion || "";
 
   return (
     <SectionCard title="SEO">
-      <div className="space-y-4">
+      <div className="space-y-5">
 
         {/* Meta título */}
-        <Field label="Meta título" hint="Recomendado: menos de 60 caracteres">
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-slate-700">Meta título</label>
           <input
             type="text"
             value={meta_titulo}
@@ -59,34 +56,40 @@ export function SeccionSEO({
             className={inputCls}
             maxLength={100}
           />
-          <div className="flex justify-end mt-1">
-            <span className={`text-xs ${meta_titulo.length > 60 ? "text-amber-500" : "text-slate-400"}`}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-400">Recomendado: menos de 60 caracteres</span>
+            <span className={`text-xs tabular-nums ${meta_titulo.length > 60 ? "text-amber-500 font-medium" : "text-slate-400"}`}>
               {meta_titulo.length}/60
             </span>
           </div>
-        </Field>
+        </div>
 
         {/* Meta descripción */}
-        <Field label="Meta descripción" hint="Recomendado: entre 120 y 160 caracteres">
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-slate-700">Meta descripción</label>
           <textarea
             value={meta_descripcion}
             onChange={(e) => onMetaDescripcion(e.target.value)}
             rows={4}
-            placeholder="Descripción breve del producto para motores de búsqueda. Máximo 160 caracteres."
+            placeholder="Descripción breve para motores de búsqueda…"
             className={textareaCls}
+            maxLength={160}
           />
-          <div className="flex justify-end mt-1">
-            <span className={`text-xs ${
-              meta_descripcion.length > 160 ? "text-red-500" :
-              meta_descripcion.length > 120 ? "text-emerald-500" : "text-slate-400"
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-400">Recomendado: entre 120 y 160 caracteres</span>
+            <span className={`text-xs tabular-nums ${
+              meta_descripcion.length > 160 ? "text-red-500 font-medium" :
+              meta_descripcion.length >= 120 ? "text-emerald-600 font-medium" :
+              "text-slate-400"
             }`}>
               {meta_descripcion.length}/160
             </span>
           </div>
-        </Field>
+        </div>
 
-        {/* Slug */}
-        <Field label="Slug (URL)" hint={`/productos/${slug || "tu-slug-aqui"}`}>
+        {/* Slug (solo lectura) */}
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-slate-700">Slug (URL)</label>
           <div className="relative">
             <input
               type="text"
@@ -103,7 +106,8 @@ export function SeccionSEO({
               </svg>
             </span>
           </div>
-        </Field>
+          <p className="text-xs text-slate-400">/productos/{slug || "tu-slug-aqui"}</p>
+        </div>
 
         {/* Preview Google */}
         <div className="rounded-lg border border-slate-200 bg-white p-4">
@@ -117,7 +121,7 @@ export function SeccionSEO({
               {tituloDisplay || <span className="text-slate-300">Meta título del producto</span>}
             </p>
             <p className="text-sm text-[#545454] leading-snug line-clamp-2 pt-0.5">
-              {descripcionDisplay || <span className="text-slate-300">Meta descripción del producto para motores de búsqueda...</span>}
+              {descripcionDisplay || <span className="text-slate-300">Meta descripción del producto…</span>}
             </p>
             {precio && Number(precio) > 0 && (
               <p className="text-sm text-[#545454] pt-0.5">
