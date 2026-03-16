@@ -106,7 +106,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const variantesNuevas     = variantes.filter((v: { id?: number }) => !v.id);
     const idsActualizados     = variantesExistentes.map((v: { id: number }) => v.id);
 
-    // Eliminar variantes quitadas
     if (idsActualizados.length > 0) {
       const placeholders = idsActualizados.map(() => "?").join(",");
       await conn.execute(
@@ -130,6 +129,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
          v.id, productoId]
       );
     }
+
     for (const v of variantesNuevas) {
       await conn.execute(
         `INSERT INTO producto_variantes
