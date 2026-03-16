@@ -28,6 +28,16 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
+    images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**.r2.dev",   // cubre todos los buckets R2 públicos
+      },
+    ],
+  },
 };
+
 
 export default nextConfig;

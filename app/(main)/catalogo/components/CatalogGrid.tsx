@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ProductCard }         from "@/app/global/components/products/ProductCard";
 import { ProductCardSkeleton } from "@/app/global/components/products/ProductCardSkeleton";
 import type { Producto } from "@/app/global/types/product";
+import { resolveImageUrl } from "@/app/global/lib/resolveImageUrl";
 
 /* ── Skeleton list row ── */
 function ListSkeleton() {
@@ -31,9 +32,7 @@ function ListSkeleton() {
 
 /* ── Lista row ── */
 function ListRow({ producto }: { producto: Producto }) {
-  const imageSrc = producto.imagen_nombre
-    ? `/productos/${producto.id}/${producto.imagen_nombre}`
-    : null;
+  const imageSrc = resolveImageUrl(producto.imagen_nombre, producto.id);
   const tieneStock = (producto.stock ?? 0) > 0;
   const tieneDescuento =
     producto.precio_original !== null &&
@@ -149,41 +148,28 @@ function Pagination({ page, pages, onChange }: { page: number; pages: number; on
   }
   return (
     <div className="flex items-center justify-center gap-1 pt-8">
-      <button
-        onClick={() => onChange(page - 1)}
-        disabled={page <= 1}
+      <button onClick={() => onChange(page - 1)} disabled={page <= 1}
         className="flex items-center justify-center rounded-lg disabled:opacity-30"
-        style={{ width: 36, height: 36, background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)", cursor: page <= 1 ? "not-allowed" : "pointer", color: "var(--color-cq-muted)" }}
-      >
+        style={{ width: 36, height: 36, background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)", cursor: page <= 1 ? "not-allowed" : "pointer", color: "var(--color-cq-muted)" }}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
       {range.map((r, i) =>
         r === "..." ? (
-          <span key={`ellipsis-${i}`} style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-cq-muted)", fontFamily: "var(--font-mono)", fontSize: "0.7rem" }}>…</span>
+          <span key={`e-${i}`} style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-cq-muted)", fontFamily: "var(--font-mono)", fontSize: "0.7rem" }}>…</span>
         ) : (
-          <button
-            key={r}
-            onClick={() => onChange(r as number)}
+          <button key={r} onClick={() => onChange(r as number)}
             className="flex items-center justify-center rounded-lg"
-            style={{
-              width: 36, height: 36,
-              fontFamily: "var(--font-mono)", fontSize: "0.72rem",
-              cursor: "pointer",
+            style={{ width: 36, height: 36, fontFamily: "var(--font-mono)", fontSize: "0.72rem", cursor: "pointer",
               background: r === page ? "var(--color-cq-accent)" : "var(--color-cq-surface)",
               color: r === page ? "white" : "var(--color-cq-muted)",
-              border: r === page ? "none" : "1px solid var(--color-cq-border)",
-            }}
-          >
+              border: r === page ? "none" : "1px solid var(--color-cq-border)" }}>
             {r}
           </button>
         )
       )}
-      <button
-        onClick={() => onChange(page + 1)}
-        disabled={page >= pages}
+      <button onClick={() => onChange(page + 1)} disabled={page >= pages}
         className="flex items-center justify-center rounded-lg disabled:opacity-30"
-        style={{ width: 36, height: 36, background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)", cursor: page >= pages ? "not-allowed" : "pointer", color: "var(--color-cq-muted)" }}
-      >
+        style={{ width: 36, height: 36, background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)", cursor: page >= pages ? "not-allowed" : "pointer", color: "var(--color-cq-muted)" }}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><path d="M9 18l6-6-6-6"/></svg>
       </button>
     </div>
@@ -205,22 +191,15 @@ const SKELETON_COUNT = 12;
 export function CatalogGrid({ productos, loading, view, page, pages, onPageChange }: CatalogGridProps) {
   if (!loading && productos.length === 0) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col items-center justify-center gap-5 py-28"
-      >
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col items-center justify-center gap-5 py-28">
         <svg viewBox="0 0 80 80" fill="none" width="64" height="64">
           <rect x="12" y="12" width="56" height="56" rx="8" stroke="var(--color-cq-border)" strokeWidth="2"/>
           <path d="M28 40h24M40 28v24" stroke="var(--color-cq-border-2)" strokeWidth="2" strokeLinecap="round"/>
         </svg>
         <div className="text-center">
-          <p style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", fontWeight: 700, color: "var(--color-cq-text)" }}>
-            Sin resultados
-          </p>
-          <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.72rem", color: "var(--color-cq-muted)", marginTop: "4px" }}>
-            Intenta ajustar los filtros o tu búsqueda
-          </p>
+          <p style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", fontWeight: 700, color: "var(--color-cq-text)" }}>Sin resultados</p>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.72rem", color: "var(--color-cq-muted)", marginTop: "4px" }}>Intenta ajustar los filtros o tu búsqueda</p>
         </div>
       </motion.div>
     );
@@ -233,12 +212,7 @@ export function CatalogGrid({ productos, loading, view, page, pages, onPageChang
           {loading
             ? Array.from({ length: SKELETON_COUNT }).map((_, i) => <ListSkeleton key={i} />)
             : productos.map((p, i) => (
-                <motion.div
-                  key={p.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03, duration: 0.3 }}
-                >
+                <motion.div key={p.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03, duration: 0.3 }}>
                   <ListRow producto={p} />
                 </motion.div>
               ))
@@ -253,34 +227,17 @@ export function CatalogGrid({ productos, loading, view, page, pages, onPageChang
     <div>
       <AnimatePresence mode="wait">
         {loading ? (
-          <motion.div
-            key="skeleton"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4"
-          >
+          <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
             {Array.from({ length: SKELETON_COUNT }).map((_, i) => <ProductCardSkeleton key={i} />)}
           </motion.div>
         ) : (
-          <motion.div
-            key="grid"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4"
-          >
+          <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
             {productos.map((p, i) => (
-              <motion.div
-                key={p.id}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03, duration: 0.3 }}
-                style={{ height: "100%" }}
-              >
-                <ProductCard
-                  producto={p}
-                  imageSizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 25vw"
-                />
+              <motion.div key={p.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.03, duration: 0.3 }} style={{ height: "100%" }}>
+                <ProductCard producto={p} imageSizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 25vw" />
               </motion.div>
             ))}
           </motion.div>

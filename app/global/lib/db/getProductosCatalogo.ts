@@ -92,16 +92,16 @@ export async function getProductosCatalogo({
         p.titulo,
         p.descripcion,
         p.slug,
-        MIN(c.nombre)                          AS categoria,
-        MIN(c.slug)                            AS categoria_slug,
-        m.nombre                               AS marca,
+        MIN(c.nombre)    AS categoria,
+        MIN(c.slug)      AS categoria_slug,
+        m.nombre         AS marca,
         v.sku,
-        v.precio_final                         AS precio,
+        v.precio_final   AS precio,
         v.precio_original,
         v.stock,
         v.es_default,
-        SUBSTRING_INDEX(MIN(img.url), '/', -1) AS imagen_nombre,
-        MIN(img.alt)                           AS imagen_alt
+        MIN(img.url)     AS imagen_nombre,
+        MIN(img.alt)     AS imagen_alt
       ${baseSQL}
       GROUP BY
         p.id, p.titulo, p.descripcion, p.slug,

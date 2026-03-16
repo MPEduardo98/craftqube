@@ -4,8 +4,9 @@
 import Image  from "next/image";
 import Link   from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCart } from "@/app/global/context/CartContext";
-import { formatPrice } from "@/app/global/lib/format";
+import { useCart }         from "@/app/global/context/CartContext";
+import { formatPrice }     from "@/app/global/lib/format";
+import { resolveImageUrl } from "@/app/global/lib/resolveImageUrl";
 
 function esAtributoVisible(atributo: string, valor: string): boolean {
   const a = atributo.toLowerCase().trim();
@@ -17,9 +18,7 @@ function esAtributoVisible(atributo: string, valor: string): boolean {
 
 function CartRow({ item }: { item: ReturnType<typeof useCart>["items"][number] }) {
   const { removeItem, updateQty } = useCart();
-  const imageSrc = item.imagenNombre
-    ? `/productos/${item.productoId}/${item.imagenNombre}`
-    : null;
+  const imageSrc = resolveImageUrl(item.imagenNombre, item.productoId);
 
   const atributosVisibles = item.atributos.filter((a) =>
     esAtributoVisible(a.atributo, a.valor)
@@ -138,44 +137,38 @@ export default function CarritoPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "var(--color-cq-bg)" }}>
-      <div className="fixed inset-0 pointer-events-none"
-        style={{ backgroundImage: "linear-gradient(rgba(37,99,235,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.025) 1px, transparent 1px)", backgroundSize: "48px 48px", zIndex: 0 }}
-      />
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-12">
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-20 pb-10 lg:pt-24 lg:pb-16">
-
-        {/* Encabezado */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mb-10">
-          <p className="text-label mb-1">Mi compra</p>
-          <div className="flex items-end justify-between gap-4 flex-wrap">
-            <h1 className="text-display" style={{ fontSize: "clamp(2rem, 5vw, 3.2rem)", color: "var(--color-cq-text)" }}>
+        {/* Header */}
+        <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
+          className="flex items-center justify-between mb-10">
+          <div>
+            <h1 className="text-display" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)", color: "var(--color-cq-text)" }}>
               Carrito
               {totalItems > 0 && (
-                <span className="ml-3 text-base font-normal" style={{ color: "var(--color-cq-muted)", fontFamily: "var(--font-mono)", letterSpacing: "0.06em" }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "var(--color-cq-muted)", marginLeft: 10 }}>
                   ({totalItems} {totalItems === 1 ? "artículo" : "artículos"})
                 </span>
               )}
             </h1>
-            {items.length > 0 && (
-              <button onClick={clearCart} className="text-xs transition-colors hover:text-red-500"
-                style={{ fontFamily: "var(--font-mono)", letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--color-cq-muted-2)", cursor: "pointer" }}>
-                Vaciar carrito
-              </button>
-            )}
           </div>
+          {items.length > 0 && (
+            <button onClick={clearCart} className="text-xs transition-colors hover:text-red-500"
+              style={{ fontFamily: "var(--font-mono)", letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--color-cq-muted-2)", cursor: "pointer" }}>
+              Vaciar carrito
+            </button>
+          )}
         </motion.div>
 
         {/* Vacío */}
         {items.length === 0 && (
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
             className="flex flex-col items-center justify-center py-32 gap-6">
-            <div className="relative">
-              <svg viewBox="0 0 80 80" fill="none" width="72" height="72">
-                <rect x="10" y="20" width="60" height="50" rx="6" stroke="var(--color-cq-border)" strokeWidth="2"/>
-                <path d="M26 20v-5a14 14 0 0 1 28 0v5" stroke="var(--color-cq-border)" strokeWidth="2"/>
-                <path d="M26 34a14 14 0 0 0 28 0" stroke="var(--color-cq-muted-2)" strokeWidth="1.5" strokeDasharray="4 3"/>
-              </svg>
-            </div>
+            <svg viewBox="0 0 80 80" fill="none" width="72" height="72">
+              <rect x="10" y="20" width="60" height="50" rx="6" stroke="var(--color-cq-border)" strokeWidth="2"/>
+              <path d="M26 20v-5a14 14 0 0 1 28 0v5" stroke="var(--color-cq-border)" strokeWidth="2"/>
+              <path d="M26 34a14 14 0 0 0 28 0" stroke="var(--color-cq-muted-2)" strokeWidth="1.5" strokeDasharray="4 3"/>
+            </svg>
             <div className="text-center">
               <p className="font-bold mb-1" style={{ fontFamily: "var(--font-display)", fontSize: "1.2rem", color: "var(--color-cq-text)", letterSpacing: "0.02em" }}>
                 Tu carrito está vacío
@@ -211,7 +204,7 @@ export default function CarritoPage() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="px-4">
+                <tbody>
                   <AnimatePresence initial={false}>
                     {items.map((item) => (
                       <CartRow key={item.varianteId} item={item} />

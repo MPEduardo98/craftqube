@@ -5,14 +5,13 @@ import Image from "next/image";
 import Link  from "next/link";
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCart } from "@/app/global/context/CartContext";
-import { formatPrice } from "@/app/global/lib/format";
+import { useCart }       from "@/app/global/context/CartContext";
+import { formatPrice }   from "@/app/global/lib/format";
+import { resolveImageUrl } from "@/app/global/lib/resolveImageUrl";
 
 function DrawerItem({ item }: { item: ReturnType<typeof useCart>["items"][number] }) {
   const { removeItem, updateQty } = useCart();
-  const imageSrc = item.imagenNombre
-    ? `/productos/${item.productoId}/${item.imagenNombre}`
-    : null;
+  const imageSrc = resolveImageUrl(item.imagenNombre, item.productoId);
 
   return (
     <motion.div
@@ -80,12 +79,12 @@ function DrawerItem({ item }: { item: ReturnType<typeof useCart>["items"][number
                 style={{ width: 32, height: 32, color: item.cantidad <= 1 ? "#EF4444" : "var(--color-cq-muted)", cursor: "pointer" }}
               >
                 {item.cantidad <= 1 ? (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
                 ) : (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12"><path d="M5 12h14"/></svg>
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14"/></svg>
                 )}
               </button>
-              <span style={{ width: 34, textAlign: "center", fontFamily: "var(--font-mono)", fontSize: "0.82rem", fontWeight: 600, color: "var(--color-cq-text)", borderLeft: "1px solid var(--color-cq-border)", borderRight: "1px solid var(--color-cq-border)" }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.78rem", fontWeight: 700, color: "var(--color-cq-text)", padding: "0 10px" }}>
                 {item.cantidad}
               </span>
               <button
@@ -93,17 +92,9 @@ function DrawerItem({ item }: { item: ReturnType<typeof useCart>["items"][number
                 className="flex items-center justify-center transition-colors hover:bg-blue-500/10"
                 style={{ width: 32, height: 32, color: "var(--color-cq-muted)", cursor: "pointer" }}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12"><path d="M12 5v14M5 12h14"/></svg>
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
               </button>
             </div>
-
-            <button
-              onClick={() => removeItem(item.varianteId)}
-              className="flex items-center justify-center rounded-lg transition-colors hover:bg-red-500/10"
-              style={{ width: 32, height: 32, cursor: "pointer", color: "var(--color-cq-muted-2)", border: "1px solid var(--color-cq-border)" }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><path d="M18 6L6 18M6 6l12 12"/></svg>
-            </button>
           </div>
         </div>
       </div>
@@ -147,30 +138,23 @@ export function CartDrawer() {
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 shrink-0" style={{ borderBottom: "1px solid var(--color-cq-border)" }}>
               <div className="flex items-center gap-3">
-                <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-cq-accent)" strokeWidth="2" width="20" height="20">
-                  <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
-                  <line x1="3" y1="6" x2="21" y2="6"/>
-                  <path d="M16 10a4 4 0 0 1-8 0"/>
-                </svg>
-                <span className="text-display" style={{ fontSize: "1.1rem", color: "var(--color-cq-text)" }}>
-                  Mi carrito
+                <span style={{ fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 700, color: "var(--color-cq-text)", letterSpacing: "0.02em" }}>
+                  Carrito
                 </span>
                 {totalItems > 0 && (
-                  <span className="flex items-center justify-center rounded-full text-xs font-bold"
-                    style={{ width: 22, height: 22, background: "var(--color-cq-primary)", color: "white", fontFamily: "var(--font-mono)", fontSize: "0.65rem" }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", background: "var(--color-cq-accent)", color: "white", padding: "2px 8px", borderRadius: 20 }}>
                     {totalItems}
                   </span>
                 )}
               </div>
-              <button onClick={closeDrawer} className="flex items-center justify-center rounded-lg transition-colors hover:bg-red-500/10"
-                style={{ width: 36, height: 36, color: "var(--color-cq-muted)", border: "1px solid var(--color-cq-border)", cursor: "pointer" }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              <button onClick={closeDrawer} className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-slate-100" style={{ color: "var(--color-cq-muted)" }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><path d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
             </div>
 
             {/* Items */}
-            <div className="flex-1 overflow-y-auto px-6">
-              <AnimatePresence mode="popLayout">
+            <div className="flex-1 overflow-y-auto px-6 min-h-0">
+              <AnimatePresence initial={false}>
                 {items.length === 0 ? (
                   <motion.div key="empty" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                     className="flex flex-col items-center justify-center gap-5 py-20">
