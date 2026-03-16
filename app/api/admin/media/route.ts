@@ -17,7 +17,7 @@ const CONTENT_TYPES: Record<string, string> = {
 export async function GET() {
   try {
     const objects = await listR2Objects("productos/");
-    const files   = objects.map(({ key, size }) => {
+    const files   = objects.filter(({ key }) => !key.endsWith("/")).map(({ key, size }) => {
       const nombre = key.split("/").pop() ?? key;
       const ext    = path.extname(nombre).toLowerCase();
       return {
