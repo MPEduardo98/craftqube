@@ -1,10 +1,6 @@
-"use client";
 // app/admin/productos/components/ProductoForm.tsx
-// ─────────────────────────────────────────────────────────────
-// Orquestador del formulario crear/editar productos.
-// Gestiona estado, handlers y submit. El layout y las secciones
-// están delegados a subcomponentes.
-// ─────────────────────────────────────────────────────────────
+"use client";
+
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
@@ -17,7 +13,6 @@ import {
   type Categoria,
   type Marca,
   inputCls,
-  textareaCls,
 } from "./producto-form-types";
 
 import { SectionCard, Field }  from "./producto-form-ui";
@@ -27,10 +22,8 @@ import { SeccionSEO }          from "./sections/SeccionSEO";
 import { SidebarProducto }     from "./SidebarProducto";
 import { EditorDescripcion }   from "./EditorDescripcion";
 
-/* ── Re-exports para compatibilidad con páginas existentes ─── */
 export type { ProductoFormData, VarianteForm, ImagenForm, MetacampoForm, Categoria, Marca };
 
-/* ── Props ─────────────────────────────────────────────────── */
 interface Props {
   initialData?: Partial<ProductoFormData>;
   categorias:   Categoria[];
@@ -38,7 +31,6 @@ interface Props {
   mode:         "crear" | "editar";
 }
 
-/* ── Componente ────────────────────────────────────────────── */
 export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -67,7 +59,7 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
     setForm((prev) => ({ ...prev, [k]: v }));
   }, []);
 
-  /* ── Título → auto-slug solo en modo crear ─────────────── */
+  /* ── Título → auto-slug en modo crear ──────────────────── */
   const handleTitulo = (val: string) => {
     set("titulo", val);
     if (mode === "crear") set("slug", slugify(val));
@@ -76,15 +68,14 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
   /* ── Variantes ─────────────────────────────────────────── */
   const handleVarianteChange = (i: number, k: keyof VarianteForm, v: string | boolean) => {
     const next = form.variantes.map((vr, idx) => {
-      if (idx !== i) {
-        return k === "es_default" && v === true ? { ...vr, es_default: false } : vr;
-      }
+      if (idx !== i) return k === "es_default" && v === true ? { ...vr, es_default: false } : vr;
       return { ...vr, [k]: v };
     });
     set("variantes", next);
   };
 
-  const addVariante    = () => set("variantes", [...form.variantes, emptyVariante()]);
+  const addVariante = () => set("variantes", [...form.variantes, emptyVariante()]);
+
   const removeVariante = (i: number) => {
     if (form.variantes.length <= 1) return;
     const next = form.variantes.filter((_, idx) => idx !== i);
@@ -93,7 +84,7 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
   };
 
   /* ── Imágenes ──────────────────────────────────────────── */
-  const addImagenes  = (items: { url: string; nombre: string }[]) =>
+  const addImagenes = (items: { url: string; nombre: string }[]) =>
     set("imagenes", [
       ...form.imagenes,
       ...items.map((item, idx) => ({
@@ -102,19 +93,32 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
         orden: form.imagenes.length + idx,
       })),
     ]);
-  const removeImagen  = (i: number) =>
+
+  const removeImagen = (i: number) =>
     set("imagenes", form.imagenes.filter((_, idx) => idx !== i));
+
   const changeAlt = (i: number, alt: string) => {
     const next = [...form.imagenes];
     next[i] = { ...next[i], alt };
     set("imagenes", next);
   };
 
+  const reorderImagenes = useCallback((from: number, to: number) => {
+    setForm((prev) => {
+      const next = [...prev.imagenes];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return { ...prev, imagenes: next.map((img, idx) => ({ ...img, orden: idx })) };
+    });
+  }, []);
+
   /* ── Metacampos ────────────────────────────────────────── */
-  const addMetacampo    = () =>
+  const addMetacampo = () =>
     set("metacampos", [...form.metacampos, { llave: "", valor: "" }]);
+
   const removeMetacampo = (i: number) =>
     set("metacampos", form.metacampos.filter((_, idx) => idx !== i));
+
   const changeMetacampo = (i: number, k: keyof MetacampoForm, v: string) => {
     const next = [...form.metacampos];
     next[i] = { ...next[i], [k]: v };
@@ -132,22 +136,13 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
 
     setSaving(true);
     try {
-      const url    = mode === "crear"
-        ? "/api/admin/productos"
-        : `/api/admin/productos/${initialData?.id}`;
+      const url    = mode === "crear" ? "/api/admin/productos" : `/api/admin/productos/${initialData?.id}`;
       const method = mode === "crear" ? "POST" : "PUT";
 
-      const res  = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(form),
-      });
+      const res  = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
       const json = await res.json();
 
-      if (!json.success) {
-        setError(json.error ?? "Error al guardar");
-        return;
-      }
+      if (!json.success) { setError(json.error ?? "Error al guardar"); return; }
 
       router.push("/admin/productos");
       router.refresh();
@@ -162,45 +157,34 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
   return (
     <form onSubmit={handleSubmit} noValidate>
 
-      {/* ── Header ───────────────────────────────────────── */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-slate-800">
             {mode === "crear" ? "Nuevo producto" : "Editar producto"}
           </h1>
-          {initialData?.titulo && mode === "editar" && (
-            <p className="text-sm text-slate-400 mt-0.5">{initialData.titulo}</p>
+          {form.slug && (
+            <p className="text-xs text-slate-400 mt-0.5 font-mono">/producto/{form.slug}</p>
           )}
         </div>
-
         <div className="flex items-center gap-3">
-          {error && (
-            <p className="text-sm text-red-500">{error}</p>
-          )}
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="px-4 py-2 text-sm text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50 transition"
-          >
-            Cancelar
-          </button>
+          {error && <p className="text-xs text-red-500">{error}</p>}
           <button
             type="submit"
             disabled={saving}
-            className="px-5 py-2 text-sm font-medium bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-60 transition"
+            className="px-5 py-2 text-sm font-medium bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50 transition"
           >
             {saving ? "Guardando…" : mode === "crear" ? "Crear producto" : "Guardar cambios"}
           </button>
         </div>
       </div>
 
-      {/* ── Grid principal ───────────────────────────────── */}
+      {/* Grid principal */}
       <div className="mt-6 grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-5 items-start">
 
-        {/* ── Columna principal ────────────────────────── */}
+        {/* Columna principal */}
         <div className="space-y-5">
 
-          {/* Información básica */}
           <SectionCard title="Información básica">
             <div className="space-y-4">
               <Field label="Título del producto" required>
@@ -212,17 +196,14 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                   className={inputCls}
                 />
               </Field>
-
             </div>
           </SectionCard>
 
-          {/* Descripción */}
           <EditorDescripcion
             value={form.descripcion_larga}
             onChange={(v) => set("descripcion_larga", v)}
           />
 
-          {/* Variantes */}
           <SeccionVariantes
             variantes={form.variantes}
             onAdd={addVariante}
@@ -230,17 +211,16 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
             onChange={handleVarianteChange}
           />
 
-          {/* Multimedia */}
           <SeccionMultimedia
             imagenes={form.imagenes}
             productoId={form.id}
             slug={form.slug}
             onAdd={addImagenes}
             onRemove={removeImagen}
+            onReorder={reorderImagenes}
             onChangeAlt={changeAlt}
           />
 
-          {/* SEO */}
           <SeccionSEO
             slug={form.slug}
             meta_titulo={form.meta_titulo}
@@ -254,7 +234,7 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
 
         </div>
 
-        {/* ── Sidebar ──────────────────────────────────── */}
+        {/* Sidebar */}
         <SidebarProducto
           estado={form.estado}
           marca_id={form.marca_id}

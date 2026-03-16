@@ -1,50 +1,48 @@
+// app/admin/productos/components/modals/ModalMediaLibrary.tsx
 "use client";
-// app/admin/productos/components/ModalMediaLibrary.tsx
-// ─────────────────────────────────────────────────────────────
-// Modal para seleccionar archivos del servidor o subir nuevos.
-// Llama a GET /api/admin/media para listar imágenes existentes.
-// ─────────────────────────────────────────────────────────────
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { buildImageSrc } from "../producto-form-types";
 
 /* ── Tipos ─────────────────────────────────────────────────── */
 export interface MediaItem {
-  url:      string;
-  nombre:   string;
-  tipo:     string;
-  tamaño?:  number;
+  url:     string;
+  nombre:  string;
+  tipo:    string;
+  tamaño?: number;
 }
 
 interface Props {
-  onSelect:  (items: MediaItem[]) => void;
-  onClose:   () => void;
-  multiple?: boolean;
+  onSelect:    (items: MediaItem[]) => void;
+  onClose:     () => void;
+  productoId?: number;
+  multiple?:   boolean;
 }
 
 /* ── Helpers ───────────────────────────────────────────────── */
 function formatBytes(bytes?: number) {
   if (!bytes) return "";
-  if (bytes < 1024)        return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024)         return `${bytes} B`;
+  if (bytes < 1024 * 1024)  return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function ext(nombre: string) {
+function extLabel(nombre: string) {
   return nombre.split(".").pop()?.toUpperCase() ?? "";
 }
 
 /* ── Componente ────────────────────────────────────────────── */
-export function ModalMediaLibrary({ onSelect, onClose, multiple = true }: Props) {
-  const [items,      setItems]      = useState<MediaItem[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  const [search,     setSearch]     = useState("");
-  const [selected,   setSelected]   = useState<Set<string>>(new Set());
-  const [uploading,  setUploading]  = useState(false);
-  const [dragOver,   setDragOver]   = useState(false);
+export function ModalMediaLibrary({ onSelect, onClose, productoId, multiple = true }: Props) {
+  const [items,     setItems]     = useState<MediaItem[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [search,    setSearch]    = useState("");
+  const [selected,  setSelected]  = useState<Set<string>>(new Set());
+  const [uploading, setUploading] = useState(false);
+  const [dragOver,  setDragOver]  = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  /* Cargar medios del servidor */
+  /* Cargar todas las imágenes disponibles (todas las carpetas) */
   useEffect(() => {
     fetch("/api/admin/media")
       .then((r) => r.json())
@@ -55,12 +53,13 @@ export function ModalMediaLibrary({ onSelect, onClose, multiple = true }: Props)
 
   /* Subir archivo(s) */
   const uploadFiles = useCallback(async (files: FileList | File[]) => {
+    if (!productoId) return;
     setUploading(true);
-    const arr = Array.from(files);
     try {
-      for (const file of arr) {
+      for (const file of Array.from(files)) {
         const fd = new FormData();
         fd.append("file", file);
+        fd.append("productoId", String(productoId));
         const res  = await fetch("/api/admin/media", { method: "POST", body: fd });
         const json = await res.json();
         if (json.success && json.data) {
@@ -70,7 +69,7 @@ export function ModalMediaLibrary({ onSelect, onClose, multiple = true }: Props)
     } finally {
       setUploading(false);
     }
-  }, []);
+  }, [productoId]);
 
   /* Toggle selección */
   const toggle = (url: string) => {
@@ -86,10 +85,9 @@ export function ModalMediaLibrary({ onSelect, onClose, multiple = true }: Props)
     });
   };
 
-  /* Confirmar */
+  /* Confirmar selección */
   const handleListo = () => {
-    const elegidos = items.filter((i) => selected.has(i.url));
-    onSelect(elegidos);
+    onSelect(items.filter((i) => selected.has(i.url)));
   };
 
   /* Drag & drop */
@@ -106,27 +104,21 @@ export function ModalMediaLibrary({ onSelect, onClose, multiple = true }: Props)
   /* ── Render ────────────────────────────────────────────── */
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Overlay */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 h-[85vh] flex flex-col overflow-hidden">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h2 className="text-base font-semibold text-slate-800">Seleccionar archivo</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition"
-          >
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 transition">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        {/* Barra de búsqueda */}
+        {/* Búsqueda */}
         <div className="px-6 py-3 border-b border-slate-100">
           <div className="relative">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -142,32 +134,39 @@ export function ModalMediaLibrary({ onSelect, onClose, multiple = true }: Props)
           </div>
         </div>
 
-        {/* Zona upload + grid */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {/* Cuerpo: drop zone + grid */}
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
 
-          {/* Drop zone */}
-          <div
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition ${
-              dragOver ? "border-indigo-400 bg-indigo-50" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-            }`}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => e.target.files && uploadFiles(e.target.files)}
-            />
-            {uploading ? (
-              <p className="text-sm text-slate-500">Subiendo...</p>
-            ) : (
-              <>
-                <div className="flex items-center gap-3">
+          {/* Drop zone — solo si hay productoId */}
+          <div className="px-6 pt-4 shrink-0">
+          {productoId ? (
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-5 flex flex-col items-center justify-center gap-2 cursor-pointer transition ${
+                dragOver ? "border-indigo-400 bg-indigo-50" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => e.target.files && uploadFiles(e.target.files)}
+              />
+              {uploading ? (
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <p className="text-sm text-slate-500">Subiendo...</p>
+                </div>
+              ) : (
+                <>
                   <button
                     type="button"
                     className="px-4 py-2 text-sm font-medium bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 transition shadow-sm"
@@ -175,26 +174,36 @@ export function ModalMediaLibrary({ onSelect, onClose, multiple = true }: Props)
                   >
                     Agregar multimedia
                   </button>
-                </div>
-                <p className="text-xs text-slate-400">Arrastra y suelta imágenes, videos, modelos 3D y archivos</p>
-              </>
-            )}
+                  <p className="text-xs text-slate-400">Arrastra y suelta imágenes o haz clic para seleccionar</p>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="border border-amber-200 bg-amber-50 rounded-xl px-4 py-3">
+              <p className="text-xs text-amber-700">Guarda el producto primero para poder subir imágenes.</p>
+            </div>
+          )}
           </div>
 
-          {/* Grid de imágenes */}
+          {/* Grid de imágenes — siempre ocupa el espacio restante */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
           {loading ? (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-              {Array.from({ length: 12 }).map((_, i) => (
+              {Array.from({ length: 24 }).map((_, i) => (
                 <div key={i} className="aspect-square rounded-xl bg-slate-100 animate-pulse" />
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-8">Sin archivos</p>
+            <div className="h-full flex items-center justify-center">
+              <p className="text-sm text-slate-400">
+                {items.length === 0 ? "No hay imágenes todavía. Sube la primera." : "Sin resultados para esta búsqueda."}
+              </p>
+            </div>
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
               {filtered.map((item) => {
                 const checked = selected.has(item.url);
-                const src     = buildImageSrc(item.url);
+                const src = buildImageSrc(item.url);
                 return (
                   <button
                     key={item.url}
@@ -204,7 +213,6 @@ export function ModalMediaLibrary({ onSelect, onClose, multiple = true }: Props)
                       checked ? "border-indigo-500" : "border-transparent hover:border-slate-300"
                     } bg-slate-100`}
                   >
-                    {/* Imagen */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={src}
@@ -225,22 +233,27 @@ export function ModalMediaLibrary({ onSelect, onClose, multiple = true }: Props)
                       )}
                     </span>
 
-                    {/* Nombre + tipo */}
+                    {/* Info hover */}
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-1.5 pb-1.5 pt-4 opacity-0 group-hover:opacity-100 transition">
                       <p className="text-white text-[10px] truncate leading-tight">{item.nombre}</p>
-                      <p className="text-white/70 text-[9px] uppercase tracking-wide">{ext(item.nombre)}</p>
+                      <p className="text-white/70 text-[9px] uppercase tracking-wide">
+                        {extLabel(item.nombre)}{item.tamaño ? ` · ${formatBytes(item.tamaño)}` : ""}
+                      </p>
                     </div>
                   </button>
                 );
               })}
             </div>
           )}
+          </div>
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100">
           <p className="text-xs text-slate-400">
-            {selected.size > 0 ? `${selected.size} archivo${selected.size > 1 ? "s" : ""} seleccionado${selected.size > 1 ? "s" : ""}` : ""}
+            {selected.size > 0
+              ? `${selected.size} archivo${selected.size > 1 ? "s" : ""} seleccionado${selected.size > 1 ? "s" : ""}`
+              : `${filtered.length} archivo${filtered.length !== 1 ? "s" : ""}`}
           </p>
           <div className="flex items-center gap-3">
             <button
