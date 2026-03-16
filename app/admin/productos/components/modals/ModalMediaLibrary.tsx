@@ -64,22 +64,22 @@ function Dropdown({ label, value, options, onChange }: {
         }`}
       >
         {current ? current.label : label}
-        <svg className={`w-3 h-3 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        <svg className={`w-3 h-3 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden min-w-max" style={{ zIndex: 9999 }}>
+        <div className="absolute left-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden z-50" style={{ minWidth: 140 }}>
           {value && (
             <button type="button" onClick={() => { onChange(""); setOpen(false); }}
-              className="w-full text-left px-4 py-2.5 text-xs text-slate-400 hover:bg-slate-50 transition border-b border-slate-100">
+              className="w-full text-left px-3 py-2 text-xs text-slate-400 hover:bg-slate-50 border-b border-slate-100">
               Limpiar
             </button>
           )}
           {options.map((o) => (
             <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false); }}
-              className={`w-full text-left px-4 py-2.5 text-xs whitespace-nowrap transition hover:bg-slate-50 ${
-                value === o.value ? "text-indigo-600 font-semibold" : "text-slate-600"
+              className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition ${
+                o.value === value ? "text-indigo-600 font-semibold" : "text-slate-600"
               }`}>
               {o.label}
             </button>
@@ -116,15 +116,15 @@ export function ModalMediaLibrary({ onSelect, onClose, productoId, multiple = tr
       .finally(() => setLoading(false));
   }, []);
 
+  // Upload siempre va a staging (public/productos/) — el movimiento
+  // a la carpeta del producto ocurre cuando se guarda el producto.
   const uploadFiles = useCallback(async (files: FileList | File[]) => {
-    if (!productoId) return;
     setUploading(true);
     const just: string[] = [];
     try {
       for (const file of Array.from(files)) {
         const fd = new FormData();
         fd.append("file", file);
-        fd.append("productoId", String(productoId));
         const res  = await fetch("/api/admin/media", { method: "POST", body: fd });
         const json = await res.json();
         if (json.success && json.data) {
@@ -137,7 +137,7 @@ export function ModalMediaLibrary({ onSelect, onClose, productoId, multiple = tr
         setTimeout(() => setNewUrls(new Set()), 3000);
       }
     } finally { setUploading(false); }
-  }, [productoId]);
+  }, []);
 
   const handleLinkAdd = () => {
     setLinkError("");
@@ -199,50 +199,43 @@ export function ModalMediaLibrary({ onSelect, onClose, productoId, multiple = tr
 
         {/* Toolbar */}
         <div className="flex items-center gap-2 px-5 py-2.5 border-b border-slate-100 shrink-0">
-          {/* Búsqueda */}
-          <div className="relative" style={{ flex: "1 1 160px", minWidth: 0 }}>
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="relative flex-1 max-w-xs">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar archivos"
-              className="w-full text-sm border border-slate-200 rounded-lg pl-9 pr-7 py-1.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-slate-300"
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por nombre…"
+              className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition"
             />
-            {search && (
-              <button type="button" onClick={() => setSearch("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
           </div>
 
-          <Dropdown label="Tipo de archivo"    value={filterTipo} options={tipoOptions}  onChange={setFilterTipo} />
-          <Dropdown label="Tamaño del archivo" value={filterSize} options={sizeOptions}  onChange={setFilterSize} />
-          <Dropdown label="Ordenar por"        value={sort}       options={SORT_OPTIONS} onChange={setSort} />
+          <Dropdown label="Tipo"   value={filterTipo} options={tipoOptions} onChange={setFilterTipo} />
+          <Dropdown label="Tamaño" value={filterSize} options={sizeOptions} onChange={setFilterSize} />
+          <Dropdown label="Orden"  value={sort}       options={SORT_OPTIONS} onChange={setSort} />
+
           {hasFilters && (
             <button type="button" onClick={() => { setFilterTipo(""); setFilterSize(""); setSort(""); }}
-              className="text-xs text-indigo-500 hover:text-indigo-700 transition whitespace-nowrap">
+              className="text-xs text-slate-400 hover:text-slate-600 transition whitespace-nowrap">
               Limpiar
             </button>
           )}
 
-          <div className="ml-auto flex items-center gap-1 shrink-0">
-            <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-              <button type="button" onClick={() => setView("grid")}
-                className={`p-1.5 transition ${view === "grid" ? "bg-slate-100 text-slate-700" : "text-slate-400 hover:bg-slate-50"}`}>
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                </svg>
-              </button>
-              <button type="button" onClick={() => setView("list")}
-                className={`p-1.5 border-l border-slate-200 transition ${view === "list" ? "bg-slate-100 text-slate-700" : "text-slate-400 hover:bg-slate-50"}`}>
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-            </div>
+          <div className="ml-auto flex items-center gap-1 border border-slate-200 rounded-lg p-0.5">
+            <button type="button" onClick={() => setView("grid")}
+              className={`p-1.5 rounded-md transition ${view === "grid" ? "bg-slate-100 text-slate-700" : "text-slate-400 hover:bg-slate-50"}`}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+            </button>
+            <button type="button" onClick={() => setView("list")}
+              className={`p-1.5 rounded-md transition ${view === "list" ? "bg-slate-100 text-slate-700" : "text-slate-400 hover:bg-slate-50"}`}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -250,71 +243,65 @@ export function ModalMediaLibrary({ onSelect, onClose, productoId, multiple = tr
         <div className="px-5 pt-3 pb-2 shrink-0">
           <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden"
             onChange={(e) => e.target.files && uploadFiles(e.target.files)} />
-          {productoId ? (
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-              onDragLeave={() => setDragActive(false)}
-              onDrop={(e) => { e.preventDefault(); setDragActive(false); if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files); }}
-              className={`border-2 border-dashed rounded-xl transition ${
-                dragActive ? "border-indigo-400 bg-indigo-50" : "border-slate-200 hover:border-indigo-300 hover:bg-slate-50/50"
-              }`}
-            >
-              {dragActive ? (
-                <div className="flex items-center justify-center gap-2 py-4 pointer-events-none select-none">
-                  <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
-                  <p className="text-sm font-medium text-indigo-600">Suelta los archivos aquí</p>
-                </div>
-              ) : uploading ? (
-                <div className="flex items-center justify-center gap-2 py-4">
-                  <svg className="w-4 h-4 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                  </svg>
-                  <p className="text-sm text-slate-500">Subiendo imágenes…</p>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center gap-4 py-4">
-                  <button type="button" onClick={() => fileInputRef.current?.click()}
-                    className="px-4 py-2 text-sm font-medium bg-white border border-slate-200 rounded-lg text-slate-700 hover:border-indigo-300 transition shadow-sm">
-                    Subir archivo
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+            onDragLeave={() => setDragActive(false)}
+            onDrop={(e) => { e.preventDefault(); setDragActive(false); if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files); }}
+            className={`border-2 border-dashed rounded-xl transition ${
+              dragActive ? "border-indigo-400 bg-indigo-50" : "border-slate-200 hover:border-indigo-300 hover:bg-slate-50/50"
+            }`}
+          >
+            {dragActive ? (
+              <div className="flex items-center justify-center gap-2 py-4 pointer-events-none select-none">
+                <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                <p className="text-sm font-medium text-indigo-600">Suelta los archivos aquí</p>
+              </div>
+            ) : uploading ? (
+              <div className="flex items-center justify-center gap-2 py-4">
+                <svg className="w-4 h-4 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                <p className="text-sm text-slate-500">Subiendo imágenes…</p>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-4 py-4">
+                <button type="button" onClick={() => fileInputRef.current?.click()}
+                  className="px-4 py-2 text-sm font-medium bg-white border border-slate-200 rounded-lg text-slate-700 hover:border-indigo-300 transition shadow-sm">
+                  Subir archivo
+                </button>
+                <p className="text-xs text-slate-400">Arrastra y suelta o</p>
+                <div className="relative">
+                  <button type="button" onClick={() => setLinkOpen((v) => !v)}
+                    className="flex items-center gap-1 text-xs font-medium text-indigo-500 hover:text-indigo-700 transition">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                    agregar desde URL
                   </button>
-                  <p className="text-xs text-slate-400">Arrastra y suelta o</p>
-                  <div className="relative">
-                    <button type="button" onClick={() => setLinkOpen((v) => !v)}
-                      className="flex items-center gap-1 text-xs font-medium text-indigo-500 hover:text-indigo-700 transition">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                      </svg>
-                      agregar desde URL
-                    </button>
-                    {linkOpen && (
-                      <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 bg-white border border-slate-200 rounded-xl shadow-2xl p-3" style={{ width: "300px", zIndex: 9999 }}>
-                        <p className="text-xs font-medium text-slate-600 mb-2">Agregar imagen desde URL</p>
-                        <div className="flex gap-2">
-                          <input type="url" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Enter") handleLinkAdd(); if (e.key === "Escape") { setLinkOpen(false); setLinkUrl(""); } }}
-                            placeholder="https://..."
-                            className="flex-1 text-xs border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-slate-300"
-                            autoFocus />
-                          <button type="button" onClick={handleLinkAdd}
-                            className="px-3 py-2 text-xs font-medium bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition">
-                            Agregar
-                          </button>
-                        </div>
-                        {linkError && <p className="text-xs text-red-500 mt-1.5">{linkError}</p>}
+                  {linkOpen && (
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 bg-white border border-slate-200 rounded-xl shadow-2xl p-3" style={{ width: "300px", zIndex: 9999 }}>
+                      <p className="text-xs font-medium text-slate-600 mb-2">Agregar imagen desde URL</p>
+                      <div className="flex gap-2">
+                        <input type="url" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleLinkAdd(); if (e.key === "Escape") { setLinkOpen(false); setLinkUrl(""); } }}
+                          placeholder="https://..."
+                          className="flex-1 text-xs border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-slate-300"
+                          autoFocus />
+                        <button type="button" onClick={handleLinkAdd}
+                          className="px-3 py-2 text-xs font-medium bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition">
+                          Agregar
+                        </button>
                       </div>
-                    )}
-                  </div>
+                      {linkError && <p className="text-xs text-red-500 mt-1.5">{linkError}</p>}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="border border-amber-200 bg-amber-50 rounded-xl px-4 py-3">
-              <p className="text-xs text-amber-700">Guarda el producto primero para poder subir imágenes.</p>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Contenido scrolleable */}

@@ -2,8 +2,71 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool }                       from "@/app/global/lib/db/pool";
 import type { RowDataPacket, ResultSetHeader } from "mysql2";
+import path from "path";
+import fs   from "fs/promises";
 
 type Params = { params: Promise<{ id: string }> };
+
+/* ── Mueve imágenes staged y limpia las huérfanas ────────────
+   staged URL:  "productos/filename.ext"        (2 segmentos)
+   product URL: "productos/[id]/filename.ext"   (3 segmentos)
+   ─────────────────────────────────────────────────────────── */
+async function syncImagenes(
+  conn: Awaited<ReturnType<typeof pool.getConnection>>,
+  productoId: number,
+  imagenes: { url: string; alt?: string | null; orden?: number }[]
+): Promise<{ url: string; alt?: string | null; orden?: number }[]> {
+  // URLs actualmente en BD para este producto
+  const [dbRows] = await conn.execute<RowDataPacket[]>(
+    "SELECT url FROM producto_imagenes WHERE producto_id = ? AND variante_id IS NULL",
+    [productoId]
+  );
+  const dbUrls = new Set((dbRows as { url: string }[]).map(r => r.url));
+
+  const destDir = path.join(process.cwd(), "public", "productos", String(productoId));
+  await fs.mkdir(destDir, { recursive: true });
+
+  // Mover staged y construir URLs definitivas
+  const finalImagenes = await Promise.all(
+    imagenes
+      .filter(img => img.url?.trim())
+      .map(async (img) => {
+        const rawUrl = img.url.trim();
+        const parts  = rawUrl.replace(/^\//, "").split("/");
+
+        // staged: "productos/filename.ext" → mover a "productos/[id]/filename.ext"
+        if (parts.length === 2 && parts[0] === "productos") {
+          const filename = parts[1];
+          const srcPath  = path.join(process.cwd(), "public", "productos", filename);
+          const destPath = path.join(destDir, filename);
+          try {
+            await fs.rename(srcPath, destPath);
+          } catch {
+            // Si ya no existe en staging (ej: recarga), dejamos la URL como está
+          }
+          return { ...img, url: `productos/${productoId}/${filename}` };
+        }
+
+        return img;
+      })
+  );
+
+  // Eliminar archivos físicos de imágenes que estaban en BD pero ya no están en el form
+  const newUrls = new Set(finalImagenes.map(img => img.url));
+  await Promise.all(
+    Array.from(dbUrls)
+      .filter(u => !newUrls.has(u))
+      .map(async (u) => {
+        const normalized = u.replace(/^\//, "");
+        const filePath   = path.join(process.cwd(), "public", normalized);
+        const publicProductos = path.join(process.cwd(), "public", "productos");
+        if (!filePath.startsWith(publicProductos)) return;
+        await fs.unlink(filePath).catch(() => {});
+      })
+  );
+
+  return finalImagenes;
+}
 
 /* ── GET ────────────────────────────────────────────────────── */
 export async function GET(_req: NextRequest, { params }: Params) {
@@ -137,18 +200,18 @@ export async function PUT(req: NextRequest, { params }: Params) {
       );
     }
 
-    // 4. Imágenes: reemplazar las de producto (variante_id IS NULL)
+    // 4. Imágenes: mover staged → [id]/, eliminar huérfanas, sincronizar BD
+    const finalImagenes = await syncImagenes(conn, productoId, imagenes);
+
     await conn.execute(
       "DELETE FROM producto_imagenes WHERE producto_id = ? AND variante_id IS NULL",
       [productoId]
     );
-    for (const img of imagenes) {
-      if (img.url?.trim()) {
-        await conn.execute(
-          "INSERT INTO producto_imagenes (producto_id, url, alt, orden) VALUES (?, ?, ?, ?)",
-          [productoId, img.url.trim(), img.alt ?? null, Number(img.orden) || 0]
-        );
-      }
+    for (const img of finalImagenes) {
+      await conn.execute(
+        "INSERT INTO producto_imagenes (producto_id, url, alt, orden) VALUES (?, ?, ?, ?)",
+        [productoId, img.url, img.alt ?? null, Number(img.orden) || 0]
+      );
     }
 
     // 5. Metacampos: reemplazar los de producto (variante_id IS NULL)

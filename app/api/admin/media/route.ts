@@ -31,11 +31,30 @@ export async function GET(req: NextRequest) {
     }
 
     const base = path.join(process.cwd(), "public", "productos");
+    const allFiles: { url: string; nombre: string; tipo: string; tamaño: number }[] = [];
+
+    // Archivos en el root de staging (public/productos/*.ext)
+    try {
+      const rootEntries = await fs.readdir(base, { withFileTypes: true }) as Dirent[];
+      await Promise.all(
+        rootEntries
+          .filter(e => e.isFile() && IMAGE_EXTS.has(path.extname(e.name).toLowerCase()))
+          .map(async (e) => {
+            const stat = await fs.stat(path.join(base, e.name));
+            allFiles.push({
+              url:    `productos/${e.name}`,
+              nombre: e.name,
+              tipo:   path.extname(e.name).slice(1).toUpperCase(),
+              tamaño: stat.size,
+            });
+          })
+      );
+    } catch { /* carpeta no existe aún */ }
+
+    // Archivos en subcarpetas de producto (public/productos/[id]/*.ext)
     let productoDirs: Dirent[] = [];
     try { productoDirs = await fs.readdir(base, { withFileTypes: true }) as Dirent[]; }
-    catch { return NextResponse.json({ success: true, data: [] }); }
-
-    const allFiles: { url: string; nombre: string; tipo: string; tamaño: number }[] = [];
+    catch { return NextResponse.json({ success: true, data: allFiles }); }
 
     await Promise.all(
       productoDirs.filter(d => d.isDirectory()).map(async (d) => {
@@ -63,29 +82,37 @@ export async function GET(req: NextRequest) {
 }
 
 /* ── POST /api/admin/media ──────────────────────────────────── */
+// Sube siempre a public/productos/ (staging). El movimiento a public/productos/[id]/
+// ocurre cuando se guarda el producto.
 export async function POST(req: NextRequest) {
   try {
-    const formData   = await req.formData();
-    const file       = formData.get("file") as File | null;
-    const productoId = formData.get("productoId") as string | null;
+    const formData = await req.formData();
+    const file     = formData.get("file") as File | null;
 
-    if (!file)       return NextResponse.json({ success: false, error: "No se recibió archivo" }, { status: 400 });
-    if (!productoId) return NextResponse.json({ success: false, error: "productoId requerido" }, { status: 400 });
+    if (!file) return NextResponse.json({ success: false, error: "No se recibió archivo" }, { status: 400 });
 
     const ext = path.extname(file.name).toLowerCase();
     if (!IMAGE_EXTS.has(ext)) return NextResponse.json({ success: false, error: "Tipo de archivo no permitido" }, { status: 400 });
 
-    const dir = path.join(process.cwd(), "public", "productos", productoId);
-    await fs.mkdir(dir, { recursive: true });
+    const stagingDir = path.join(process.cwd(), "public", "productos");
+    await fs.mkdir(stagingDir, { recursive: true });
 
     const baseName = path.basename(file.name, ext).replace(/[^a-z0-9_-]/gi, "_").toLowerCase();
     const fileName = `${baseName}_${Date.now()}${ext}`;
-    const filePath = path.join(dir, fileName);
+    const filePath = path.join(stagingDir, fileName);
 
     await writeFile(filePath, Buffer.from(await file.arrayBuffer()));
     const stat = await fs.stat(filePath);
 
-    return NextResponse.json({ success: true, data: { url: `productos/${productoId}/${fileName}`, nombre: fileName, tipo: ext.slice(1).toUpperCase(), tamaño: stat.size } });
+    return NextResponse.json({
+      success: true,
+      data: {
+        url:    `productos/${fileName}`,
+        nombre: fileName,
+        tipo:   ext.slice(1).toUpperCase(),
+        tamaño: stat.size,
+      },
+    });
   } catch (err) {
     console.error("[POST /api/admin/media]", err);
     return NextResponse.json({ success: false, error: err instanceof Error ? err.message : "Error interno" }, { status: 500 });
@@ -100,31 +127,26 @@ export async function DELETE(req: NextRequest) {
 
     if (!url) return NextResponse.json({ success: false, error: "url requerida" }, { status: 400 });
 
-    // Resolver ruta absoluta
     const normalized = url.replace(/\\/g, "/").replace(/^\//, "");
     const filePath   = path.join(process.cwd(), "public", normalized);
 
-    // Seguridad: solo dentro de /public/productos/
     const publicProductos = path.join(process.cwd(), "public", "productos");
     if (!filePath.startsWith(publicProductos)) {
       return NextResponse.json({ success: false, error: "Ruta no permitida" }, { status: 403 });
     }
 
-    // Eliminar archivo físico
     try {
       await fs.unlink(filePath);
     } catch (e: unknown) {
       if ((e as NodeJS.ErrnoException).code !== "ENOENT") {
         return NextResponse.json({ success: false, error: "No se pudo eliminar el archivo" }, { status: 500 });
       }
-      // ENOENT → ya no existía, seguimos para limpiar la BD igualmente
     }
 
-    // Eliminar referencias en producto_imagenes
     const fileName = path.basename(normalized);
     await pool.execute(
-      `DELETE FROM producto_imagenes WHERE url = ? OR url LIKE ? OR url = ?`,
-      [normalized, `%/${fileName}`, fileName]
+      `DELETE FROM producto_imagenes WHERE url = ? OR url LIKE ?`,
+      [url, `%/${fileName}`]
     );
 
     return NextResponse.json({ success: true });

@@ -1,7 +1,40 @@
 // app/api/admin/productos/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { pool }                       from "@/app/global/lib/db/pool";
-import type { ResultSetHeader }       from "mysql2";
+import type { ResultSetHeader, RowDataPacket } from "mysql2";
+import path from "path";
+import fs   from "fs/promises";
+
+/* ── Mueve imágenes staged a la carpeta del producto ─────────
+   staged URL:  "productos/filename.ext"        (2 segmentos)
+   product URL: "productos/[id]/filename.ext"   (3 segmentos)
+   ─────────────────────────────────────────────────────────── */
+async function moveStaged(
+  imagenes: { url: string; alt?: string | null; orden?: number }[],
+  productoId: number
+): Promise<{ url: string; alt?: string | null; orden?: number }[]> {
+  const destDir = path.join(process.cwd(), "public", "productos", String(productoId));
+  await fs.mkdir(destDir, { recursive: true });
+
+  return Promise.all(
+    imagenes
+      .filter(img => img.url?.trim())
+      .map(async (img) => {
+        const rawUrl = img.url.trim();
+        const parts  = rawUrl.replace(/^\//, "").split("/");
+
+        if (parts.length === 2 && parts[0] === "productos") {
+          const filename = parts[1];
+          const srcPath  = path.join(process.cwd(), "public", "productos", filename);
+          const destPath = path.join(destDir, filename);
+          try { await fs.rename(srcPath, destPath); } catch { /* ya movido o no existe */ }
+          return { ...img, url: `productos/${productoId}/${filename}` };
+        }
+
+        return img;
+      })
+  );
+}
 
 /* ── POST — crear producto ──────────────────────────────────── */
 export async function POST(req: NextRequest) {
@@ -53,14 +86,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Imágenes
-    for (const img of imagenes) {
-      if (img.url?.trim()) {
-        await conn.execute(
-          "INSERT INTO producto_imagenes (producto_id, url, alt, orden) VALUES (?, ?, ?, ?)",
-          [productoId, img.url.trim(), img.alt ?? null, Number(img.orden) || 0]
-        );
-      }
+    // 4. Imágenes: mover staged → [id]/ y luego insertar con URLs definitivas
+    const finalImagenes = await moveStaged(imagenes, productoId);
+    for (const img of finalImagenes) {
+      await conn.execute(
+        "INSERT INTO producto_imagenes (producto_id, url, alt, orden) VALUES (?, ?, ?, ?)",
+        [productoId, img.url, img.alt ?? null, Number(img.orden) || 0]
+      );
     }
 
     // 5. Metacampos
@@ -80,7 +112,7 @@ export async function POST(req: NextRequest) {
     console.error("[POST /api/admin/productos]", err);
     const isDuplicate = (err as NodeJS.ErrnoException & { code?: string }).code === "ER_DUP_ENTRY";
     return NextResponse.json(
-      { success: false, error: isDuplicate ? "El slug ya existe" : "Error al crear" },
+      { success: false, error: isDuplicate ? "El slug ya existe" : "Error al crear producto" },
       { status: isDuplicate ? 409 : 500 }
     );
   } finally {
