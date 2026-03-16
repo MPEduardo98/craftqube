@@ -28,7 +28,7 @@ async function moveStaged(
           const srcPath  = path.join(process.cwd(), "public", "productos", filename);
           const destPath = path.join(destDir, filename);
           try { await fs.rename(srcPath, destPath); } catch { /* ya movido o no existe */ }
-          return { ...img, url: `productos/${productoId}/${filename}` };
+          return { ...img, url: filename };
         }
 
         return img;

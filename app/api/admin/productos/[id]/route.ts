@@ -44,7 +44,7 @@ async function syncImagenes(
           } catch {
             // Si ya no existe en staging (ej: recarga), dejamos la URL como está
           }
-          return { ...img, url: `productos/${productoId}/${filename}` };
+          return { ...img, url: filename };
         }
 
         return img;
@@ -57,10 +57,8 @@ async function syncImagenes(
     Array.from(dbUrls)
       .filter(u => !newUrls.has(u))
       .map(async (u) => {
-        const normalized = u.replace(/^\//, "");
-        const filePath   = path.join(process.cwd(), "public", normalized);
-        const publicProductos = path.join(process.cwd(), "public", "productos");
-        if (!filePath.startsWith(publicProductos)) return;
+        // u es solo el filename en BD
+        const filePath = path.join(destDir, u);
         await fs.unlink(filePath).catch(() => {});
       })
   );
