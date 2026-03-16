@@ -140,7 +140,7 @@ export function ProductDetailClient({ producto }: Props) {
             >
               {imagenActiva ? (
                 <Image
-                  src={`/productos/${producto.id}/${imagenActiva.url.split("/").pop()}`}
+                  src={imagenActiva.url.startsWith("http") ? imagenActiva.url : `/productos/${producto.id}/${imagenActiva.url}`}
                   alt={imagenActiva.alt ?? producto.titulo}
                   fill
                   className="object-contain p-6"
@@ -181,7 +181,7 @@ export function ProductDetailClient({ producto }: Props) {
                       }}
                     >
                       <Image
-                        src={`/productos/${producto.id}/${img.url.split("/").pop()}`}
+                        src={img.url.startsWith("http") ? img.url : `/productos/${producto.id}/${img.url}`}
                         alt={img.alt ?? `Imagen ${i + 1}`}
                         fill
                         className="object-contain p-1.5"
