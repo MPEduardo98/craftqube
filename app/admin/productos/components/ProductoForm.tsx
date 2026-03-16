@@ -140,14 +140,21 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
       const method = mode === "crear" ? "POST" : "PUT";
 
       const res  = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-      const json = await res.json();
+
+      let json: { success: boolean; error?: string; data?: { id: number } };
+      try {
+        json = await res.json();
+      } catch {
+        setError(`Error del servidor (HTTP ${res.status})`);
+        return;
+      }
 
       if (!json.success) { setError(json.error ?? "Error al guardar"); return; }
 
       router.push("/admin/productos");
       router.refresh();
-    } catch {
-      setError("Error de conexión. Intenta de nuevo.");
+    } catch (err) {
+      setError(`Error de red: ${err instanceof Error ? err.message : "sin conexión"}`);
     } finally {
       setSaving(false);
     }
