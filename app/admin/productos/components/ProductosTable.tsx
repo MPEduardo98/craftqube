@@ -1,672 +1,298 @@
-// app/admin/productos/components/ProductosTable.tsx
 "use client";
+// app/admin/productos/components/ProductosTable.tsx
+import { useState, useCallback } from "react";
+import Link                       from "next/link";
+import { useRouter }              from "next/navigation";
+import type { ProductoRow } from "../types";
 
-import { useState, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import {
-  Trash2,
-  LayoutList,
-  LayoutGrid,
-  Search,
-  ChevronDown,
-  AlertTriangle,
-  X,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  Package,
-} from "lucide-react";
-
-export type ProductoEstado = "activo" | "inactivo" | "borrador";
-
-export interface Producto {
-  id: number;
-  titulo: string;
-  slug: string;
-  estado: ProductoEstado;
-  imagen?: string;
-  precio?: number;
-  stock?: number;
-  sku?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-type SortField = "titulo" | "estado" | "precio" | "stock" | "created_at";
-type SortDir = "asc" | "desc";
-type ViewMode = "lista" | "cuadricula";
-
-const ESTADO_CONFIG: Record<
-  ProductoEstado,
-  { label: string; classes: string; dot: string }
-> = {
-  activo: {
-    label: "Activo",
-    classes:
-      "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
-    dot: "bg-emerald-500",
-  },
-  inactivo: {
-    label: "Inactivo",
-    classes: "bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200",
-    dot: "bg-zinc-400",
-  },
-  borrador: {
-    label: "Borrador",
-    classes: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
-    dot: "bg-amber-400",
-  },
+const BADGES = {
+  activo:   { label: "Activo",   dot: "#059669", color: "#065f46", bg: "rgba(5,150,105,0.08)",  border: "rgba(5,150,105,0.2)"  },
+  inactivo: { label: "Inactivo", dot: "#94a3b8", color: "#475569", bg: "rgba(148,163,184,0.1)", border: "rgba(148,163,184,0.2)" },
+  borrador: { label: "Borrador", dot: "#d97706", color: "#92400e", bg: "rgba(217,119,6,0.08)",  border: "rgba(217,119,6,0.2)"  },
 };
 
-const SORT_OPTIONS: { field: SortField; label: string }[] = [
-  { field: "titulo", label: "Nombre" },
-  { field: "estado", label: "Estado" },
-  { field: "precio", label: "Precio" },
-  { field: "stock", label: "Stock" },
-  { field: "created_at", label: "Fecha creación" },
-];
-
-function EstadoBadge({ estado }: { estado: ProductoEstado }) {
-  const cfg = ESTADO_CONFIG[estado];
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${cfg.classes}`}
-    >
-      <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-      {cfg.label}
-    </span>
-  );
+function getImageUrl(id: number, filename: string | null): string | null {
+  if (!filename) return null;
+  return filename.startsWith("http") ? filename : `/productos/${id}/${filename}`;
 }
 
-function DeleteModal({
-  producto,
-  onConfirm,
-  onCancel,
-  loading,
-}: {
-  producto: Producto;
-  onConfirm: () => void;
-  onCancel: () => void;
-  loading: boolean;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onCancel}
-      />
-      {/* Modal */}
-      <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl ring-1 ring-zinc-200">
-        <div className="p-6">
-          {/* Header */}
-          <div className="flex items-start gap-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-base font-semibold text-zinc-900">
-                Eliminar producto
-              </h3>
-              <p className="mt-1 text-sm text-zinc-500">
-                Esta acción no se puede deshacer. El producto y todos sus datos
-                asociados serán eliminados permanentemente.
-              </p>
-            </div>
-            <button
-              onClick={onCancel}
-              className="ml-2 rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Product info */}
-          <div className="mt-4 rounded-xl bg-zinc-50 px-4 py-3 ring-1 ring-zinc-200">
-            <div className="flex items-center gap-3">
-              {producto.imagen ? (
-                <img
-                  src={producto.imagen}
-                  alt={producto.titulo}
-                  className="h-10 w-10 rounded-lg object-cover"
-                />
-              ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-200">
-                  <Package className="h-5 w-5 text-zinc-400" />
-                </div>
-              )}
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-zinc-900">
-                  {producto.titulo}
-                </p>
-                <p className="text-xs text-zinc-500">{producto.slug}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="mt-6 flex gap-3 justify-end">
-            <button
-              onClick={onCancel}
-              disabled={loading}
-              className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-50"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={onConfirm}
-              disabled={loading}
-              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors disabled:opacity-60 flex items-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <span className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                  Eliminando…
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Eliminar producto
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+interface Props {
+  initialProductos: ProductoRow[];
+  initialTotal:     number;
 }
 
-function SortDropdown({
-  sortField,
-  sortDir,
-  onSort,
-}: {
-  sortField: SortField;
-  sortDir: SortDir;
-  onSort: (field: SortField) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const currentLabel =
-    SORT_OPTIONS.find((o) => o.field === sortField)?.label ?? "Ordenar";
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
-      >
-        <ArrowUpDown className="h-4 w-4 text-zinc-400" />
-        {currentLabel}
-        {sortDir === "asc" ? (
-          <ArrowUp className="h-3.5 w-3.5 text-zinc-400" />
-        ) : (
-          <ArrowDown className="h-3.5 w-3.5 text-zinc-400" />
-        )}
-        <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
-      </button>
-
-      {open && (
-        <>
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setOpen(false)}
-          />
-          <div className="absolute right-0 top-full z-20 mt-1.5 w-44 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg">
-            {SORT_OPTIONS.map((opt) => (
-              <button
-                key={opt.field}
-                onClick={() => {
-                  onSort(opt.field);
-                  setOpen(false);
-                }}
-                className={`flex w-full items-center justify-between px-3 py-2 text-sm transition-colors hover:bg-zinc-50 ${
-                  sortField === opt.field
-                    ? "font-medium text-zinc-900"
-                    : "text-zinc-600"
-                }`}
-              >
-                {opt.label}
-                {sortField === opt.field && (
-                  sortDir === "asc" ? (
-                    <ArrowUp className="h-3.5 w-3.5 text-zinc-400" />
-                  ) : (
-                    <ArrowDown className="h-3.5 w-3.5 text-zinc-400" />
-                  )
-                )}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ─── List Row ──────────────────────────────────────────────────────────────────
-function ProductoRow({
-  producto,
-  onDelete,
-}: {
-  producto: Producto;
-  onDelete: (p: Producto) => void;
-}) {
+export function ProductosTable({ initialProductos, initialTotal }: Props) {
   const router = useRouter();
+  const [productos, setProductos] = useState<ProductoRow[]>(initialProductos);
+  const [total, setTotal]         = useState(initialTotal);
+  const [q, setQ]                 = useState("");
+  const [estado, setEstado]       = useState("");
+  const [page, setPage]           = useState(1);
+  const [pages, setPages]         = useState(Math.ceil(initialTotal / 20));
+  const [loading, setLoading]     = useState(false);
+  const [selected, setSelected]   = useState<Set<number>>(new Set());
+  const limit = 20;
 
-  return (
-    <tr className="group border-b border-zinc-100 last:border-0 hover:bg-zinc-50/60 transition-colors">
-      {/* Imagen */}
-      <td className="w-14 py-3 pl-4 pr-0">
-        {producto.imagen ? (
-          <img
-            src={producto.imagen}
-            alt={producto.titulo}
-            className="h-10 w-10 rounded-lg object-cover ring-1 ring-zinc-200"
-          />
-        ) : (
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-100 ring-1 ring-zinc-200">
-            <Package className="h-4 w-4 text-zinc-300" />
-          </div>
-        )}
-      </td>
-
-      {/* Título — clickeable para editar */}
-      <td className="px-4 py-3">
-        <button
-          onClick={() => router.push(`/admin/productos/${producto.id}/editar`)}
-          className="group/title text-left"
-          title="Editar producto"
-        >
-          <span className="line-clamp-1 text-sm font-medium text-zinc-900 group-hover/title:text-blue-600 group-hover/title:underline underline-offset-2 transition-colors cursor-pointer">
-            {producto.titulo}
-          </span>
-          <span className="mt-0.5 block text-xs text-zinc-400">
-            /{producto.slug}
-          </span>
-        </button>
-      </td>
-
-      {/* Estado */}
-      <td className="px-4 py-3">
-        <EstadoBadge estado={producto.estado} />
-      </td>
-
-      {/* SKU */}
-      <td className="hidden px-4 py-3 md:table-cell">
-        <span className="font-mono text-xs text-zinc-500">
-          {producto.sku ?? "—"}
-        </span>
-      </td>
-
-      {/* Precio */}
-      <td className="hidden px-4 py-3 text-right lg:table-cell">
-        <span className="text-sm text-zinc-700">
-          {producto.precio != null
-            ? `$${producto.precio.toLocaleString("es-MX", {
-                minimumFractionDigits: 2,
-              })}`
-            : "—"}
-        </span>
-      </td>
-
-      {/* Stock */}
-      <td className="hidden px-4 py-3 text-right xl:table-cell">
-        <span
-          className={`text-sm font-medium ${
-            (producto.stock ?? 0) > 0 ? "text-zinc-700" : "text-red-500"
-          }`}
-        >
-          {producto.stock ?? 0}
-        </span>
-      </td>
-
-      {/* Acciones */}
-      <td className="py-3 pr-4 pl-2">
-        <div className="flex items-center justify-end">
-          <button
-            onClick={() => onDelete(producto)}
-            className="rounded-lg p-1.5 text-zinc-300 hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-            title="Eliminar producto"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-// ─── Grid Card ─────────────────────────────────────────────────────────────────
-function ProductoCard({
-  producto,
-  onDelete,
-}: {
-  producto: Producto;
-  onDelete: (p: Producto) => void;
-}) {
-  const router = useRouter();
-
-  return (
-    <div className="group relative rounded-2xl border border-zinc-200 bg-white p-4 transition-shadow hover:shadow-md">
-      {/* Delete button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete(producto);
-        }}
-        className="absolute right-3 top-3 rounded-lg p-1.5 text-zinc-300 hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-        title="Eliminar producto"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
-
-      {/* Imagen */}
-      <div className="mb-3 aspect-square w-full overflow-hidden rounded-xl bg-zinc-100">
-        {producto.imagen ? (
-          <img
-            src={producto.imagen}
-            alt={producto.titulo}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <Package className="h-8 w-8 text-zinc-300" />
-          </div>
-        )}
-      </div>
-
-      {/* Info */}
-      <button
-        onClick={() => router.push(`/admin/productos/${producto.id}/editar`)}
-        className="w-full text-left"
-        title="Editar producto"
-      >
-        <h3 className="line-clamp-2 text-sm font-medium text-zinc-900 hover:text-blue-600 hover:underline underline-offset-2 transition-colors cursor-pointer">
-          {producto.titulo}
-        </h3>
-      </button>
-
-      <div className="mt-2 flex items-center justify-between">
-        <EstadoBadge estado={producto.estado} />
-        {producto.precio != null && (
-          <span className="text-sm font-semibold text-zinc-800">
-            ${producto.precio.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
-          </span>
-        )}
-      </div>
-
-      {producto.sku && (
-        <p className="mt-1.5 font-mono text-xs text-zinc-400">{producto.sku}</p>
-      )}
-    </div>
-  );
-}
-
-// ─── Main Component ────────────────────────────────────────────────────────────
-export default function ProductosTable({
-  productos: initialProductos,
-}: {
-  productos: Producto[];
-}) {
-  const [busqueda, setBusqueda] = useState("");
-  const [filtroEstado, setFiltroEstado] = useState<ProductoEstado | "todos">(
-    "todos"
-  );
-  const [sortField, setSortField] = useState<SortField>("created_at");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [viewMode, setViewMode] = useState<ViewMode>("lista");
-  const [toDelete, setToDelete] = useState<Producto | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const [productos, setProductos] = useState(initialProductos);
-
-  const handleSort = useCallback(
-    (field: SortField) => {
-      if (field === sortField) {
-        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-      } else {
-        setSortField(field);
-        setSortDir("asc");
-      }
-    },
-    [sortField]
-  );
-
-  const handleDeleteConfirm = useCallback(async () => {
-    if (!toDelete) return;
-    setDeleteLoading(true);
+  const fetchData = useCallback(async (p: { q?: string; estado?: string; page?: number }) => {
+    setLoading(true);
+    const sp = new URLSearchParams({ q: p.q ?? q, estado: p.estado ?? estado, page: String(p.page ?? page), limit: String(limit) });
     try {
-      const res = await fetch(`/api/admin/productos/${toDelete.id}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        setProductos((prev) => prev.filter((p) => p.id !== toDelete.id));
-        setToDelete(null);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setDeleteLoading(false);
-    }
-  }, [toDelete]);
+      const res  = await fetch(`/api/admin/productos?${sp}`);
+      const json = await res.json();
+      if (json.success) { setProductos(json.data); setTotal(json.meta.total); setPages(json.meta.pages); }
+    } finally { setLoading(false); }
+  }, [q, estado, page]);
 
-  const filtered = useMemo(() => {
-    let result = [...productos];
+  const toggleSelect = (id: number) =>
+    setSelected(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  const toggleAll = () =>
+    setSelected(prev => prev.size === productos.length ? new Set() : new Set(productos.map(p => p.id)));
 
-    if (busqueda.trim()) {
-      const q = busqueda.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.titulo.toLowerCase().includes(q) ||
-          p.slug.toLowerCase().includes(q) ||
-          p.sku?.toLowerCase().includes(q)
-      );
-    }
-
-    if (filtroEstado !== "todos") {
-      result = result.filter((p) => p.estado === filtroEstado);
-    }
-
-    result.sort((a, b) => {
-      let va: string | number = a[sortField] ?? "";
-      let vb: string | number = b[sortField] ?? "";
-      if (typeof va === "string") va = va.toLowerCase();
-      if (typeof vb === "string") vb = vb.toLowerCase();
-      const cmp = va < vb ? -1 : va > vb ? 1 : 0;
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-
-    return result;
-  }, [productos, busqueda, filtroEstado, sortField, sortDir]);
-
-  // Counts por estado
-  const counts = useMemo(
-    () => ({
-      todos: productos.length,
-      activo: productos.filter((p) => p.estado === "activo").length,
-      inactivo: productos.filter((p) => p.estado === "inactivo").length,
-      borrador: productos.filter((p) => p.estado === "borrador").length,
-    }),
-    [productos]
-  );
-
-  const FILTROS: { key: ProductoEstado | "todos"; label: string }[] = [
-    { key: "todos", label: "Todos" },
-    { key: "activo", label: "Activos" },
-    { key: "inactivo", label: "Inactivos" },
-    { key: "borrador", label: "Borradores" },
-  ];
+  const handleDelete = async (id: number, titulo: string) => {
+    if (!confirm(`¿Eliminar "${titulo}"?`)) return;
+    const res = await fetch(`/api/admin/productos/${id}`, { method: "DELETE" });
+    if (res.ok) { router.refresh(); void fetchData({}); }
+    else alert("Error al eliminar.");
+  };
 
   return (
     <>
-      {/* ── Toolbar ── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {/* Search */}
-        <div className="relative w-full sm:max-w-sm">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+      <style>{`
+        .ptbl-row { border-bottom: 1px solid var(--color-cq-border, #e2e8f0); transition: background .1s; }
+        .ptbl-row:hover { background: var(--color-cq-surface-2, #f8fafc); }
+        .ptbl-row.sel { background: var(--color-cq-accent-glow, rgba(37,99,235,0.05)); }
+        .ptbl-act { display:flex; align-items:center; justify-content:flex-end; gap:4px; opacity:0; transition:opacity .15s; }
+        .ptbl-row:hover .ptbl-act { opacity: 1; }
+        .ptbl-btn {
+          width:28px; height:28px; border-radius:8px;
+          display:flex; align-items:center; justify-content:center;
+          color: var(--color-cq-muted, #64748b);
+          background: transparent; border: none; cursor: pointer;
+          transition: color .15s, background .15s;
+        }
+        .ptbl-btn:hover { color: var(--color-cq-accent, #2563eb); background: var(--color-cq-accent-glow, rgba(37,99,235,0.08)); }
+        .ptbl-btn.eye:hover { color: var(--color-cq-text, #0f172a); background: var(--color-cq-surface-2, #f1f5f9); }
+        .ptbl-btn.del:hover { color: #ef4444; background: rgba(239,68,68,0.08); }
+        .ptbl-input {
+          width: 100%; padding: 8px 32px 8px 32px;
+          background: var(--color-cq-surface-2, #f1f5f9);
+          border: 1px solid var(--color-cq-border, #e2e8f0);
+          border-radius: 8px; outline: none;
+          font-size: 13px; color: var(--color-cq-text, #0f172a);
+          font-family: var(--font-body, sans-serif);
+          transition: border-color .15s, box-shadow .15s;
+        }
+        .ptbl-input:focus { border-color: var(--color-cq-accent, #2563eb); box-shadow: 0 0 0 3px var(--color-cq-accent-glow, rgba(37,99,235,0.1)); }
+        .ptbl-select {
+          padding: 8px 28px 8px 12px;
+          background: var(--color-cq-surface-2, #f1f5f9);
+          border: 1px solid var(--color-cq-border, #e2e8f0);
+          border-radius: 8px; outline: none; cursor: pointer;
+          font-size: 12px; color: var(--color-cq-muted, #64748b);
+          font-family: var(--font-mono, monospace);
+          appearance: none;
+        }
+        .ptbl-pgbtn {
+          width:28px; height:28px; border-radius:8px;
+          display:flex; align-items:center; justify-content:center;
+          font-size:11px; font-weight:600; cursor:pointer;
+          font-family: var(--font-mono, monospace);
+          border: 1px solid var(--color-cq-border, #e2e8f0);
+          background: transparent; color: var(--color-cq-muted, #64748b);
+          transition: all .15s;
+        }
+        .ptbl-pgbtn:hover:not(:disabled) { background: var(--color-cq-surface-2, #f1f5f9); }
+        .ptbl-pgbtn.active { background: var(--color-cq-accent, #2563eb); color: #fff; border-color: transparent; }
+        .ptbl-pgbtn:disabled { opacity: 0.3; cursor: not-allowed; }
+      `}</style>
+
+      {/* Toolbar */}
+      <div className="flex items-center gap-3 px-5 py-3.5 flex-wrap"
+        style={{ borderBottom: "1px solid var(--color-cq-border, #e2e8f0)" }}>
+        <div className="relative flex-1 min-w-[200px]">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+            strokeLinecap="round" strokeLinejoin="round"
+            className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ color: "var(--color-cq-muted-2, #94a3b8)" }}>
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
           <input
-            type="text"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por nombre, slug o SKU…"
-            className="w-full rounded-xl border border-zinc-200 bg-white py-2 pl-9 pr-9 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-200 transition-all"
+            type="text" placeholder="Buscar productos…"
+            value={q} className="ptbl-input"
+            style={{ paddingLeft: "32px", paddingRight: "12px" }}
+            onChange={e => { setQ(e.target.value); setPage(1); void fetchData({ q: e.target.value, page: 1 }); }}
           />
-          {busqueda && (
-            <button
-              onClick={() => setBusqueda("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
         </div>
-
-        {/* Right controls */}
-        <div className="flex items-center gap-2">
-          <SortDropdown
-            sortField={sortField}
-            sortDir={sortDir}
-            onSort={handleSort}
-          />
-
-          {/* View toggle */}
-          <div className="flex rounded-xl border border-zinc-200 bg-white p-0.5">
-            <button
-              onClick={() => setViewMode("lista")}
-              className={`rounded-lg p-1.5 transition-colors ${
-                viewMode === "lista"
-                  ? "bg-zinc-900 text-white shadow-sm"
-                  : "text-zinc-400 hover:text-zinc-700"
-              }`}
-              title="Vista lista"
-            >
-              <LayoutList className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("cuadricula")}
-              className={`rounded-lg p-1.5 transition-colors ${
-                viewMode === "cuadricula"
-                  ? "bg-zinc-900 text-white shadow-sm"
-                  : "text-zinc-400 hover:text-zinc-700"
-              }`}
-              title="Vista cuadrícula"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+        <select value={estado} className="ptbl-select"
+          onChange={e => { setEstado(e.target.value); setPage(1); void fetchData({ estado: e.target.value, page: 1 }); }}>
+          <option value="">Todos los estados</option>
+          <option value="activo">Activo</option>
+          <option value="inactivo">Inactivo</option>
+          <option value="borrador">Borrador</option>
+        </select>
+        <span className="text-[11px] ml-auto"
+          style={{ fontFamily: "var(--font-mono, monospace)", color: "var(--color-cq-muted-2, #94a3b8)" }}>
+          {total} resultados
+        </span>
       </div>
 
-      {/* ── Estado Filters ── */}
-      <div className="mt-3 flex items-center gap-1 overflow-x-auto pb-0.5">
-        {FILTROS.map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setFiltroEstado(key)}
-            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors ${
-              filtroEstado === key
-                ? "bg-zinc-900 text-white"
-                : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
-            }`}
-          >
-            {label}
-            <span
-              className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${
-                filtroEstado === key
-                  ? "bg-white/20 text-white"
-                  : "bg-zinc-200 text-zinc-500"
-              }`}
-            >
-              {counts[key]}
-            </span>
-          </button>
-        ))}
-
-        {/* Results summary */}
-        {(busqueda || filtroEstado !== "todos") && (
-          <span className="ml-auto shrink-0 text-xs text-zinc-400">
-            {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
-          </span>
-        )}
-      </div>
-
-      {/* ── Content ── */}
-      <div className="mt-4">
-        {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-200 py-16 text-center">
-            <Package className="mb-3 h-8 w-8 text-zinc-300" />
-            <p className="text-sm font-medium text-zinc-500">
-              No se encontraron productos
-            </p>
-            {(busqueda || filtroEstado !== "todos") && (
-              <button
-                onClick={() => {
-                  setBusqueda("");
-                  setFiltroEstado("todos");
-                }}
-                className="mt-2 text-xs text-zinc-400 underline underline-offset-2 hover:text-zinc-600 transition-colors"
-              >
-                Limpiar filtros
-              </button>
-            )}
-          </div>
-        ) : viewMode === "lista" ? (
-          // ── List View ──
-          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-zinc-100 bg-zinc-50/70">
-                  <th className="w-14 py-2.5 pl-4 pr-0" />
-                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                    Producto
-                  </th>
-                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                    Estado
-                  </th>
-                  <th className="hidden px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-zinc-400 md:table-cell">
-                    SKU
-                  </th>
-                  <th className="hidden px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-zinc-400 lg:table-cell">
-                    Precio
-                  </th>
-                  <th className="hidden px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-zinc-400 xl:table-cell">
-                    Stock
-                  </th>
-                  <th className="py-2.5 pr-4 pl-2" />
+      {/* Tabla */}
+      <div className={`overflow-x-auto transition-opacity duration-150 ${loading ? "opacity-40" : ""}`}>
+        <table className="w-full">
+          <thead>
+            <tr style={{ borderBottom: "1px solid var(--color-cq-border, #e2e8f0)", background: "var(--color-cq-surface-2, #fafafa)" }}>
+              <th className="pl-5 pr-3 py-3 w-10">
+                <input type="checkbox" className="w-3.5 h-3.5 rounded cursor-pointer accent-blue-600"
+                  checked={selected.size === productos.length && productos.length > 0}
+                  onChange={toggleAll} />
+              </th>
+              {["Producto","Estado","Categoría","Precio","Stock","Acciones"].map((h, i) => (
+                <th key={h}
+                  className={`px-4 py-3 text-[10px] font-bold tracking-widest uppercase ${i >= 3 ? "text-right" : "text-left"} ${i === 5 ? "pr-5" : ""}`}
+                  style={{ fontFamily: "var(--font-mono, monospace)", color: "var(--color-cq-muted, #64748b)" }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {productos.length === 0 ? (
+              <tr><td colSpan={7} className="px-5 py-16 text-center">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    style={{ background: "var(--color-cq-surface-2, #f1f5f9)" }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                      style={{ color: "var(--color-cq-muted-2, #94a3b8)" }}>
+                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    </svg>
+                  </div>
+                  <p className="text-[13px] font-medium" style={{ color: "var(--color-cq-muted, #64748b)", fontFamily: "var(--font-body, sans-serif)" }}>
+                    No se encontraron productos
+                  </p>
+                  <Link href="/admin/productos/crear" className="text-[12px] font-semibold"
+                    style={{ color: "var(--color-cq-accent, #2563eb)", fontFamily: "var(--font-mono, monospace)" }}>
+                    + Crear el primero
+                  </Link>
+                </div>
+              </td></tr>
+            ) : productos.map((p) => {
+              const badge = BADGES[p.estado as keyof typeof BADGES] ?? BADGES.borrador;
+              const sel   = selected.has(p.id);
+              const imgSrc = getImageUrl(p.id, p.imagen_url);
+              return (
+                <tr key={p.id} className={`ptbl-row${sel ? " sel" : ""}`}>
+                  <td className="pl-5 pr-3 py-3.5">
+                    <input type="checkbox" checked={sel} onChange={() => toggleSelect(p.id)}
+                      className="w-3.5 h-3.5 rounded cursor-pointer accent-blue-600" />
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"
+                        style={{ background: "var(--color-cq-surface-2, #f1f5f9)", border: "1px solid var(--color-cq-border, #e2e8f0)" }}>
+                        {imgSrc ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={imgSrc} alt={p.titulo} className="w-full h-full object-cover"
+                            onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                        ) : (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                            style={{ color: "var(--color-cq-muted-2, #94a3b8)" }}>
+                            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                          </svg>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-semibold truncate max-w-[260px]"
+                          style={{ color: "var(--color-cq-text, #0f172a)", fontFamily: "var(--font-body, sans-serif)" }}>
+                          {p.titulo}
+                        </p>
+                        <p className="text-[11px] truncate mt-0.5"
+                          style={{ color: "var(--color-cq-muted-2, #94a3b8)", fontFamily: "var(--font-mono, monospace)" }}>
+                          {p.slug}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase"
+                      style={{ background: badge.bg, color: badge.color, border: `1px solid ${badge.border}`, fontFamily: "var(--font-mono, monospace)" }}>
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: badge.dot }} />
+                      {badge.label}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <span className="text-[12px] truncate max-w-[150px] block"
+                      style={{ color: "var(--color-cq-muted, #64748b)", fontFamily: "var(--font-body, sans-serif)" }}>
+                      {p.categorias ?? "—"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5 text-right">
+                    <span className="text-[13px] font-bold tabular-nums"
+                      style={{ fontFamily: "var(--font-display, sans-serif)", color: "var(--color-cq-text, #0f172a)" }}>
+                      {p.precio != null
+                        ? `$${Number(p.precio).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
+                        : <span style={{ color: "var(--color-cq-muted-2)", fontWeight: 400 }}>—</span>}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5 text-right">
+                    <span className="text-[13px] font-bold tabular-nums"
+                      style={{ fontFamily: "var(--font-display, sans-serif)", color: p.stock === 0 ? "#ef4444" : "var(--color-cq-text, #0f172a)" }}>
+                      {p.stock.toLocaleString("es-MX")}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5 pr-5 text-right">
+                    <div className="ptbl-act">
+                      <Link href={`/admin/productos/${p.id}/editar`} className="ptbl-btn" title="Editar">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </Link>
+                      <Link href={`/producto/${p.slug}`} target="_blank" className="ptbl-btn eye" title="Ver en tienda">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                        </svg>
+                      </Link>
+                      <button onClick={() => handleDelete(p.id, p.titulo)} className="ptbl-btn del" title="Eliminar">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filtered.map((p) => (
-                  <ProductoRow
-                    key={p.id}
-                    producto={p}
-                    onDelete={setToDelete}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          // ── Grid View ──
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {filtered.map((p) => (
-              <ProductoCard
-                key={p.id}
-                producto={p}
-                onDelete={setToDelete}
-              />
-            ))}
-          </div>
-        )}
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
-      {/* ── Delete Modal ── */}
-      {toDelete && (
-        <DeleteModal
-          producto={toDelete}
-          onConfirm={handleDeleteConfirm}
-          onCancel={() => !deleteLoading && setToDelete(null)}
-          loading={deleteLoading}
-        />
+      {/* Paginación */}
+      {pages > 1 && (
+        <div className="flex items-center justify-between px-5 py-3"
+          style={{ borderTop: "1px solid var(--color-cq-border, #e2e8f0)" }}>
+          <p className="text-[11px]"
+            style={{ fontFamily: "var(--font-mono, monospace)", color: "var(--color-cq-muted-2, #94a3b8)" }}>
+            Página {page} de {pages}
+          </p>
+          <div className="flex items-center gap-1">
+            <button className="ptbl-pgbtn" disabled={page === 1 || loading}
+              onClick={() => { const p = page - 1; setPage(p); void fetchData({ page: p }); }}>←</button>
+            {Array.from({ length: Math.min(5, pages) }, (_, i) => {
+              const start = Math.max(1, Math.min(page - 2, pages - 4));
+              const pg = start + i;
+              return (
+                <button key={pg} className={`ptbl-pgbtn${pg === page ? " active" : ""}`}
+                  disabled={loading}
+                  onClick={() => { setPage(pg); void fetchData({ page: pg }); }}>
+                  {pg}
+                </button>
+              );
+            })}
+            <button className="ptbl-pgbtn" disabled={page === pages || loading}
+              onClick={() => { const p = page + 1; setPage(p); void fetchData({ page: p }); }}>→</button>
+          </div>
+        </div>
       )}
     </>
   );
