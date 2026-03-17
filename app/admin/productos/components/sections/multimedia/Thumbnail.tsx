@@ -2,8 +2,9 @@
 "use client";
 
 import { useState } from "react";
-import { buildImageSrc, type ImagenForm } from "../../producto-form-types";
+import { resolveImageUrl } from "@/app/global/lib/resolveImageUrl";
 import { ModalImagenEdit } from "./ModalImagenEdit/ModalImagenEdit";
+import { type ImagenForm } from "../../producto-form-types";
 
 interface ThumbnailProps {
   imagen: ImagenForm;
@@ -24,7 +25,7 @@ export function Thumbnail({
 }: ThumbnailProps) {
   const [editing, setEditing] = useState(false);
   const [broken, setBroken] = useState(false);
-  const src = buildImageSrc(imagen.url, productoId);
+  const src = resolveImageUrl(imagen.url, productoId) ?? "";
 
   return (
     <>

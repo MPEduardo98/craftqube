@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import Link        from "next/link";
 import { useRouter } from "next/navigation";
 import type { ProductoRow } from "../types";
+import { resolveImageUrl } from "@/app/global/lib/resolveImageUrl";
 
 /* ── Constantes ─────────────────────────────────────────────── */
 const BADGES = {
@@ -22,11 +23,6 @@ const SORT_OPTIONS = [
   { value: "stock_asc",       label: "Stock ↑"      },
   { value: "stock_desc",      label: "Stock ↓"      },
 ];
-
-function getImageUrl(id: number, filename: string | null): string | null {
-  if (!filename) return null;
-  return filename.startsWith("http") ? filename : `/productos/${id}/${filename}`;
-}
 
 /* ── Modal de confirmación ───────────────────────────────────── */
 function DeleteModal({
@@ -183,7 +179,7 @@ function ProductoCard({
   onDelete: () => void;
 }) {
   const badge  = BADGES[p.estado as keyof typeof BADGES] ?? BADGES.borrador;
-  const imgSrc = getImageUrl(p.id, p.imagen_url);
+  const imgSrc = resolveImageUrl(p.imagen_url, p.id);
   return (
     <div
       className="group rounded-xl overflow-hidden flex flex-col transition-shadow"
@@ -558,7 +554,7 @@ export function ProductosTable({ initialProductos, initialTotal }: Props) {
                 ) : productos.map(p => {
                   const badge  = BADGES[p.estado as keyof typeof BADGES] ?? BADGES.borrador;
                   const sel    = selected.has(p.id);
-                  const imgSrc = getImageUrl(p.id, p.imagen_url);
+                  const imgSrc = resolveImageUrl(p.imagen_url, p.id);
                   return (
                     <tr key={p.id} className={`ptbl-row${sel ? " sel" : ""}`}>
                       <td className="pl-5 pr-3 py-3.5">

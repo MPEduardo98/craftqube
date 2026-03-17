@@ -6,6 +6,7 @@ import { getCategoriaBySlug }  from "@/app/global/lib/db/getCategoriaBySlug";
 import { getAllCategoriaSlugs } from "@/app/global/lib/db/getAllSlugs";
 import { getProductosCatalogo } from "@/app/global/lib/db/getProductosCatalogo";
 import { buildBreadcrumbJsonLd, buildCategoryJsonLd } from "@/app/global/lib/seo/jsonld";
+import { resolveImageUrl } from "@/app/global/lib/resolveImageUrl";
 
 const SITE_URL  = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.com";
 const PAGE_SIZE = 24;
@@ -83,9 +84,8 @@ function ProductoCard({
   id:              number;
   marca?:          string | null;
 }) {
-  const imageUrl = imagen_nombre
-    ? `/uploads/productos/${id}/${imagen_nombre}`
-    : null;
+  
+  const imageUrl = resolveImageUrl(imagen_nombre, id);
   const enStock = (stock ?? 0) > 0;
 
   return (

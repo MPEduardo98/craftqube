@@ -11,6 +11,8 @@ import { formatPrice }          from "@/app/global/lib/format";
 import { ProductVariantSelector } from "./ProductVariantSelector";
 import { ProductSpecs }         from "./ProductSpecs";
 import type { ProductoDetalle, ProductoVariante } from "@/app/global/types/product-detail";
+import { resolveImageUrl } from "@/app/global/lib/resolveImageUrl";
+
 
 const Icons = {
   cart: (
@@ -140,7 +142,7 @@ export function ProductDetailClient({ producto }: Props) {
             >
               {imagenActiva ? (
                 <Image
-                  src={imagenActiva.url.startsWith("http") ? imagenActiva.url : `/productos/${producto.id}/${imagenActiva.url}`}
+                  src={resolveImageUrl(imagenActiva.url, producto.id) ?? ""}
                   alt={imagenActiva.alt ?? producto.titulo}
                   fill
                   className="object-contain p-6"

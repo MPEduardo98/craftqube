@@ -4,7 +4,7 @@
 // Componentes UI reutilizables del formulario de productos.
 // ─────────────────────────────────────────────────────────────
 import { useState } from "react";
-import { buildImageSrc } from "./producto-form-types";
+import { resolveImageUrl } from "@/app/global/lib/resolveImageUrl";
 
 /* ── SectionCard ───────────────────────────────────────────── */
 export function SectionCard({ title, children, action }: {
@@ -44,7 +44,7 @@ export function Field({ label, required, children, hint }: {
 /* ── ImagePreview ──────────────────────────────────────────── */
 export function ImagePreview({ url }: { url: string }) {
   const [broken, setBroken] = useState(false);
-  const src = buildImageSrc(url);
+  const src = resolveImageUrl(url, undefined) ?? undefined;
 
   if (!url || broken) {
     return (

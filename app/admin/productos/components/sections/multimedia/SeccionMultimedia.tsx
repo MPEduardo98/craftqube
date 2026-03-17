@@ -3,9 +3,10 @@
 
 import { useRef, useState } from "react";
 import { SectionCard } from "../../producto-form-ui";
-import { buildImageSrc, type ImagenForm } from "../../producto-form-types";
+import { resolveImageUrl } from "@/app/global/lib/resolveImageUrl";
 import { ModalMediaLibrary, type MediaItem } from "../../modals/ModalMediaLibrary";
 import { ModalImagenEdit } from "./ModalImagenEdit/ModalImagenEdit";
+import { type ImagenForm } from "../../producto-form-types";
 
 interface Props {
   imagenes:    ImagenForm[];
@@ -64,7 +65,7 @@ export function SeccionMultimedia({
 
             {imagenes.map((img, i) => {
               const isFirst      = i === 0;
-              const src          = buildImageSrc(img.url, productoId);
+              const src          = resolveImageUrl(img.url, productoId) ?? "";
               const isDragTarget = dragOver === i;
 
               return (

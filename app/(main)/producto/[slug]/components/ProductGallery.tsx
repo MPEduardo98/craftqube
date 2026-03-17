@@ -5,6 +5,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ProductoImagen } from "@/app/global/types/product-detail";
+import { resolveImageUrl } from "@/app/global/lib/resolveImageUrl";
 
 interface Props {
   imagenes:   ProductoImagen[];
@@ -15,9 +16,6 @@ interface Props {
 export function ProductGallery({ imagenes, productoId, titulo }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [direction, setDirection]     = useState(0);
-
-  const getImageUrl = (url: string) =>
-    url.startsWith("http") ? url : `/productos/${productoId}/${url}`;
 
   const handleSelect = (index: number) => {
     setDirection(index > activeIndex ? 1 : -1);
@@ -75,7 +73,7 @@ export function ProductGallery({ imagenes, productoId, titulo }: Props) {
             className="absolute inset-0"
           >
             <Image
-              src={getImageUrl(active.url)}
+              src={resolveImageUrl(active.url, productoId) ?? ""}
               alt={active.alt ?? titulo}
               fill
               className="object-contain p-4"
@@ -158,7 +156,7 @@ export function ProductGallery({ imagenes, productoId, titulo }: Props) {
               }}
             >
               <Image
-                src={getImageUrl(img.url)}
+                src={resolveImageUrl(img.url, productoId) ?? ""}
                 alt={img.alt ?? `${titulo} ${i + 1}`}
                 fill
                 className="object-contain p-1.5"

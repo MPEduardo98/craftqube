@@ -3,7 +3,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { buildImageSrc } from "../../../producto-form-types";
+import { resolveImageUrl } from "@/app/global/lib/resolveImageUrl";
 import { LoadingOverlay } from "@/app/global/components/ui/LoadingOverlay";
 import { TabInformacion } from "./TabInformacion";
 import { TabRecortar } from "./TabRecortar";
@@ -44,7 +44,7 @@ export function ModalImagenEdit({
   onRemove,
   onClose,
 }: ModalImagenEditProps) {
-  const src = buildImageSrc(imagen.url, productoId);
+  const src = resolveImageUrl(imagen.url, productoId) ?? "";
   const fileName = imagen.url.split("/").pop() ?? imagen.url;
   const ext = fileName.includes(".") ? "." + fileName.split(".").pop() : "";
   const nameOnly = ext ? fileName.slice(0, fileName.lastIndexOf(".")) : fileName;

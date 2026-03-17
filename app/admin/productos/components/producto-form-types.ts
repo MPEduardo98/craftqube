@@ -62,18 +62,6 @@ export function slugify(str: string): string {
     .replace(/-+/g, "-");
 }
 
-export function buildImageSrc(url: string, productoId?: number): string {
-  if (!url) return "";
-  const normalized = url.replace(/\\/g, "/");
-  if (normalized.startsWith("http") || normalized.startsWith("/")) return normalized;
-  if (normalized.startsWith("public/")) return "/" + normalized.slice("public/".length);
-  // Ruta relativa con carpetas (ej: "productos/2/img.png") → añadir /
-  if (normalized.includes("/")) return "/" + normalized;
-  // Solo nombre de archivo + productoId → construir ruta
-  if (productoId) return `/productos/${productoId}/${normalized}`;
-  return "/" + normalized;
-}
-
 export function emptyVariante(): VarianteForm {
   return {
     nombre:                "",

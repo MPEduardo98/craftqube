@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { buildImageSrc } from "../producto-form-types";
+import { resolveImageUrl } from "@/app/global/lib/resolveImageUrl";
 
 export interface MediaItem {
   url:     string;
@@ -325,7 +325,7 @@ export function ModalMediaLibrary({ onSelect, onClose, productoId, multiple = tr
               {filtered.map((item) => {
                 const checked = selected.has(item.url);
                 const isNew   = newUrls.has(item.url);
-                const src     = buildImageSrc(item.url);
+                const src = resolveImageUrl(item.url, undefined) ?? undefined;
                 return (
                   <div key={item.url} className="px-1 pb-2" style={{ width: "16.666%" }}>
                     <button type="button" onClick={() => toggle(item.url)}
@@ -355,7 +355,7 @@ export function ModalMediaLibrary({ onSelect, onClose, productoId, multiple = tr
             <div className="flex flex-col divide-y divide-slate-100 pt-1">
               {filtered.map((item) => {
                 const checked = selected.has(item.url);
-                const src     = buildImageSrc(item.url);
+                const src = resolveImageUrl(item.url, undefined) ?? undefined;
                 return (
                   <button key={item.url} type="button" onClick={() => toggle(item.url)}
                     className={`flex items-center gap-3 py-2.5 px-2 rounded-lg transition text-left ${checked ? "bg-indigo-50" : "hover:bg-slate-50"}`}>
