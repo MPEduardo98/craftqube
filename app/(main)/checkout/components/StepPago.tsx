@@ -11,12 +11,9 @@ import {
 } from "@stripe/stripe-js";
 import { useCart }      from "@/app/global/context/CartContext";
 import type { DatosPago, DatosEnvio } from "../types";
+import { formatPrice } from "@/app/global/lib/format";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
-
-function formatMXN(n: number) {
-  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n) + " MXN";
-}
 
 function Spinner({ light = false }: { light?: boolean }) {
   return (
@@ -225,7 +222,7 @@ function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError, orderNum
         style={{ height: 52, fontFamily: "var(--font-body)", fontWeight: 600, fontSize: "0.95rem",
           background: "var(--color-cq-accent)", color: "white", border: "none",
           cursor: paying || mounting ? "not-allowed" : "pointer", opacity: paying || mounting ? 0.65 : 1 }}>
-        {paying ? <><Spinner light /> Procesando…</> : <><i className="fa-solid fa-lock" style={{ fontSize: "0.8rem" }} /> Pagar {formatMXN(totalPrecio)}</>}
+        {paying ? <><Spinner light /> Procesando…</> : <><i className="fa-solid fa-lock" style={{ fontSize: "0.8rem" }} /> Pagar {formatPrice(totalPrecio)}</>}
       </motion.button>
       <div className="flex items-center justify-center gap-2">
         <i className="fa-solid fa-shield-halved" style={{ fontSize: "0.7rem", color: "var(--color-cq-muted-2)" }} />

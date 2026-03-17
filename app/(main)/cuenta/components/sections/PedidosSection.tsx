@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { formatPrice } from "@/app/global/lib/format";
 
 interface PedidoItem {
   id: number;
@@ -24,10 +25,6 @@ const ESTADO: Record<string, { label: string; color: string; bg: string }> = {
   cancelado:      { label: "Cancelado",          color: "#ef4444", bg: "rgba(239,68,68,0.1)" },
   reembolsado:    { label: "Reembolsado",        color: "#64748b", bg: "rgba(100,116,139,0.1)" },
 };
-
-function fmt(n: number) {
-  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n) + " MXN";
-}
 
 function fmtDate(s: string) {
   return new Date(s).toLocaleDateString("es-MX", { year: "numeric", month: "short", day: "numeric" });
@@ -129,7 +126,7 @@ export function PedidosSection() {
                   </span>
                 </div>
                 <p style={{ fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 700, color: "var(--color-cq-text)" }}>
-                  {fmt(p.total)}
+                  formatPrice(p.total)
                 </p>
               </div>
 

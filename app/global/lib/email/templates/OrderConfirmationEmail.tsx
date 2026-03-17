@@ -1,6 +1,7 @@
 // app/global/lib/email/templates/OrderConfirmationEmail.tsx
 import { EmailBase } from "./EmailBase";
 import type { CartItem } from "@/app/global/types/cart";
+import { formatPrice } from "@/app/global/lib/format";
 
 export interface OrderConfirmationProps {
   orderNumber: string;
@@ -32,14 +33,6 @@ export interface OrderConfirmationProps {
     expira:           number; // unix timestamp
     hostedVoucherUrl: string | null;
   };
-}
-
-function fmt(n: number) {
-  return (
-    new Intl.NumberFormat("es-MX", {
-      style: "currency", currency: "MXN", maximumFractionDigits: 0,
-    }).format(n) + " MXN"
-  );
 }
 
 function fmtFecha(unix: number) {
@@ -135,7 +128,7 @@ function PagoSpei({ spei }: { spei: NonNullable<OrderConfirmationProps["spei"]> 
               Monto exacto a transferir
             </p>
             <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#2563EB" }}>
-              {fmt(spei.monto)}
+              {formatPrice(spei.monto)}
             </p>
           </td>
         </tr>
@@ -275,7 +268,7 @@ export function OrderConfirmationEmail({
               {orderNumber}
             </p>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#2563EB" }}>
-              {fmt(total)}
+              {formatPrice(total)}
             </p>
           </td>
         </tr>
@@ -320,7 +313,7 @@ export function OrderConfirmationEmail({
                   </td>
                   <td align="right" style={{ whiteSpace: "nowrap", paddingLeft: 12 }}>
                     <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
-                      {fmt(item.precio * item.cantidad)}
+                      {formatPrice(item.precio * item.cantidad)}
                     </p>
                   </td>
                 </tr>
@@ -339,7 +332,7 @@ export function OrderConfirmationEmail({
                 </td>
                 <td align="right">
                   <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#2563EB" }}>
-                    {fmt(total)}
+                    {formatPrice(total)}
                   </p>
                 </td>
               </tr>
