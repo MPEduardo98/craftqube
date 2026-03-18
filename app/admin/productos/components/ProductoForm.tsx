@@ -26,7 +26,9 @@ import { SeccionSEO }          from "./sections/SeccionSEO";
 import { SidebarProducto }     from "./SidebarProducto";
 import { EditorDescripcion }   from "./EditorDescripcion";
 import { LoadingOverlay }      from "@/app/global/components/ui/LoadingOverlay";
+import { ModalUnsavedChanges } from "@/app/global/components/ui/ModalUnsavedChanges";
 import { useAlert }            from "@/app/global/context/AlertContext";
+import { useUnsavedChanges }   from "@/app/global/hooks/useUnsavedChanges";
 
 export type { ProductoFormData, VarianteForm, ImagenForm, MetacampoForm, Categoria, Marca };
 
@@ -72,6 +74,8 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
     () => JSON.stringify(form) !== JSON.stringify(savedForm),
     [form, savedForm]
   );
+
+  const { showModal, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty);
 
   const set = useCallback(<K extends keyof ProductoFormData>(k: K, v: ProductoFormData[K]) => {
     setForm((prev) => ({ ...prev, [k]: v }));
@@ -208,6 +212,10 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
         visible={isProcessing}
         message={deleting ? "Eliminando…" : "Guardando…"}
       />
+
+      {showModal && (
+        <ModalUnsavedChanges onConfirm={confirmLeave} onCancel={cancelLeave} />
+      )}
 
       {/* ── Header ─────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4 mb-6">
