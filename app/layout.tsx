@@ -15,6 +15,7 @@ import { AuthProvider }     from "./global/context/AuthContext";
 import { AlertProvider }    from "./global/context/AlertContext";
 import { AlertContainer }   from "./global/components/alerts/AlertContainer";
 import { buildOrganizationJsonLd } from "./global/lib/seo/jsonld";
+import "@fortawesome/fontawesome-free/css/all.min.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.com";
 
