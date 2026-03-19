@@ -11,12 +11,10 @@ interface CategoriaDB {
   nombre:          string;
   slug:            string;
   descripcion:     string | null;
-  /** Nombre de archivo. Ruta: public/categorias/{imagen} */
   imagen:          string | null;
   total_productos: number;
 }
 
-/* ─── Fallback SVG icons ──────────────────────────────────── */
 function FallbackIcon({ slug, accent }: { slug: string; accent: string }) {
   const s = slug.toLowerCase();
 
@@ -53,16 +51,6 @@ function FallbackIcon({ slug, accent }: { slug: string; accent: string }) {
       </svg>
     );
   }
-  if (s.includes("laptop") || s.includes("tech") || s.includes("computo")) {
-    return (
-      <svg viewBox="0 0 80 80" fill="none" className="w-16 h-16" style={{ color: accent }} aria-hidden="true">
-        <rect x="12" y="16" width="56" height="36" rx="4" stroke="currentColor" strokeWidth="2.5" fill="none" opacity="0.6" />
-        <rect x="20" y="24" width="40" height="20" rx="2" fill="currentColor" opacity="0.15" />
-        <rect x="4" y="56" width="72" height="8" rx="4" fill="currentColor" opacity="0.25" />
-        <rect x="28" y="52" width="24" height="4" rx="2" fill="currentColor" opacity="0.3" />
-      </svg>
-    );
-  }
 
   return (
     <svg viewBox="0 0 80 80" fill="none" className="w-16 h-16" style={{ color: accent }} aria-hidden="true">
@@ -74,16 +62,14 @@ function FallbackIcon({ slug, accent }: { slug: string; accent: string }) {
   );
 }
 
-/* ─── Helpers ─────────────────────────────────────────────── */
 const ACCENTS   = ["#1D4ED8", "#2563EB", "#1E40AF", "#3B82F6", "#0EA5E9"];
 const getAccent = (i: number) => ACCENTS[i % ACCENTS.length];
 
-/* ─── Skeleton ────────────────────────────────────────────── */
 function SkeletonCard() {
   return (
     <div
       className="rounded-2xl overflow-hidden animate-pulse"
-      style={{ background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)" }}
+      style={{ background: "var(--color-cq-surface)" }}
     >
       <div style={{ aspectRatio: "1 / 1", background: "var(--color-cq-surface-2)" }} />
       <div className="p-5 space-y-3">
@@ -98,7 +84,6 @@ function SkeletonCard() {
   );
 }
 
-/* ─── CategoryCard ────────────────────────────────────────── */
 function CategoryCard({ cat, index }: { cat: CategoriaDB; index: number }) {
   const [hovered,  setHovered]  = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -116,17 +101,16 @@ function CategoryCard({ cat, index }: { cat: CategoriaDB; index: number }) {
         borderRadius:   "1rem",
         overflow:       "hidden",
         background:     "var(--color-cq-surface)",
-        border:         `1px solid ${hovered ? "rgba(37,99,235,0.35)" : "var(--color-cq-border)"}`,
         textDecoration: "none",
         transform:      hovered ? "translateY(-3px)" : "translateY(0)",
-        transition:     "border-color 0.3s ease, transform 0.3s ease",
+        transition:     "transform 0.3s ease, box-shadow 0.3s ease",
+        boxShadow:      hovered ? "0 8px 32px rgba(37,99,235,0.08)" : "none",
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       {/* ── Imagen 1:1 ── */}
       <div className="relative overflow-hidden" style={{ aspectRatio: "1 / 1" }}>
-
         {src ? (
           <motion.div
             className="absolute inset-0"
@@ -160,7 +144,6 @@ function CategoryCard({ cat, index }: { cat: CategoriaDB; index: number }) {
             borderRadius:   "99px",
             background:     "rgba(0,0,0,0.35)",
             backdropFilter: "blur(8px)",
-            border:         "1px solid rgba(255,255,255,0.15)",
             fontFamily:     "var(--font-mono)",
             fontSize:       "0.58rem",
             letterSpacing:  "0.1em",
@@ -215,7 +198,6 @@ function CategoryCard({ cat, index }: { cat: CategoriaDB; index: number }) {
             padding:       "4px 12px",
             borderRadius:  "99px",
             background:    `${accent}14`,
-            border:        `1px solid ${accent}30`,
             fontFamily:    "var(--font-mono)",
             fontSize:      "0.62rem",
             letterSpacing: "0.08em",
@@ -238,7 +220,6 @@ function CategoryCard({ cat, index }: { cat: CategoriaDB; index: number }) {
   );
 }
 
-/* ─── Variants ────────────────────────────────────────────── */
 const containerVariants: Variants = {
   hidden:  {},
   visible: { transition: { staggerChildren: 0.08 } },
@@ -248,7 +229,6 @@ const cardVariants: Variants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
 };
 
-/* ─── Componente principal ────────────────────────────────── */
 export function CategoriesSection() {
   const [categorias, setCategorias] = useState<CategoriaDB[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -269,7 +249,6 @@ export function CategoriesSection() {
     <section className="py-24 relative" style={{ background: "var(--color-cq-bg)" }}>
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6">
 
-        {/* ── Header ── */}
         <div className="mb-12">
           <p className="section-label">Categorías</p>
           <h2
@@ -281,7 +260,6 @@ export function CategoriesSection() {
           </h2>
         </div>
 
-        {/* ── Error ── */}
         {error && (
           <div className="flex items-center gap-2 text-red-400 mb-6">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
@@ -293,14 +271,12 @@ export function CategoriesSection() {
           </div>
         )}
 
-        {/* ── Skeletons ── */}
         {loading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
         )}
 
-        {/* ── Grid ── */}
         {!loading && categorias.length > 0 && (
           <motion.div
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"

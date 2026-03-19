@@ -77,13 +77,10 @@ export function NewsletterSection() {
                 className="flex-1 px-4 py-3 rounded-lg text-sm outline-none"
                 style={{
                   background: "var(--color-cq-surface)",
-                  border: "1.5px solid var(--color-cq-border)",
+                  border: "none",
                   color: "var(--color-cq-text)",
                   fontFamily: "var(--font-body)",
-                  transition: "border-color 0.2s",
                 }}
-                onFocus={(e) => (e.target.style.borderColor = "var(--color-cq-accent)")}
-                onBlur={(e) => (e.target.style.borderColor = "var(--color-cq-border)")}
               />
               <motion.button
                 type="submit"
@@ -109,7 +106,6 @@ export function NewsletterSection() {
               className="flex items-center justify-center gap-3 py-4 px-6 rounded-xl max-w-md mx-auto"
               style={{
                 background: "var(--color-cq-accent-glow)",
-                border: "1px solid rgba(37, 99, 235, 0.2)",
               }}
             >
               <div

@@ -99,36 +99,27 @@ html[data-theme="light"] {
   /* Grid pattern opacity */
   --grid-opacity: 0.04;
 
-  /* Body transition */
   color-scheme: light;
 }
 
 /* ============================================
    DARK THEME
-   Header y Footer NO cambian (tienen colores fijos inline)
-   Solo el contenido main cambia
    ============================================ */
 html[data-theme="dark"] {
-  /*
-   * Paleta oscura neutral — sin tinte azul ni verde
-   * Negro puro → carbón → gris oscuro neutro
-   * Inspiración: Vercel / Linear / Raycast
-   */
+  /* Scale */
+  --color-cq-950: #080808;
+  --color-cq-900: #111111;
+  --color-cq-800: #1A1A1A;
+  --color-cq-700: #242424;
+  --color-cq-600: #2E2E2E;
+  --color-cq-500: #3D3D3D;
+  --color-cq-400: #6B6B6B;
+  --color-cq-300: #8F8F8F;
+  --color-cq-200: #C2C2C2;
+  --color-cq-100: #E8E8E8;
+  --color-cq-50:  #F5F5F5;
 
-  /* Scale — negro puro a gris neutro */
-  --color-cq-950: #080808;   /* Negro absoluto — bg principal */
-  --color-cq-900: #111111;   /* Superficie base */
-  --color-cq-800: #1A1A1A;   /* Cards, panels */
-  --color-cq-700: #242424;   /* Surface elevada */
-  --color-cq-600: #2E2E2E;   /* Bordes */
-  --color-cq-500: #3D3D3D;   /* Bordes medios */
-  --color-cq-400: #6B6B6B;   /* Texto muted */
-  --color-cq-300: #8F8F8F;   /* Texto secundario */
-  --color-cq-200: #C2C2C2;   /* Texto terciario */
-  --color-cq-100: #E8E8E8;   /* Texto principal */
-  --color-cq-50:  #F5F5F5;   /* Texto máximo contraste */
-
-  /* Steel dark — espejo neutro */
+  /* Steel dark */
   --color-cq-steel-950: #080808;
   --color-cq-steel-900: #111111;
   --color-cq-steel-800: #1A1A1A;
@@ -140,25 +131,25 @@ html[data-theme="dark"] {
   --color-cq-steel-200: #C2C2C2;
   --color-cq-steel-100: #E8E8E8;
 
-  /* Accent — azul más brillante para destacar sobre negro */
+  /* Accent */
   --color-cq-accent:       #4F8EF7;
   --color-cq-accent-dim:   #2563EB;
   --color-cq-accent-glow:  rgba(79, 142, 247, 0.12);
 
   /* Semantic dark */
-  --color-cq-bg:        #080808;   /* Negro absoluto */
-  --color-cq-surface:   #111111;   /* Cards */
-  --color-cq-surface-2: #1A1A1A;   /* Cards elevadas */
-  --color-cq-border:    #2A2A2A;   /* Bordes sutiles */
-  --color-cq-border-2:  #383838;   /* Bordes medios */
-  --color-cq-text:      #EBEBEB;   /* Texto principal — blanco suavizado */
-  --color-cq-text-2:    #C2C2C2;   /* Texto secundario */
-  --color-cq-muted:     #8F8F8F;   /* Texto muted */
-  --color-cq-muted-2:   #5C5C5C;   /* Texto muy muted */
+  --color-cq-bg:        #080808;
+  --color-cq-surface:   #111111;
+  --color-cq-surface-2: #1A1A1A;
+  --color-cq-border:    #2A2A2A;
+  --color-cq-border-2:  #383838;
+  --color-cq-text:      #EBEBEB;
+  --color-cq-text-2:    #C2C2C2;
+  --color-cq-muted:     #8F8F8F;
+  --color-cq-muted-2:   #5C5C5C;
   --color-cq-primary:   #2563EB;
   --color-cq-highlight: #4F8EF7;
 
-  /* Card shadows dark — más pronunciadas sobre negro */
+  /* Card shadows dark */
   --shadow-card:    0 1px 3px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4);
   --shadow-card-md: 0 4px 20px rgba(0,0,0,0.6);
 
@@ -179,6 +170,12 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
 }
 
 body {
@@ -187,7 +184,14 @@ body {
   font-family: var(--font-body);
   line-height: 1.6;
   overflow-x: hidden;
-  transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+/* Header y Footer nunca transicionan */
+header,
+footer,
+header *,
+footer * {
+  transition: none !important;
 }
 
 /* ============================================
@@ -234,19 +238,10 @@ body {
 /* ============================================
    COMPONENT CLASSES — Theme-aware
    ============================================ */
-
-/*
- * Product Card — border manejado en CSS puro
- * para evitar que Framer Motion congele el color
- * al cambiar de tema en caliente.
- */
 .cq-product-card {
   border: 1px solid var(--color-cq-border);
   border-radius: 0.75rem;
-  transition:
-    border-color 0.25s ease,
-    background-color 0.35s ease,
-    box-shadow 0.25s ease;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .cq-product-card:hover {
@@ -254,14 +249,10 @@ body {
   box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.12);
 }
 
-/* WhyCraftqube reason cards */
 .cq-reason-card {
   border: 1px solid var(--color-cq-border);
   border-radius: 0.75rem;
-  transition:
-    border-color 0.25s ease,
-    background-color 0.35s ease,
-    box-shadow 0.25s ease;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .cq-reason-card:hover {
@@ -299,8 +290,7 @@ body {
   border: 1px solid var(--color-cq-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease,
-              background-color 0.35s ease;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 .card-surface:hover {
@@ -392,22 +382,18 @@ body {
    ============================================ */
 .section-light {
   background: var(--color-cq-bg);
-  transition: background-color 0.35s ease;
 }
 
 .section-white {
   background: var(--color-cq-surface);
-  transition: background-color 0.35s ease;
 }
 
 .section-subtle {
   background: var(--color-cq-surface-2);
-  transition: background-color 0.35s ease;
 }
 
 /* ============================================
    DARK MODE — Section overrides
-   Permite que secciones con bg hardcoded respondan
    ============================================ */
 html[data-theme="dark"] .section-dark-aware {
   background-color: var(--color-cq-bg) !important;
@@ -460,65 +446,7 @@ html[data-theme="dark"] .muted-dark-aware {
 .delay-400 { animation-delay: 0.4s; }
 .delay-500 { animation-delay: 0.5s; }
 
-/* ============================================
-   THEME TRANSITION — Suaviza el cambio global
-   ============================================ */
-html {
-  transition: color-scheme 0.35s ease;
-}
-
-/*
- * Transición suave al cambiar tema.
- * SOLO background-color y color — NO border-color en el wildcard
- * para no interferir con las clases que manejan sus propios bordes
- * (como .cq-product-card que usa CSS hover nativo).
- */
-*,
-*::before,
-*::after {
-  transition-property: background-color, color;
-  transition-duration: 0.35s;
-  transition-timing-function: ease;
-}
-
-/* Excluye elementos que no deben transicionar */
-img,
-video,
-svg,
-canvas,
-[data-no-transition] {
-  transition: none !important;
-}
-
-/* Header y Footer siempre mantienen sus colores */
-header,
-footer {
-  transition: none !important;
-}
-
-header *,
-footer * {
-  transition: none !important;
-}
-
-html {
-  scroll-behavior: smooth;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  scrollbar-width: none;       /* Firefox */
-  -ms-overflow-style: none;    /* IE / Edge legacy */
-}
-
-html::-webkit-scrollbar {
-  display: none;               /* Chrome / Safari / Opera */
-}
-
-/* Agregar en app/globals.css */
-
-/* ── PayPal Hosted Fields ─────────────────────────────────
-   El iframe de PayPal se inyecta dentro del div con el id
-   del campo. Esta clase da las dimensiones correctas.
-   ────────────────────────────────────────────────────── */
+/* ── PayPal Hosted Fields ─────────────────────────────────── */
 .hosted-field-input {
   flex: 1;
   height: 100%;

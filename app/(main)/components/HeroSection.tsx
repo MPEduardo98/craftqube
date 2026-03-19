@@ -74,7 +74,6 @@ export function HeroSection() {
               className="flex items-center gap-2 px-3 py-1.5 rounded-full"
               style={{
                 background: "rgba(37,99,235,0.08)",
-                border: "1px solid rgba(37,99,235,0.18)",
                 color: "var(--color-cq-accent)",
                 fontFamily: "var(--font-mono, monospace)",
                 fontSize: "0.65rem",
@@ -157,7 +156,6 @@ export function HeroSection() {
                 textTransform: "uppercase",
                 textDecoration: "none",
                 color: "var(--color-cq-text)",
-                border: "1.5px solid var(--color-cq-border)",
                 background: "var(--color-cq-surface)",
                 transition: "all 0.2s ease",
               }}
@@ -183,7 +181,6 @@ export function HeroSection() {
                   padding: "0.875rem 0.75rem",
                   borderRadius: "12px",
                   background: "var(--color-cq-surface)",
-                  border: "1px solid var(--color-cq-border)",
                   boxShadow: "var(--shadow-card)",
                 }}
               >

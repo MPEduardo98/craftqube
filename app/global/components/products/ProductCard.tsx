@@ -117,14 +117,14 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
   return (
     <motion.article
       className="flex flex-col rounded-xl overflow-hidden cq-product-card"
-      style={{ background: "var(--color-cq-surface)", height: "100%", width: "100%", border: "1px solid var(--color-cq-border)" }}
+      style={{ background: "var(--color-cq-surface)", height: "100%", width: "100%" }}
       onHoverStart={() => setHovered(true)}
       onHoverEnd={()   => setHovered(false)}
     >
       <Link
         href={`/producto/${producto.slug}`}
         className="relative w-full overflow-hidden shrink-0 block"
-        style={{ aspectRatio: "1 / 1", background: "var(--color-cq-surface-2)", borderBottom: "1px solid var(--color-cq-border)" }}
+        style={{ aspectRatio: "1 / 1", background: "var(--color-cq-surface-2)" }}
       >
         {imageSrc ? (
           <Image
@@ -157,7 +157,6 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
           style={{
             background:     wished ? "var(--color-cq-accent)" : "rgba(255,255,255,0.85)",
             backdropFilter: "blur(4px)",
-            border:         wished ? "none" : "1px solid var(--color-cq-border)",
           }}
           aria-label={wished ? "Quitar de favoritos" : "Añadir a favoritos"}
         >
@@ -191,7 +190,7 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
 
         <div className="flex-1" />
 
-        <div className="flex flex-col gap-2 pt-2" style={{ borderTop: "1px solid var(--color-cq-border)" }}>
+        <div className="flex flex-col gap-2 pt-2">
           <div>
             {producto.precio !== null && producto.precio > 0 ? (
               <div className="flex items-baseline gap-1.5">
@@ -223,7 +222,7 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
             </button>
           ) : (
             <div className="flex items-center justify-between rounded-lg overflow-hidden"
-              style={{ border: "1.5px solid var(--color-cq-accent)", height: "32px" }}>
+              style={{ background: "var(--color-cq-accent-glow)", height: "32px" }}>
               <button onClick={handleDecrementar}
                 className="flex items-center justify-center transition-colors"
                 style={{ width: "32px", height: "100%", background: "transparent", border: "none", color: "var(--color-cq-accent)", cursor: "pointer", fontSize: "1rem", fontWeight: 700 }}>

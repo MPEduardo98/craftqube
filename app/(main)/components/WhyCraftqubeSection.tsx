@@ -178,7 +178,6 @@ export function WhyCraftqubeSection() {
                     background: "var(--color-cq-accent-glow)",
                     color: "var(--color-cq-accent)",
                     fontFamily: "var(--font-mono)",
-                    border: "1px solid rgba(37, 99, 235, 0.15)",
                   }}
                 >
                   {r.metric}
