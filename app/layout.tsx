@@ -1,14 +1,10 @@
 // app/layout.tsx
-// ─────────────────────────────────────────────────────────────
-// Root layout — solo fuentes, providers globales y metadata.
-// Header / Footer / CartDrawer se renderizan en
-// app/(main)/layout.tsx para que /admin y /auth queden limpios.
-// ─────────────────────────────────────────────────────────────
 import type { Metadata }  from "next";
 import { Barlow_Condensed, DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 import { ThemeProvider }    from "./global/context/ThemeContext";
+import { CurrencyProvider } from "./global/context/CurrencyContext";
 import { CartProvider }     from "./global/context/CartContext";
 import { WishlistProvider } from "./global/context/WishlistContext";
 import { AuthProvider }     from "./global/context/AuthContext";
@@ -85,16 +81,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const organizationLd = buildOrganizationJsonLd();
 
   return (
     <html lang="es" className="scroll-smooth">
-      <body
-        className={`${barlowCondensed.variable} ${dmSans.variable} ${jetbrainsMono.variable} antialiased`}
-      >
+      <body className={`${barlowCondensed.variable} ${dmSans.variable} ${jetbrainsMono.variable} antialiased`}>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationLd) }}
@@ -103,12 +95,14 @@ export default function RootLayout({
         <AlertProvider>
           <AuthProvider>
             <ThemeProvider>
-              <CartProvider>
-                <WishlistProvider>
-                  {children}
-                  <AlertContainer />
-                </WishlistProvider>
-              </CartProvider>
+              <CurrencyProvider>
+                <CartProvider>
+                  <WishlistProvider>
+                    {children}
+                    <AlertContainer />
+                  </WishlistProvider>
+                </CartProvider>
+              </CurrencyProvider>
             </ThemeProvider>
           </AuthProvider>
         </AlertProvider>

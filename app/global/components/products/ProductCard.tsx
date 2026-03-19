@@ -7,11 +7,10 @@ import Image           from "next/image";
 import { motion }      from "framer-motion";
 import { useWishlist } from "@/app/global/context/WishlistContext";
 import { useCart }     from "@/app/global/context/CartContext";
+import { useCurrency } from "@/app/global/context/CurrencyContext";
 import type { Producto } from "@/app/global/types/product";
-import { formatPrice }   from "@/app/global/lib/format";
 import { resolveImageUrl } from "@/app/global/lib/resolveImageUrl";
 
-/* ── Ilustración placeholder ────────────────────────────── */
 function FallbackIllustration({ categoria }: { categoria?: string | null }) {
   const cat    = (categoria ?? "").toLowerCase();
   const gradId = `grad-${cat.replace(/\s+/g, "-")}-${Math.random().toString(36).substring(7)}`;
@@ -55,8 +54,9 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
   const [imgError, setImgError] = useState(false);
   const [hovered,  setHovered]  = useState(false);
 
-  const { toggleItem, isWished }       = useWishlist();
-  const { addItem, updateQty, items }  = useCart();
+  const { toggleItem, isWished }      = useWishlist();
+  const { addItem, updateQty, items } = useCart();
+  const { format }                    = useCurrency();
 
   const tieneStock     = (producto.stock ?? 0) > 0;
   const tieneDescuento =
@@ -64,19 +64,15 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
     producto.precio_original > 0 &&
     producto.precio_original > (producto.precio ?? 0);
 
-  // resolveImageUrl maneja tanto URLs completas de R2 como nombres locales legacy
-  const imageSrc = !imgError
-    ? resolveImageUrl(producto.imagen_nombre, producto.id)
-    : null;
+  const imageSrc = !imgError ? resolveImageUrl(producto.imagen_nombre, producto.id) : null;
 
   const descuentoPct = tieneDescuento
     ? Math.round(((producto.precio_original! - producto.precio!) / producto.precio_original!) * 100)
     : 0;
 
-  const wished         = isWished(producto.id);
-  const varianteId     = producto.id;
-  const itemEnCarrito  = items.find(item => item.varianteId === varianteId);
-  const mostrarSelector = !!itemEnCarrito;
+  const wished        = isWished(producto.id);
+  const varianteId    = producto.id;
+  const itemEnCarrito = items.find(item => item.varianteId === varianteId);
 
   const handleWishlistToggle = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
@@ -125,7 +121,6 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
       onHoverStart={() => setHovered(true)}
       onHoverEnd={()   => setHovered(false)}
     >
-      {/* ── Imagen 1:1 ── */}
       <Link
         href={`/producto/${producto.slug}`}
         className="relative w-full overflow-hidden shrink-0 block"
@@ -147,7 +142,6 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
           </div>
         )}
 
-        {/* Badge descuento */}
         {tieneDescuento && (
           <span
             className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-white font-bold"
@@ -157,14 +151,13 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
           </span>
         )}
 
-        {/* Wishlist */}
         <button
           onClick={handleWishlistToggle}
           className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all"
           style={{
-            background: wished ? "var(--color-cq-accent)" : "rgba(255,255,255,0.85)",
+            background:     wished ? "var(--color-cq-accent)" : "rgba(255,255,255,0.85)",
             backdropFilter: "blur(4px)",
-            border: wished ? "none" : "1px solid var(--color-cq-border)",
+            border:         wished ? "none" : "1px solid var(--color-cq-border)",
           }}
           aria-label={wished ? "Quitar de favoritos" : "Añadir a favoritos"}
         >
@@ -174,16 +167,13 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
         </button>
       </Link>
 
-      {/* ── Info ── */}
       <div className="p-3.5 flex flex-col gap-1.5 flex-1">
-        {/* Marca */}
         {producto.marca && (
           <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.58rem", color: "var(--color-cq-muted-2)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
             {producto.marca}
           </span>
         )}
 
-        {/* Título */}
         <Link href={`/producto/${producto.slug}`} style={{ textDecoration: "none" }}>
           <p
             className="leading-snug line-clamp-2 hover:text-blue-500 transition-colors"
@@ -193,7 +183,6 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
           </p>
         </Link>
 
-        {/* SKU */}
         {producto.sku && (
           <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.56rem", color: "var(--color-cq-muted-2)", letterSpacing: "0.06em" }}>
             {producto.sku}
@@ -202,17 +191,16 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
 
         <div className="flex-1" />
 
-        {/* Precio + stock + CTA */}
         <div className="flex flex-col gap-2 pt-2" style={{ borderTop: "1px solid var(--color-cq-border)" }}>
           <div>
             {producto.precio !== null && producto.precio > 0 ? (
               <div className="flex items-baseline gap-1.5">
                 <span style={{ fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 700, color: "var(--color-cq-text)" }}>
-                  {formatPrice(producto.precio)}
+                  {format(producto.precio)}
                 </span>
                 {tieneDescuento && (
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", color: "var(--color-cq-muted-2)", textDecoration: "line-through" }}>
-                    {formatPrice(producto.precio_original!)}
+                    {format(producto.precio_original!)}
                   </span>
                 )}
               </div>
@@ -222,43 +210,34 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
           </div>
 
           {!tieneStock ? (
-            <span
-              className="flex items-center justify-center rounded-lg text-xs"
-              style={{ height: 32, background: "var(--color-cq-surface-2)", color: "var(--color-cq-muted-2)", fontFamily: "var(--font-mono)", fontSize: "0.62rem", letterSpacing: "0.06em", border: "1px solid var(--color-cq-border)" }}
-            >
-              Sin stock
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", color: "var(--color-cq-muted-2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+              Agotado
             </span>
-          ) : mostrarSelector ? (
-            <div className="flex items-center justify-between rounded-lg overflow-hidden" style={{ height: 32, border: "1px solid var(--color-cq-accent)", background: "var(--color-cq-accent-glow)" }}>
-              <button onClick={handleDecrementar} className="flex items-center justify-center h-full px-3 hover:bg-blue-50 transition" style={{ color: "var(--color-cq-accent)" }}>
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14" /></svg>
-              </button>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.72rem", fontWeight: 700, color: "var(--color-cq-accent)" }}>
-                {itemEnCarrito?.cantidad}
-              </span>
-              <button onClick={handleIncrementar} className="flex items-center justify-center h-full px-3 hover:bg-blue-50 transition" style={{ color: "var(--color-cq-accent)" }}>
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
-              </button>
-            </div>
-          ) : (
+          ) : !itemEnCarrito ? (
             <button
               onClick={handleAgregarAlCarrito}
-              className="flex items-center justify-center gap-1.5 rounded-lg font-bold transition-all"
-              style={{
-                height: 32,
-                background:  "var(--color-cq-primary)",
-                color:       "white",
-                fontFamily:  "var(--font-display)",
-                fontSize:    "0.62rem",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-              }}
+              className="w-full rounded-lg py-2 text-xs font-semibold transition-all"
+              style={{ background: "var(--color-cq-accent)", color: "white", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", letterSpacing: "0.06em" }}
             >
-              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 01-8 0" />
-              </svg>
               Agregar
             </button>
+          ) : (
+            <div className="flex items-center justify-between rounded-lg overflow-hidden"
+              style={{ border: "1.5px solid var(--color-cq-accent)", height: "32px" }}>
+              <button onClick={handleDecrementar}
+                className="flex items-center justify-center transition-colors"
+                style={{ width: "32px", height: "100%", background: "transparent", border: "none", color: "var(--color-cq-accent)", cursor: "pointer", fontSize: "1rem", fontWeight: 700 }}>
+                −
+              </button>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-cq-accent)" }}>
+                {itemEnCarrito.cantidad}
+              </span>
+              <button onClick={handleIncrementar}
+                className="flex items-center justify-center transition-colors"
+                style={{ width: "32px", height: "100%", background: "transparent", border: "none", color: "var(--color-cq-accent)", cursor: "pointer", fontSize: "1rem", fontWeight: 700 }}>
+                +
+              </button>
+            </div>
           )}
         </div>
       </div>

@@ -1,18 +1,17 @@
 // app/(main)/producto/[slug]/components/ProductDetailClient.tsx
 "use client";
 
-import { useState }             from "react";
-import Link                     from "next/link";
-import Image                    from "next/image";
-import { motion }               from "framer-motion";
-import { useCart }              from "@/app/global/context/CartContext";
-import { useWishlist }          from "@/app/global/context/WishlistContext";
-import { formatPrice }          from "@/app/global/lib/format";
+import { useState }               from "react";
+import Link                       from "next/link";
+import Image                      from "next/image";
+import { motion }                 from "framer-motion";
+import { useCart }                from "@/app/global/context/CartContext";
+import { useWishlist }            from "@/app/global/context/WishlistContext";
+import { useCurrency }            from "@/app/global/context/CurrencyContext";
 import { ProductVariantSelector } from "./ProductVariantSelector";
-import { ProductSpecs }         from "./ProductSpecs";
+import { ProductSpecs }           from "./ProductSpecs";
 import type { ProductoDetalle, ProductoVariante } from "@/app/global/types/product-detail";
-import { resolveImageUrl } from "@/app/global/lib/resolveImageUrl";
-
+import { resolveImageUrl }        from "@/app/global/lib/resolveImageUrl";
 
 const Icons = {
   cart: (
@@ -69,6 +68,7 @@ interface Props {
 export function ProductDetailClient({ producto }: Props) {
   const { addItem }              = useCart();
   const { toggleItem, isWished } = useWishlist();
+  const { format }               = useCurrency();
 
   const defaultVariante =
     producto.variantes.find((v) => v.es_default === 1) ??
@@ -134,11 +134,7 @@ export function ProductDetailClient({ producto }: Props) {
             <motion.div
               {...fadeUp(0)}
               className="relative rounded-2xl overflow-hidden"
-              style={{
-                aspectRatio: "1 / 1",
-                background:  "var(--color-cq-surface)",
-                border:      "1px solid var(--color-cq-border)",
-              }}
+              style={{ aspectRatio: "1 / 1", background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)" }}
             >
               {imagenActiva ? (
                 <Image
@@ -235,7 +231,7 @@ export function ProductDetailClient({ producto }: Props) {
               <div className="flex items-center gap-3 flex-wrap">
                 {precio > 0 ? (
                   <span className="text-display" style={{ fontSize: "clamp(2rem, 5vw, 2.75rem)", color: "var(--color-cq-text)" }}>
-                    {formatPrice(precio)}
+                    {format(precio)}
                   </span>
                 ) : (
                   <span className="text-base" style={{ fontFamily: "var(--font-mono)", letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--color-cq-muted)" }}>
@@ -250,7 +246,7 @@ export function ProductDetailClient({ producto }: Props) {
               </div>
               {precio > 0 && tieneDescuento && (
                 <div className="flex items-center gap-2">
-                  <span className="text-base line-through" style={{ color: "var(--color-cq-muted-2)" }}>{formatPrice(precioOriginal)}</span>
+                  <span className="text-base line-through" style={{ color: "var(--color-cq-muted-2)" }}>{format(precioOriginal)}</span>
                   <span className="px-2 py-0.5 rounded-md text-xs font-bold"
                     style={{ fontFamily: "var(--font-mono)", background: "rgba(22,163,74,0.12)", color: "#16A34A", border: "1px solid rgba(22,163,74,0.2)" }}>
                     -{descuento}%
@@ -272,7 +268,7 @@ export function ProductDetailClient({ producto }: Props) {
                 Cantidad
                 {precio > 0 && cantidad > 1 && (
                   <span style={{ marginLeft: "0.75rem", color: "var(--color-cq-accent)", letterSpacing: "0.04em" }}>
-                    = {formatPrice(precio * cantidad)}
+                    = {format(precio * cantidad)}
                   </span>
                 )}
               </span>

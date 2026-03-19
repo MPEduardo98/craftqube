@@ -5,11 +5,13 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence }      from "framer-motion";
 import Link                             from "next/link";
 import { useAuth }                      from "@/app/global/context/AuthContext";
+import { useTheme }                     from "@/app/global/context/ThemeContext";
 
 export function UserButton() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { usuario, autenticado, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
 
   const esAdmin =
     usuario?.rol === "admin" || usuario?.rol === "superadmin";
@@ -66,7 +68,7 @@ export function UserButton() {
           >
             {autenticado ? (
               <>
-                {/* Avatar + nombre/email en fila */}
+                {/* Avatar + nombre/email */}
                 <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: "12px" }}>
                   <div style={{
                     width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
@@ -112,6 +114,11 @@ export function UserButton() {
 
                 <div style={{ height: "1px", background: "#f0f0f0", margin: "0 12px" }} />
 
+                {/* Theme toggle */}
+                <ThemeRow isDark={isDark} onToggle={toggleTheme} />
+
+                <div style={{ height: "1px", background: "#f0f0f0", margin: "0 12px" }} />
+
                 <div style={{ padding: "8px" }}>
                   <button
                     onClick={handleLogout}
@@ -131,10 +138,17 @@ export function UserButton() {
                 </div>
               </>
             ) : (
-              <div style={{ padding: "8px" }}>
-                <DropdownItem href="/login"    icon="fa-solid fa-right-to-bracket" onClick={close}>Iniciar Sesión</DropdownItem>
-                <DropdownItem href="/registro" icon="fa-solid fa-user-plus"        onClick={close}>Crear Cuenta</DropdownItem>
-              </div>
+              <>
+                <div style={{ padding: "8px" }}>
+                  <DropdownItem href="/login"    icon="fa-solid fa-right-to-bracket" onClick={close}>Iniciar Sesión</DropdownItem>
+                  <DropdownItem href="/registro" icon="fa-solid fa-user-plus"        onClick={close}>Crear Cuenta</DropdownItem>
+                </div>
+
+                <div style={{ height: "1px", background: "#f0f0f0", margin: "0 12px" }} />
+
+                {/* Theme toggle para invitados */}
+                <ThemeRow isDark={isDark} onToggle={toggleTheme} />
+              </>
             )}
           </motion.div>
         )}
@@ -143,6 +157,66 @@ export function UserButton() {
   );
 }
 
+/* ── Theme row ─────────────────────────────────────────────── */
+function ThemeRow({ isDark, onToggle }: { isDark: boolean; onToggle: () => void }) {
+  return (
+    <div
+      style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "10px 20px",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <i
+          className={isDark ? "fa-solid fa-moon" : "fa-solid fa-sun"}
+          style={{ fontSize: "13px", width: "16px", textAlign: "center", color: isDark ? "#6366f1" : "#f59e0b", opacity: 0.85 }}
+        />
+        <span style={{ fontSize: "13px", fontWeight: 500, color: "#171717" }}>
+          {isDark ? "Modo oscuro" : "Modo claro"}
+        </span>
+      </div>
+
+      {/* Toggle pill */}
+      <motion.button
+        onClick={onToggle}
+        whileTap={{ scale: 0.93 }}
+        aria-label="Cambiar tema"
+        style={{
+          position: "relative",
+          width: "40px",
+          height: "22px",
+          borderRadius: "999px",
+          border: isDark ? "1px solid rgba(99,102,241,0.35)" : "1px solid #e5e7eb",
+          background: isDark ? "rgba(99,102,241,0.15)" : "#f3f4f6",
+          cursor: "pointer",
+          flexShrink: 0,
+          transition: "background 0.25s ease, border-color 0.25s ease",
+        }}
+      >
+        <motion.span
+          layout
+          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+          style={{
+            position: "absolute",
+            top: "2px",
+            left: isDark ? "calc(100% - 18px - 2px)" : "2px",
+            width: "18px",
+            height: "18px",
+            borderRadius: "50%",
+            background: isDark
+              ? "linear-gradient(135deg, #818cf8 0%, #6366f1 100%)"
+              : "white",
+            boxShadow: isDark
+              ? "0 0 6px rgba(99,102,241,0.5)"
+              : "0 1px 3px rgba(0,0,0,0.15)",
+          }}
+        />
+      </motion.button>
+    </div>
+  );
+}
+
+/* ── Dropdown item ─────────────────────────────────────────── */
 function DropdownItem({
   href, icon, onClick, accent = false, children,
 }: {
