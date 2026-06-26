@@ -1,5 +1,6 @@
 // app/global/lib/r2.ts
 import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { CDN_BASE_URL, cdnUrl, keyFromUrl } from "@/app/global/lib/cdn";
 
 export const r2 = new S3Client({
   region:   "auto",
@@ -10,8 +11,13 @@ export const r2 = new S3Client({
   },
 });
 
-export const R2_BUCKET     = process.env.R2_BUCKET_NAME ?? "craftqube-media";
-export const R2_PUBLIC_URL = (process.env.R2_PUBLIC_URL ?? "").replace(/\/$/, "");
+export const R2_BUCKET = process.env.R2_BUCKET_NAME ?? "craftqube-media";
+
+// Base pública del CDN (fuente única de verdad en app/global/lib/cdn.ts).
+export const R2_PUBLIC_URL = CDN_BASE_URL;
+
+// Re-export para mantener compatibilidad con imports existentes.
+export { keyFromUrl };
 
 export async function uploadToR2(key: string, buffer: Buffer, contentType: string): Promise<string> {
   await r2.send(new PutObjectCommand({
@@ -20,7 +26,7 @@ export async function uploadToR2(key: string, buffer: Buffer, contentType: strin
     Body:        buffer,
     ContentType: contentType,
   }));
-  return `${R2_PUBLIC_URL}/${key}`;
+  return cdnUrl(key);
 }
 
 export async function deleteFromR2(key: string): Promise<void> {
@@ -33,9 +39,4 @@ export async function listR2Objects(prefix?: string): Promise<{ key: string; siz
     Prefix: prefix,
   }));
   return (res.Contents ?? []).map(o => ({ key: o.Key!, size: o.Size ?? 0 }));
-}
-
-/** Extrae el key de R2 desde una URL pública */
-export function keyFromUrl(url: string): string {
-  return url.replace(`${R2_PUBLIC_URL}/`, "");
 }

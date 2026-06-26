@@ -33,7 +33,11 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "**.r2.dev",   // cubre todos los buckets R2 públicos
+        hostname: "cdn.craftqube.mx",   // CDN público (R2 con dominio propio)
+      },
+      {
+        protocol: "https",
+        hostname: "**.r2.dev",          // legacy: buckets R2 públicos (URLs viejas en BD)
       },
     ],
   },
