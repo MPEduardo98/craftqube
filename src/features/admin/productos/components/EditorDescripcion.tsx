@@ -1,6 +1,7 @@
 // app/admin/productos/components/EditorDescripcion.tsx
 "use client";
 
+import { useRef }                   from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit                   from "@tiptap/starter-kit";
 import Placeholder                  from "@tiptap/extension-placeholder";
@@ -27,6 +28,15 @@ function ToolbarBtn({
 interface Props { value: string; onChange: (html: string) => void; }
 
 export function EditorDescripcion({ value, onChange }: Props) {
+  /*
+   * TipTap parsea el HTML entrante a su schema y lo re-serializa al llamar
+   * getHTML(), así que el HTML guardado puede volver "normalizado" (atributos,
+   * espacios, etiquetas vacías) sin que el usuario haya escrito nada. Ese primer
+   * onUpdate marcaba el formulario como sucio nada más abrir el editor, por eso
+   * lo ignoramos mientras el contenido siga siendo equivalente al inicial.
+   */
+  const touched = useRef(false);
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -34,7 +44,14 @@ export function EditorDescripcion({ value, onChange }: Props) {
       Placeholder.configure({ placeholder: "Escribe una descripción del producto..." }),
     ],
     content:  value || "",
-    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    onUpdate: ({ editor, transaction }) => {
+      if (!touched.current) {
+        // Sin cambios reales en el documento no hay edición del usuario.
+        if (!transaction.docChanged) return;
+        touched.current = true;
+      }
+      onChange(editor.getHTML());
+    },
     editorProps: {
       attributes: { class: "prose prose-sm max-w-none min-h-[360px] px-4 py-3 focus:outline-none text-slate-700" },
     },

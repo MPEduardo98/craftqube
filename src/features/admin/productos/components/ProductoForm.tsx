@@ -26,7 +26,6 @@ import type { MediaItem }      from "./modals/ModalMediaLibrary";
 import { SeccionSEO }          from "./sections/SeccionSEO";
 import { SidebarProducto }     from "./SidebarProducto";
 import { EditorDescripcion }   from "./EditorDescripcion";
-import { LoadingOverlay }      from "@/shared/components/ui/LoadingOverlay";
 import { ModalUnsavedChanges } from "@/shared/components/ui/ModalUnsavedChanges";
 import { useAlert }            from "@/shared/context/AlertContext";
 import { useUnsavedChanges }   from "@/shared/hooks/useUnsavedChanges";
@@ -231,6 +230,8 @@ export function ProductoForm({ initialData, categorias, marcas, mode, pricing }:
   };
 
   const isProcessing  = saving || deleting;
+  /* En "crear" el form arranca limpio pero siempre debe poder enviarse. */
+  const canSubmit     = !isProcessing && (mode === "crear" || isDirty);
   const storeSlug     = form.slug ? `/producto/${form.slug}` : null;
   const baseIndex     = Math.max(0, form.variantes.findIndex((v) => v.es_default));
   const baseVariante  = form.variantes[baseIndex] ?? form.variantes[0];
@@ -238,11 +239,6 @@ export function ProductoForm({ initialData, categorias, marcas, mode, pricing }:
   /* ── Render ────────────────────────────────────────────── */
   return (
     <form onSubmit={handleSubmit} noValidate style={{ position: "relative" }}>
-      <LoadingOverlay
-        visible={isProcessing}
-        message={deleting ? "Eliminando…" : "Guardando…"}
-      />
-
       {showModal && (
         <ModalUnsavedChanges onConfirm={confirmLeave} onCancel={cancelLeave} />
       )}
@@ -276,25 +272,61 @@ export function ProductoForm({ initialData, categorias, marcas, mode, pricing }:
             <button
               type="button"
               onClick={handleDeleteClick}
+              disabled={isProcessing}
               className="rounded-lg px-3 py-2 text-sm transition-colors"
               style={{
                 border:     "1px solid",
                 borderColor: confirmDelete ? "rgba(239,68,68,0.5)" : "var(--color-cq-border)",
                 color:       confirmDelete ? "#EF4444" : "var(--color-cq-muted)",
                 background:  confirmDelete ? "rgba(239,68,68,0.07)" : "transparent",
-                cursor:      "pointer",
+                cursor:      isProcessing ? "not-allowed" : "pointer",
+                opacity:     isProcessing ? 0.7 : 1,
               }}
             >
-              {confirmDelete ? "¿Confirmar eliminación?" : "Eliminar"}
+              {deleting
+              ? "Eliminando…"
+              : confirmDelete
+                ? "¿Confirmar eliminación?"
+                : "Eliminar"}
             </button>
           )}
           <button
             type="submit"
-            disabled={isProcessing}
+            disabled={!canSubmit}
             className="rounded-lg px-4 py-2 text-sm font-semibold transition-colors"
-            style={{ background: "var(--color-cq-accent)", color: "#fff", border: "none", cursor: isProcessing ? "not-allowed" : "pointer", opacity: isProcessing ? 0.7 : 1 }}
+            style={
+              canSubmit
+                ? { background: "var(--color-cq-accent)", color: "#fff", border: "none", cursor: "pointer", opacity: 1 }
+                : {
+                    background: "var(--color-cq-border)",
+                    color:      "var(--color-cq-muted)",
+                    border:     "none",
+                    cursor:     "not-allowed",
+                    opacity:    saving ? 0.7 : 1,
+                  }
+            }
           >
-            {saving ? "Guardando…" : mode === "crear" ? "Crear producto" : "Guardar cambios"}
+            {saving ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg
+                  className="animate-spin"
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" />
+                  <path d="M12 2a10 10 0 0 1 10 10" />
+                </svg>
+                Guardando…
+              </span>
+            ) : mode === "crear" ? (
+              "Crear producto"
+            ) : (
+              "Guardar cambios"
+            )}
           </button>
         </div>
       </div>
