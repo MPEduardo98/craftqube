@@ -17,6 +17,7 @@ async function fetchProductos() {
       COALESCE(SUM(v.stock), 0) AS stock,
       (SELECT pi.url FROM producto_imagenes pi WHERE pi.producto_id = p.id ORDER BY pi.orden ASC LIMIT 1) AS imagen_url,
       GROUP_CONCAT(DISTINCT c.nombre ORDER BY c.nombre SEPARATOR ', ') AS categorias,
+      (SELECT pc2.categoria_id FROM producto_categorias pc2 WHERE pc2.producto_id = p.id ORDER BY pc2.categoria_id ASC LIMIT 1) AS categoria_id,
       m.nombre AS marca
     FROM productos p
     LEFT JOIN producto_variantes v      ON v.producto_id = p.id
@@ -36,6 +37,13 @@ async function fetchProductos() {
   return { productos: rows as ProductoRow[], total: Number(total) };
 }
 
+async function fetchCategorias() {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    "SELECT id, nombre FROM categorias ORDER BY nombre ASC"
+  );
+  return rows as { id: number; nombre: string }[];
+}
+
 async function fetchStats() {
   const [[row]] = await pool.execute<RowDataPacket[]>(`
     SELECT
@@ -49,7 +57,7 @@ async function fetchStats() {
 }
 
 export default async function ProductosPage() {
-  const [{ productos, total }, stats] = await Promise.all([fetchProductos(), fetchStats()]);
+  const [{ productos, total }, stats, categorias] = await Promise.all([fetchProductos(), fetchStats(), fetchCategorias()]);
 
   return (
     <div className="min-h-full" style={{ background: "var(--color-cq-bg, #f8fafc)" }}>
@@ -134,7 +142,7 @@ export default async function ProductosPage() {
           className="rounded-xl overflow-hidden"
           style={{ background: "var(--color-cq-surface, #fff)", border: "1px solid var(--color-cq-border, #e2e8f0)", boxShadow: "var(--shadow-card)" }}
         >
-          <ProductosTable initialProductos={productos} initialTotal={total} />
+          <ProductosTable initialProductos={productos} initialTotal={total} categorias={categorias} />
         </div>
 
       </div>

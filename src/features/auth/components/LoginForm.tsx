@@ -5,8 +5,10 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useAuth } from "@/features/auth/context/AuthContext";
+import { useAlert } from "@/shared/context/AlertContext";
+import { LoadingOverlay } from "@/shared/components/ui/LoadingOverlay";
 
 /* ────────────────────────────────────────────────────────── */
 /*  Campo de formulario                                        */
@@ -16,7 +18,7 @@ interface FieldProps {
   type?: string;
   value: string;
   onChange: (v: string) => void;
-  error?: string;
+  hasError?: boolean;
   autoComplete?: string;
   placeholder?: string;
   icon: string;           // fa class
@@ -24,7 +26,7 @@ interface FieldProps {
   onSuffixClick?: () => void;
 }
 
-function Field({ label, type = "text", value, onChange, error, autoComplete, placeholder, icon, suffix, onSuffixClick }: FieldProps) {
+function Field({ label, type = "text", value, onChange, hasError, autoComplete, placeholder, icon, suffix, onSuffixClick }: FieldProps) {
   const [focused, setFocused] = useState(false);
 
   return (
@@ -64,7 +66,7 @@ function Field({ label, type = "text", value, onChange, error, autoComplete, pla
           style={{
             width: "100%",
             background: "var(--color-cq-surface-2)",
-            border: `1.5px solid ${error ? "rgba(239,68,68,0.55)" : focused ? "var(--color-cq-accent)" : "var(--color-cq-border)"}`,
+            border: `1.5px solid ${hasError ? "rgba(239,68,68,0.55)" : focused ? "var(--color-cq-accent)" : "var(--color-cq-border)"}`,
             borderRadius: "10px",
             padding: `12px ${suffix ? "44px" : "16px"} 12px 40px`,
             fontSize: "0.9rem",
@@ -92,20 +94,6 @@ function Field({ label, type = "text", value, onChange, error, autoComplete, pla
           </button>
         )}
       </div>
-
-      <AnimatePresence>
-        {error && (
-          <motion.p
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            style={{ fontSize: "0.78rem", color: "rgba(239,68,68,0.9)", fontFamily: "var(--font-body)", margin: 0, display: "flex", alignItems: "center", gap: "5px" }}
-          >
-            <i className="fa-solid fa-circle-exclamation" style={{ fontSize: "0.7rem" }} />
-            {error}
-          </motion.p>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
@@ -233,8 +221,11 @@ function LeftPanel() {
 /* ────────────────────────────────────────────────────────── */
 /*  Export principal                                           */
 /* ────────────────────────────────────────────────────────── */
+type ErrorFields = Partial<Record<"email" | "password", boolean>>;
+
 export function LoginForm() {
   const { login }    = useAuth();
+  const alert        = useAlert();
   const router       = useRouter();
   const searchParams = useSearchParams();
 
@@ -242,30 +233,43 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading,  setLoading]  = useState(false);
-  const [apiError, setApiError] = useState("");
-  const [errors,   setErrors]   = useState<{ email?: string; password?: string }>({});
+  const [errors,   setErrors]   = useState<ErrorFields>({});
+
+  function clearError(key: keyof ErrorFields) {
+    setErrors((p) => ({ ...p, [key]: undefined }));
+  }
 
   function validate() {
-    const e: typeof errors = {};
-    if (!email.trim())                    e.email    = "Ingresa tu correo";
-    else if (!/\S+@\S+\.\S+/.test(email)) e.email    = "Correo no válido";
-    if (!password)                        e.password = "Ingresa tu contraseña";
-    else if (password.length < 6)         e.password = "Mínimo 6 caracteres";
+    const e: ErrorFields = {};
+    const msgs: string[] = [];
+
+    if (!email.trim())                    { e.email    = true; msgs.push("Ingresa tu correo"); }
+    else if (!/\S+@\S+\.\S+/.test(email)) { e.email    = true; msgs.push("Correo no válido"); }
+    if (!password)                        { e.password = true; msgs.push("Ingresa tu contraseña"); }
+    else if (password.length < 6)         { e.password = true; msgs.push("La contraseña necesita mínimo 6 caracteres"); }
+
     setErrors(e);
-    return Object.keys(e).length === 0;
+
+    if (msgs.length > 0) {
+      alert.warning(msgs[0], msgs.length > 1 ? `${msgs.length} campos por corregir` : "Campo requerido");
+    }
+
+    return msgs.length === 0;
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setApiError("");
     if (!validate()) return;
+
     setLoading(true);
     const result = await login(email, password);
     setLoading(false);
+
     if (result.ok) {
       router.push(searchParams.get("redirect") ?? "/");
     } else {
-      setApiError(result.error ?? "Credenciales incorrectas");
+      setErrors({ email: true, password: true });
+      alert.error(result.error ?? "Credenciales incorrectas", "No pudimos iniciar sesión");
     }
   }
 
@@ -306,8 +310,9 @@ export function LoginForm() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          style={{ width: "100%", maxWidth: "400px" }}
+          style={{ width: "100%", maxWidth: "400px", position: "relative" }}
         >
+          <LoadingOverlay visible={loading} message="Verificando..." />
           {/* Encabezado */}
           <div style={{ marginBottom: "32px" }}>
             <p style={{
@@ -342,16 +347,16 @@ export function LoginForm() {
             <Field
               label="Correo electrónico" type="email" icon="fa-solid fa-envelope"
               value={email}
-              onChange={(v) => { setEmail(v); setErrors((p) => ({ ...p, email: undefined })); setApiError(""); }}
-              error={errors.email} autoComplete="email" placeholder="tucorreo@empresa.com"
+              onChange={(v) => { setEmail(v); clearError("email"); }}
+              hasError={errors.email} autoComplete="email" placeholder="tucorreo@empresa.com"
             />
 
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               <Field
                 label="Contraseña" type={showPass ? "text" : "password"} icon="fa-solid fa-lock"
                 value={password}
-                onChange={(v) => { setPassword(v); setErrors((p) => ({ ...p, password: undefined })); setApiError(""); }}
-                error={errors.password} autoComplete="current-password" placeholder="••••••••"
+                onChange={(v) => { setPassword(v); clearError("password"); }}
+                hasError={errors.password} autoComplete="current-password" placeholder="••••••••"
                 suffix={
                   <i
                     className={showPass ? "fa-solid fa-eye-slash" : "fa-solid fa-eye"}
@@ -373,27 +378,6 @@ export function LoginForm() {
               </div>
             </div>
 
-            {/* Error API */}
-            <AnimatePresence>
-              {apiError && (
-                <motion.div
-                  initial={{ opacity: 0, y: -6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  style={{
-                    display: "flex", alignItems: "center", gap: "10px",
-                    padding: "12px 14px", borderRadius: "10px",
-                    background: "rgba(239,68,68,0.07)",
-                    border: "1px solid rgba(239,68,68,0.22)",
-                    color: "rgba(239,68,68,0.9)",
-                  }}
-                >
-                  <i className="fa-solid fa-circle-exclamation" style={{ fontSize: "0.9rem", flexShrink: 0 }} />
-                  <span style={{ fontFamily: "var(--font-body)", fontSize: "0.825rem" }}>{apiError}</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             {/* Submit */}
             <motion.button
               type="submit"
@@ -413,22 +397,8 @@ export function LoginForm() {
                 marginTop: "4px",
               }}
             >
-              {loading ? (
-                <>
-                  <motion.i
-                    className="fa-solid fa-spinner"
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 0.85, repeat: Infinity, ease: "linear" }}
-                    style={{ display: "inline-block", fontSize: "0.9rem" }}
-                  />
-                  Verificando...
-                </>
-              ) : (
-                <>
-                  Entrar a mi cuenta
-                  <i className="fa-solid fa-arrow-right" style={{ fontSize: "0.85rem" }} />
-                </>
-              )}
+              Entrar a mi cuenta
+              <i className="fa-solid fa-arrow-right" style={{ fontSize: "0.85rem" }} />
             </motion.button>
 
           </form>

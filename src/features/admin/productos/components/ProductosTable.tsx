@@ -404,6 +404,7 @@ function ProductoTableRow({
   onDelete,
   onPatched,
   editMode,
+  categorias,
 }: {
   p: ProductoRow;
   selected: boolean;
@@ -411,10 +412,12 @@ function ProductoTableRow({
   onDelete: () => void;
   onPatched: (id: number, patch: Partial<ProductoRow>) => void;
   editMode: boolean;
+  categorias: { id: number; nombre: string }[];
 }) {
   const router = useRouter();
   const [titulo, setTitulo] = useState(p.titulo);
   const [estado, setEstado] = useState(p.estado);
+  const [categoriaId, setCategoriaId] = useState(p.categoria_id);
   const [precio, setPrecio] = useState(p.precio != null ? String(p.precio) : "");
   const [stock,  setStock]  = useState(String(p.stock));
   const [saving, setSaving] = useState<string | null>(null);
@@ -427,9 +430,10 @@ function ProductoTableRow({
   useEffect(() => {
     setTitulo(p.titulo);
     setEstado(p.estado);
+    setCategoriaId(p.categoria_id);
     setPrecio(p.precio != null ? String(p.precio) : "");
     setStock(String(p.stock));
-  }, [p.titulo, p.estado, p.precio, p.stock]);
+  }, [p.titulo, p.estado, p.categoria_id, p.precio, p.stock]);
 
   const imgSrc = resolveImageUrl(p.imagen_url, p.id);
   const badge  = BADGES[estado as keyof typeof BADGES] ?? BADGES.borrador;
@@ -474,6 +478,19 @@ function ProductoTableRow({
       const json = await patchProducto({ estado: value });
       if (json.success) onPatched(p.id, { estado: value });
       else { setEstado(p.estado); alert("Error al guardar el estado."); }
+    } finally { setSaving(null); }
+  };
+
+  const saveCategoria = async (value: string) => {
+    const catId = value ? Number(value) : null;
+    setCategoriaId(catId);
+    setSaving("categoria");
+    try {
+      const json = await patchProducto({ categoria_id: catId });
+      if (json.success) {
+        const nombre = categorias.find(c => c.id === catId)?.nombre ?? null;
+        onPatched(p.id, { categoria_id: catId, categorias: nombre });
+      } else { setCategoriaId(p.categoria_id); alert("Error al guardar la categoría."); }
     } finally { setSaving(null); }
   };
 
@@ -675,11 +692,19 @@ function ProductoTableRow({
           </select>
         </td>
 
-        {/* Categoría */}
+        {/* Categoría — select editable */}
         <td className="px-4 py-3.5">
-          <span className="text-[12px]" style={{ color: "var(--color-cq-muted, #64748b)", fontFamily: "var(--font-body, sans-serif)" }}>
-            {p.categorias ?? <span style={{ color: "var(--color-cq-muted-2)" }}>—</span>}
-          </span>
+          <select
+            value={categoriaId ?? ""}
+            onChange={e => saveCategoria(e.target.value)}
+            disabled={saving === "categoria"}
+            className="ptbl-cell-select"
+          >
+            <option value="">Sin categoría</option>
+            {categorias.map(c => (
+              <option key={c.id} value={c.id}>{c.nombre}</option>
+            ))}
+          </select>
         </td>
 
         {/* Precio — editable (solo si el producto tiene una única variante) */}
@@ -763,9 +788,10 @@ function ProductoTableRow({
 interface Props {
   initialProductos: ProductoRow[];
   initialTotal:     number;
+  categorias:       { id: number; nombre: string }[];
 }
 
-export function ProductosTable({ initialProductos, initialTotal }: Props) {
+export function ProductosTable({ initialProductos, initialTotal, categorias }: Props) {
   const router = useRouter();
 
   const [productos, setProductos] = useState<ProductoRow[]>(initialProductos);
@@ -843,6 +869,30 @@ export function ProductosTable({ initialProductos, initialTotal }: Props) {
       setBulkEstado("");
       setSelected(new Set());
     } finally { setBulkEstadoLoading(false); }
+  };
+
+  const [bulkCategoria,        setBulkCategoria]        = useState("");
+  const [bulkCategoriaLoading, setBulkCategoriaLoading]  = useState(false);
+
+  const applyBulkCategoria = async () => {
+    if (!bulkCategoria || selected.size === 0) return;
+    setBulkCategoriaLoading(true);
+    try {
+      const ids = Array.from(selected);
+      const categoriaId = Number(bulkCategoria);
+      const nombre = categorias.find(c => c.id === categoriaId)?.nombre ?? null;
+      const results = await Promise.all(ids.map(id =>
+        fetch(`/api/admin/productos/${id}`, {
+          method:  "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ categoria_id: categoriaId }),
+        }).then(r => r.ok)
+      ));
+      ids.forEach((id, i) => { if (results[i]) patchLocal(id, { categoria_id: categoriaId, categorias: nombre }); });
+      if (results.some(ok => !ok)) alert("Algunos productos no se pudieron actualizar.");
+      setBulkCategoria("");
+      setSelected(new Set());
+    } finally { setBulkCategoriaLoading(false); }
   };
 
   const confirmDelete = async () => {
@@ -1122,9 +1172,29 @@ export function ProductosTable({ initialProductos, initialTotal }: Props) {
             </button>
           </div>
 
+          <div className="flex items-center gap-1.5">
+            <Dropdown
+              value={bulkCategoria}
+              onChange={setBulkCategoria}
+              options={categorias.map(c => ({ value: String(c.id), label: c.nombre }))}
+              placeholder="Categoría"
+              align="left"
+              width={176}
+              disabled={bulkCategoriaLoading}
+            />
+            <button
+              onClick={applyBulkCategoria}
+              disabled={bulkCategoriaLoading || !bulkCategoria}
+              className="px-3 py-1.5 rounded-lg text-[12px] font-semibold"
+              style={{ background: "var(--color-cq-accent, #2563eb)", color: "#fff", border: "none", cursor: bulkCategoriaLoading || !bulkCategoria ? "not-allowed" : "pointer", opacity: bulkCategoriaLoading || !bulkCategoria ? 0.5 : 1 }}
+            >
+              {bulkCategoriaLoading ? "Aplicando…" : "Aplicar"}
+            </button>
+          </div>
+
           <button
             onClick={() => setSelected(new Set())}
-            disabled={bulkEstadoLoading}
+            disabled={bulkEstadoLoading || bulkCategoriaLoading}
             className="ml-auto text-[12px] font-semibold"
             style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-cq-muted, #64748b)" }}
           >
@@ -1187,6 +1257,7 @@ export function ProductosTable({ initialProductos, initialTotal }: Props) {
                     onDelete={() => setDeleteTarget({ id: p.id, titulo: p.titulo })}
                     onPatched={patchLocal}
                     editMode={editMode}
+                    categorias={categorias}
                   />
                 ))}
               </tbody>

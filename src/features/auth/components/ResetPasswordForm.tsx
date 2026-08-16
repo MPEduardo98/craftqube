@@ -4,9 +4,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { authClient } from "@/features/auth/lib/auth-client";
+import { useAlert } from "@/shared/context/AlertContext";
+import { LoadingOverlay } from "@/shared/components/ui/LoadingOverlay";
 
 /* ────────────────────────────────────────────────────────── */
 /*  Campo password                                             */
@@ -17,12 +19,12 @@ interface FieldProps {
   onChange: (v: string) => void;
   show: boolean;
   onToggle: () => void;
-  error?: string;
+  hasError?: boolean;
   placeholder?: string;
   autoComplete?: string;
 }
 
-function PasswordField({ label, value, onChange, show, onToggle, error, placeholder, autoComplete }: FieldProps) {
+function PasswordField({ label, value, onChange, show, onToggle, hasError, placeholder, autoComplete }: FieldProps) {
   const [focused, setFocused] = useState(false);
 
   return (
@@ -53,7 +55,7 @@ function PasswordField({ label, value, onChange, show, onToggle, error, placehol
           style={{
             width: "100%",
             background: "var(--color-cq-surface-2)",
-            border: `1.5px solid ${error ? "rgba(239,68,68,0.55)" : focused ? "var(--color-cq-accent)" : "var(--color-cq-border)"}`,
+            border: `1.5px solid ${hasError ? "rgba(239,68,68,0.55)" : focused ? "var(--color-cq-accent)" : "var(--color-cq-border)"}`,
             borderRadius: "10px",
             padding: "12px 44px 12px 40px",
             fontSize: "0.9rem",
@@ -76,17 +78,6 @@ function PasswordField({ label, value, onChange, show, onToggle, error, placehol
           <i className={show ? "fa-solid fa-eye-slash" : "fa-solid fa-eye"} style={{ fontSize: "0.85rem" }} />
         </button>
       </div>
-      <AnimatePresence>
-        {error && (
-          <motion.p
-            initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            style={{ fontSize: "0.78rem", color: "rgba(239,68,68,0.9)", fontFamily: "var(--font-body)", margin: 0, display: "flex", alignItems: "center", gap: "5px" }}
-          >
-            <i className="fa-solid fa-circle-exclamation" style={{ fontSize: "0.7rem" }} />
-            {error}
-          </motion.p>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
@@ -126,9 +117,11 @@ function PasswordStrength({ password }: { password: string }) {
 /* ────────────────────────────────────────────────────────── */
 type Status = "validating" | "valid" | "invalid" | "success";
 
+type ErrorFields = Partial<Record<"password" | "confirmar", boolean>>;
+
 export function ResetPasswordForm() {
   const searchParams = useSearchParams();
-  const router       = useRouter();
+  const alert        = useAlert();
   const token        = searchParams.get("token") ?? "";
 
   const [status,     setStatus]     = useState<Status>("validating");
@@ -137,8 +130,7 @@ export function ResetPasswordForm() {
   const [showPass,   setShowPass]   = useState(false);
   const [showConf,   setShowConf]   = useState(false);
   const [loading,    setLoading]    = useState(false);
-  const [apiError,   setApiError]   = useState("");
-  const [errors,     setErrors]     = useState<{ password?: string; confirmar?: string }>({});
+  const [errors,     setErrors]     = useState<ErrorFields>({});
 
   /* Better Auth valida el token al redirigir aquí; si el enlace era
      inválido/expirado llega con ?error=... — en caso contrario, válido. */
@@ -148,19 +140,30 @@ export function ResetPasswordForm() {
     setStatus("valid");
   }, [token, searchParams]);
 
+  function clearError(key: keyof ErrorFields) {
+    setErrors((p) => ({ ...p, [key]: undefined }));
+  }
+
   function validate() {
-    const e: typeof errors = {};
-    if (!password)              e.password  = "Ingresa una contraseña";
-    else if (password.length < 6) e.password = "Mínimo 6 caracteres";
-    if (!confirmar)             e.confirmar = "Confirma tu contraseña";
-    else if (confirmar !== password) e.confirmar = "Las contraseñas no coinciden";
+    const e: ErrorFields = {};
+    const msgs: string[] = [];
+
+    if (!password)                   { e.password  = true; msgs.push("Ingresa una contraseña"); }
+    else if (password.length < 6)    { e.password  = true; msgs.push("La contraseña necesita mínimo 6 caracteres"); }
+    if (!confirmar)                  { e.confirmar = true; msgs.push("Confirma tu contraseña"); }
+    else if (confirmar !== password) { e.confirmar = true; msgs.push("Las contraseñas no coinciden"); }
+
     setErrors(e);
-    return Object.keys(e).length === 0;
+
+    if (msgs.length > 0) {
+      alert.warning(msgs[0], msgs.length > 1 ? `${msgs.length} campos por corregir` : "Campo requerido");
+    }
+
+    return msgs.length === 0;
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setApiError("");
     if (!validate()) return;
     setLoading(true);
     try {
@@ -169,12 +172,12 @@ export function ResetPasswordForm() {
         token,
       });
       if (err) {
-        setApiError(err.message ?? "No se pudo actualizar la contraseña");
+        alert.error(err.message ?? "No se pudo actualizar la contraseña", "Error al guardar");
       } else {
         setStatus("success");
       }
     } catch {
-      setApiError("Error de conexión. Intenta de nuevo.");
+      alert.error("Error de conexión. Intenta de nuevo.", "Sin conexión");
     } finally {
       setLoading(false);
     }
@@ -280,8 +283,10 @@ export function ResetPasswordForm() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          style={{ width: "100%", maxWidth: "400px" }}
+          style={{ width: "100%", maxWidth: "400px", position: "relative" }}
         >
+          <LoadingOverlay visible={loading} message="Guardando contraseña..." />
+
           <AnimatePresence mode="wait">
 
             {/* ── Validando token ── */}
@@ -365,9 +370,9 @@ export function ResetPasswordForm() {
                     <PasswordField
                       label="Nueva contraseña"
                       value={password}
-                      onChange={(v) => { setPassword(v); setErrors((p) => ({ ...p, password: undefined })); setApiError(""); }}
+                      onChange={(v) => { setPassword(v); clearError("password"); }}
                       show={showPass} onToggle={() => setShowPass((v) => !v)}
-                      error={errors.password} placeholder="Mínimo 6 caracteres"
+                      hasError={errors.password} placeholder="Mínimo 6 caracteres"
                       autoComplete="new-password"
                     />
                     <PasswordStrength password={password} />
@@ -376,22 +381,11 @@ export function ResetPasswordForm() {
                   <PasswordField
                     label="Confirmar contraseña"
                     value={confirmar}
-                    onChange={(v) => { setConfirmar(v); setErrors((p) => ({ ...p, confirmar: undefined })); setApiError(""); }}
+                    onChange={(v) => { setConfirmar(v); clearError("confirmar"); }}
                     show={showConf} onToggle={() => setShowConf((v) => !v)}
-                    error={errors.confirmar} placeholder="Repite tu contraseña"
+                    hasError={errors.confirmar} placeholder="Repite tu contraseña"
                     autoComplete="new-password"
                   />
-
-                  <AnimatePresence>
-                    {apiError && (
-                      <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                        style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 14px", borderRadius: "10px", background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.22)", color: "rgba(239,68,68,0.9)" }}
-                      >
-                        <i className="fa-solid fa-circle-exclamation" style={{ fontSize: "0.9rem", flexShrink: 0 }} />
-                        <span style={{ fontFamily: "var(--font-body)", fontSize: "0.825rem" }}>{apiError}</span>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
 
                   <motion.button type="submit" disabled={loading}
                     whileHover={loading ? {} : { scale: 1.015, boxShadow: "0 8px 28px rgba(29,78,216,0.38)" }}
@@ -408,17 +402,8 @@ export function ResetPasswordForm() {
                       transition: "background 0.2s, box-shadow 0.2s", marginTop: "4px",
                     }}
                   >
-                    {loading ? (
-                      <>
-                        <motion.i className="fa-solid fa-spinner" animate={{ rotate: 360 }} transition={{ duration: 0.85, repeat: Infinity, ease: "linear" }} style={{ display: "inline-block", fontSize: "0.9rem" }} />
-                        Guardando...
-                      </>
-                    ) : (
-                      <>
-                        Guardar contraseña
-                        <i className="fa-solid fa-floppy-disk" style={{ fontSize: "0.85rem" }} />
-                      </>
-                    )}
+                    Guardar contraseña
+                    <i className="fa-solid fa-floppy-disk" style={{ fontSize: "0.85rem" }} />
                   </motion.button>
                 </form>
               </motion.div>

@@ -6,24 +6,34 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { authClient } from "@/features/auth/lib/auth-client";
+import { useAlert } from "@/shared/context/AlertContext";
+import { LoadingOverlay } from "@/shared/components/ui/LoadingOverlay";
 
 export function ForgotPasswordForm() {
+  const alert = useAlert();
+
   const [email,     setEmail]     = useState("");
   const [loading,   setLoading]   = useState(false);
   const [sent,      setSent]      = useState(false);
-  const [error,     setError]     = useState("");
-  const [fieldErr,  setFieldErr]  = useState("");
+  const [fieldErr,  setFieldErr]  = useState(false);
   const [focused,   setFocused]   = useState(false);
 
   function validate() {
-    if (!email.trim())                   { setFieldErr("Ingresa tu correo"); return false; }
-    if (!/\S+@\S+\.\S+/.test(email))     { setFieldErr("Correo no válido");  return false; }
+    if (!email.trim()) {
+      setFieldErr(true);
+      alert.warning("Ingresa tu correo", "Campo requerido");
+      return false;
+    }
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setFieldErr(true);
+      alert.warning("Correo no válido", "Campo requerido");
+      return false;
+    }
     return true;
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
     if (!validate()) return;
     setLoading(true);
     try {
@@ -32,12 +42,13 @@ export function ForgotPasswordForm() {
         redirectTo: "/reset-password",
       });
       if (err) {
-        setError(err.message ?? "No se pudo enviar el correo");
+        setFieldErr(true);
+        alert.error(err.message ?? "No se pudo enviar el correo", "Error al enviar");
       } else {
         setSent(true);
       }
     } catch {
-      setError("Error de conexión. Intenta de nuevo.");
+      alert.error("Error de conexión. Intenta de nuevo.", "Sin conexión");
     } finally {
       setLoading(false);
     }
@@ -202,8 +213,9 @@ export function ForgotPasswordForm() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          style={{ width: "100%", maxWidth: "400px" }}
+          style={{ width: "100%", maxWidth: "400px", position: "relative" }}
         >
+          <LoadingOverlay visible={loading} message="Enviando enlace..." />
 
           <AnimatePresence mode="wait">
 
@@ -277,7 +289,7 @@ export function ForgotPasswordForm() {
                       <input
                         type="email"
                         value={email}
-                        onChange={(e) => { setEmail(e.target.value); setFieldErr(""); setError(""); }}
+                        onChange={(e) => { setEmail(e.target.value); setFieldErr(false); }}
                         autoComplete="email"
                         placeholder="tucorreo@empresa.com"
                         onFocus={() => setFocused(true)}
@@ -297,45 +309,7 @@ export function ForgotPasswordForm() {
                         }}
                       />
                     </div>
-                    <AnimatePresence>
-                      {fieldErr && (
-                        <motion.p
-                          initial={{ opacity: 0, y: -4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0 }}
-                          style={{
-                            fontSize: "0.78rem", color: "rgba(239,68,68,0.9)",
-                            fontFamily: "var(--font-body)", margin: 0,
-                            display: "flex", alignItems: "center", gap: "5px",
-                          }}
-                        >
-                          <i className="fa-solid fa-circle-exclamation" style={{ fontSize: "0.7rem" }} />
-                          {fieldErr}
-                        </motion.p>
-                      )}
-                    </AnimatePresence>
                   </div>
-
-                  {/* Error API */}
-                  <AnimatePresence>
-                    {error && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        style={{
-                          display: "flex", alignItems: "center", gap: "10px",
-                          padding: "12px 14px", borderRadius: "10px",
-                          background: "rgba(239,68,68,0.07)",
-                          border: "1px solid rgba(239,68,68,0.22)",
-                          color: "rgba(239,68,68,0.9)",
-                        }}
-                      >
-                        <i className="fa-solid fa-circle-exclamation" style={{ fontSize: "0.9rem", flexShrink: 0 }} />
-                        <span style={{ fontFamily: "var(--font-body)", fontSize: "0.825rem" }}>{error}</span>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
 
                   {/* Submit */}
                   <motion.button
@@ -355,22 +329,8 @@ export function ForgotPasswordForm() {
                       transition: "background 0.2s, box-shadow 0.2s",
                     }}
                   >
-                    {loading ? (
-                      <>
-                        <motion.i
-                          className="fa-solid fa-spinner"
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 0.85, repeat: Infinity, ease: "linear" }}
-                          style={{ display: "inline-block", fontSize: "0.9rem" }}
-                        />
-                        Enviando...
-                      </>
-                    ) : (
-                      <>
-                        Enviar enlace
-                        <i className="fa-solid fa-paper-plane" style={{ fontSize: "0.85rem" }} />
-                      </>
-                    )}
+                    Enviar enlace
+                    <i className="fa-solid fa-paper-plane" style={{ fontSize: "0.85rem" }} />
                   </motion.button>
 
                 </form>

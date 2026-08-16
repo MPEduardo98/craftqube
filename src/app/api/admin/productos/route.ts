@@ -58,6 +58,7 @@ export async function GET(req: NextRequest) {
          COALESCE(SUM(v.stock), 0) AS stock,
          (SELECT pi.url FROM producto_imagenes pi WHERE pi.producto_id = p.id ORDER BY pi.orden ASC LIMIT 1) AS imagen_url,
          GROUP_CONCAT(DISTINCT c.nombre ORDER BY c.nombre SEPARATOR ', ') AS categorias,
+         (SELECT pc2.categoria_id FROM producto_categorias pc2 WHERE pc2.producto_id = p.id ORDER BY pc2.categoria_id ASC LIMIT 1) AS categoria_id,
          m.nombre AS marca
        FROM productos p
        LEFT JOIN producto_variantes v      ON v.producto_id = p.id

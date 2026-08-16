@@ -203,8 +203,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!productoId) return NextResponse.json({ success: false, error: "ID inválido" }, { status: 400 });
 
   const body = await req.json();
-  const { titulo, estado, precio, stock } = body as {
-    titulo?: string; estado?: string; precio?: number | null; stock?: number;
+  const { titulo, estado, precio, stock, categoria_id } = body as {
+    titulo?: string; estado?: string; precio?: number | null; stock?: number; categoria_id?: number | null;
   };
 
   const sets: string[] = [];
@@ -228,6 +228,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         `UPDATE productos SET ${sets.join(", ")} WHERE id = ? AND deleted_at IS NULL`,
         [...values, productoId]
       );
+    }
+
+    if (categoria_id !== undefined) {
+      await pool.execute("DELETE FROM producto_categorias WHERE producto_id = ?", [productoId]);
+      if (categoria_id !== null) {
+        await pool.execute(
+          "INSERT INTO producto_categorias (producto_id, categoria_id) VALUES (?, ?)",
+          [productoId, categoria_id]
+        );
+      }
     }
 
     if (precio !== undefined || stock !== undefined) {

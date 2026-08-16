@@ -9,6 +9,7 @@ export interface ProductoRow {
   precio:     number | null;
   stock:      number;
   imagen_url: string | null;
-  categorias: string | null;
+  categorias:    string | null;
+  categoria_id:  number | null;
   marca:      string | null;
 }
