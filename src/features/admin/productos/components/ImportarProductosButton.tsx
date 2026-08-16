@@ -6,7 +6,8 @@
 // POST /api/admin/productos/importar, mostrando un resumen por
 // producto (creado / error).
 // ─────────────────────────────────────────────────────────────
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { Loader } from "@/shared/components/ui/Loader";
 
 const EJEMPLO = `{
   "productos": [
@@ -49,16 +50,34 @@ export function ImportarProductosButton() {
   const [error,     setError]     = useState<string | null>(null);
   const [resultados, setResultados] = useState<ResultadoImport[] | null>(null);
   const [showEjemplo, setShowEjemplo] = useState(false);
+  const [progreso,  setProgreso]  = useState({ procesados: 0, total: 0 });
+  const [ultimo,    setUltimo]    = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Mientras importa: nada de scroll de fondo ni cierre con Escape.
+  useEffect(() => {
+    if (!loading) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); } };
+    window.addEventListener("keydown", onKey, true);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey, true);
+    };
+  }, [loading]);
 
   const reset = () => {
     setJson("");
     setError(null);
     setResultados(null);
     setShowEjemplo(false);
+    setProgreso({ procesados: 0, total: 0 });
+    setUltimo(null);
   };
 
   const close = () => {
+    if (loading) return;                       // no se puede cerrar durante la importación
     const huboCreados = (resultados?.filter(r => r.success).length ?? 0) > 0;
     setOpen(false);
     reset();
@@ -83,21 +102,64 @@ export function ImportarProductosButton() {
       return;
     }
 
+    const total = Array.isArray((parsed as { productos?: unknown })?.productos)
+      ? (parsed as { productos: unknown[] }).productos.length
+      : Array.isArray(parsed) ? parsed.length : 0;
+
+    setProgreso({ procesados: 0, total });
+    setUltimo(null);
     setLoading(true);
     try {
-      const res  = await fetch("/api/admin/productos/importar", {
+      const res = await fetch("/api/admin/productos/importar", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(parsed),
       });
-      const data = await res.json();
 
-      if (!res.ok || !data.success) {
-        setError(data.error ?? "Error al importar.");
+      // Errores de validación: respuesta JSON normal, no stream.
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => null);
+        setError(data?.error ?? "Error al importar.");
         return;
       }
 
-      setResultados(data.data.resultados);
+      // Stream NDJSON: un evento por línea.
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finales: ResultadoImport[] | null = null;
+
+      const procesarLinea = (linea: string) => {
+        const t = linea.trim();
+        if (!t) return;
+        let ev: {
+          type: string; total?: number; procesados?: number;
+          resultado?: ResultadoImport; resultados?: ResultadoImport[]; error?: string;
+        };
+        try { ev = JSON.parse(t); } catch { return; }
+
+        if (ev.type === "start") {
+          setProgreso({ procesados: 0, total: ev.total ?? total });
+        } else if (ev.type === "progress") {
+          setProgreso({ procesados: ev.procesados ?? 0, total: ev.total ?? total });
+          if (ev.resultado) setUltimo(ev.resultado.titulo);
+        } else if (ev.type === "done") {
+          finales = ev.resultados ?? [];
+        }
+      };
+
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lineas = buffer.split("\n");
+        buffer = lineas.pop() ?? "";
+        lineas.forEach(procesarLinea);
+      }
+      procesarLinea(buffer);
+
+      if (finales) setResultados(finales);
+      else setError("La importación se interrumpió antes de terminar.");
     } catch {
       setError("Error de red al importar.");
     } finally {
@@ -135,7 +197,7 @@ export function ImportarProductosButton() {
           onClick={close}
         >
           <div
-            className="w-full max-w-2xl max-h-[85vh] rounded-2xl flex flex-col overflow-hidden"
+            className="relative w-full max-w-2xl max-h-[85vh] rounded-2xl flex flex-col overflow-hidden"
             style={{
               background: "var(--color-cq-surface, #fff)",
               border:     "1px solid var(--color-cq-border, #e2e8f0)",
@@ -143,6 +205,46 @@ export function ImportarProductosButton() {
             }}
             onClick={e => e.stopPropagation()}
           >
+            {/* Overlay de carga — cubre TODO el modal, bloquea clicks y scroll */}
+            {loading && (
+              <div
+                className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-5 px-8 rounded-2xl"
+                style={{ background: "var(--color-cq-surface, #fff)" }}
+                onClick={e => { e.stopPropagation(); }}
+                onWheel={e => e.preventDefault()}
+                onTouchMove={e => e.preventDefault()}
+              >
+                <Loader text={`Importando ${progreso.procesados} de ${progreso.total}`} />
+
+                {/* Barra de progreso */}
+                <div className="w-full max-w-sm flex flex-col gap-2">
+                  <div
+                    className="w-full h-1.5 rounded-full overflow-hidden"
+                    style={{ background: "var(--color-cq-border, #e2e8f0)" }}
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={progreso.total || 1}
+                    aria-valuenow={progreso.procesados}
+                  >
+                    <div
+                      className="h-full rounded-full transition-all duration-300 ease-out"
+                      style={{
+                        width: `${progreso.total ? (progreso.procesados / progreso.total) * 100 : 0}%`,
+                        background: "var(--color-cq-primary, #2563eb)",
+                      }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-center truncate" style={{ color: "var(--color-cq-muted, #64748b)" }}>
+                    {ultimo ? `Último: ${ultimo}` : "Preparando importación…"}
+                  </p>
+                </div>
+
+                <p className="text-[11px] text-center" style={{ color: "var(--color-cq-muted, #64748b)" }}>
+                  No cierres esta ventana hasta que termine.
+                </p>
+              </div>
+            )}
+
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--color-cq-border, #e2e8f0)" }}>
               <div>
@@ -153,7 +255,7 @@ export function ImportarProductosButton() {
                   Pega o sube un archivo con {"{ \"productos\": [ ... ] }"}
                 </p>
               </div>
-              <button onClick={close} className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-cq-muted, #64748b)" }}>
+              <button onClick={close} disabled={loading} className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "none", border: "none", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.4 : 1, color: "var(--color-cq-muted, #64748b)" }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
@@ -161,7 +263,7 @@ export function ImportarProductosButton() {
             </div>
 
             {/* Body */}
-            <div className="px-6 py-4 flex flex-col gap-3 overflow-y-auto">
+            <div className={`px-6 py-4 flex flex-col gap-3 ${loading ? "overflow-hidden" : "overflow-y-auto"}`}>
 
               {!resultados && (
                 <>

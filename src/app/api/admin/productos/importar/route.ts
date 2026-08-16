@@ -6,6 +6,13 @@
 // Cada producto se crea en su propia transacción — si uno falla
 // (slug/SKU duplicado, datos inválidos, etc.) no afecta a los demás.
 // Marca y categorías se resuelven por nombre (get-or-create).
+//
+// Responde en streaming NDJSON (una línea JSON por evento) para que
+// el cliente pueda pintar una barra de progreso en tiempo real:
+//   { "type": "start",    "total": n }
+//   { "type": "progress", "procesados": k, "total": n, "resultado": {...} }
+//   { "type": "done",     "creados": c, "fallidos": f, "resultados": [...] }
+// Los errores de validación previos siguen siendo JSON normal + status 400.
 // ─────────────────────────────────────────────────────────────
 import { NextRequest, NextResponse } from "next/server";
 import { pool }                       from "@/shared/lib/db/pool";
@@ -98,6 +105,46 @@ export async function POST(req: NextRequest) {
   }
 
   const resultados: ResultadoImport[] = [];
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (evento: unknown) => {
+        controller.enqueue(encoder.encode(JSON.stringify(evento) + "\n"));
+      };
+
+      send({ type: "start", total: productos.length });
+
+      await procesar(productos, resultados, (resultado, procesados) => {
+        send({ type: "progress", procesados, total: productos.length, resultado });
+      });
+
+      const creados  = resultados.filter(r => r.success).length;
+      const fallidos = resultados.length - creados;
+      send({ type: "done", creados, fallidos, resultados });
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type":      "application/x-ndjson; charset=utf-8",
+      "Cache-Control":     "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
+    },
+  });
+}
+
+/** Crea los productos uno a uno, notificando cada resultado vía `onResultado`. */
+async function procesar(
+  productos:   ImportItem[],
+  resultados:  ResultadoImport[],
+  onResultado: (r: ResultadoImport, procesados: number) => void
+) {
+  const push = (r: ResultadoImport) => {
+    resultados.push(r);
+    onResultado(r, resultados.length);
+  };
 
   for (let i = 0; i < productos.length; i++) {
     const item   = productos[i];
@@ -105,11 +152,11 @@ export async function POST(req: NextRequest) {
     const etiqueta = titulo || `(producto ${i + 1})`;
 
     if (!titulo) {
-      resultados.push({ index: i, titulo: etiqueta, success: false, error: "Falta el campo 'titulo'" });
+      push({ index: i, titulo: etiqueta, success: false, error: "Falta el campo 'titulo'" });
       continue;
     }
     if (!Array.isArray(item.variantes) || item.variantes.length === 0) {
-      resultados.push({ index: i, titulo: etiqueta, success: false, error: "Debe incluir al menos una variante en 'variantes'" });
+      push({ index: i, titulo: etiqueta, success: false, error: "Debe incluir al menos una variante en 'variantes'" });
       continue;
     }
 
@@ -121,6 +168,8 @@ export async function POST(req: NextRequest) {
 
       // Duplicado por título o slug (no solo por la UNIQUE de slug/sku:
       // cubre el caso de un slug distinto pero mismo título).
+      // Solo cuenta contra productos vivos: al eliminar se libera el slug/SKU,
+      // así que un producto eliminado puede volver a crearse igual.
       const [dupRows] = await conn.query<RowDataPacket[]>(
         "SELECT id FROM productos WHERE deleted_at IS NULL AND (slug = ? OR titulo = ?) LIMIT 1",
         [slug, titulo]
@@ -147,7 +196,7 @@ export async function POST(req: NextRequest) {
       });
 
       await conn.commit();
-      resultados.push({ index: i, titulo, success: true, id: productoId });
+      push({ index: i, titulo, success: true, id: productoId });
     } catch (err: unknown) {
       await conn.rollback();
       const isDuplicate = (err as NodeJS.ErrnoException & { code?: string }).code === "ER_DUP_ENTRY";
@@ -155,14 +204,9 @@ export async function POST(req: NextRequest) {
         ? "El slug o SKU ya existe"
         : err instanceof Error ? err.message : "Error desconocido";
       console.error(`[POST /api/admin/productos/importar] item ${i}`, err);
-      resultados.push({ index: i, titulo: etiqueta, success: false, error: message });
+      push({ index: i, titulo: etiqueta, success: false, error: message });
     } finally {
       conn.release();
     }
   }
-
-  const creados  = resultados.filter(r => r.success).length;
-  const fallidos = resultados.length - creados;
-
-  return NextResponse.json({ success: true, data: { creados, fallidos, resultados } });
 }

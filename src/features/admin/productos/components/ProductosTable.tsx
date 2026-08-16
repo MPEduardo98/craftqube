@@ -5,6 +5,7 @@ import Link        from "next/link";
 import { useRouter } from "next/navigation";
 import type { ProductoRow } from "../types";
 import { resolveImageUrl } from "@/features/media/lib/resolveImageUrl";
+import { useBulkEdit } from "./BulkEditContext";
 
 /* ── Constantes ─────────────────────────────────────────────── */
 const BADGES = {
@@ -111,6 +112,7 @@ interface DropdownOption { value: string; label: string; }
 
 function Dropdown({
   value, onChange, options, icon, placeholder, align = "right", width = 176, disabled = false,
+  triggerStyle, triggerClassName,
 }: {
   value:       string;
   onChange:    (v: string) => void;
@@ -120,6 +122,8 @@ function Dropdown({
   align?:      "left" | "right";
   width?:      number;
   disabled?:   boolean;
+  triggerStyle?:     React.CSSProperties;
+  triggerClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -133,10 +137,21 @@ function Dropdown({
 
   return (
     <div ref={ref} className="relative">
+      <style>{`
+        .cq-dd-option:hover {
+          background: var(--color-cq-surface-2, #f1f5f9) !important;
+        }
+        .cq-dd-option.is-selected:hover {
+          background: var(--color-cq-accent-glow-2, rgba(37,99,235,0.12)) !important;
+        }
+        .cq-dd-trigger:not(:disabled):hover {
+          filter: brightness(0.96);
+        }
+      `}</style>
       <button
         onClick={() => !disabled && setOpen(v => !v)}
         disabled={disabled}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] font-semibold transition-colors"
+        className={`cq-dd-trigger ${triggerClassName ?? "flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] font-semibold transition-colors"}`}
         style={{
           border:     "1px solid var(--color-cq-border, #e2e8f0)",
           background: open ? "var(--color-cq-surface-2, #f1f5f9)" : "var(--color-cq-surface, #fff)",
@@ -144,6 +159,7 @@ function Dropdown({
           fontFamily: "var(--font-mono, monospace)",
           cursor:     disabled ? "not-allowed" : "pointer",
           opacity:    disabled ? 0.6 : 1,
+          ...triggerStyle,
         }}
       >
         {icon}
@@ -163,7 +179,7 @@ function Dropdown({
             <button
               key={o.value}
               onClick={() => { onChange(o.value); setOpen(false); }}
-              className="w-full text-left px-4 py-2 text-[12px] transition-colors flex items-center gap-2"
+              className={`cq-dd-option${o.value === value ? " is-selected" : ""} w-full text-left px-4 py-2 text-[12px] transition-colors flex items-center gap-2`}
               style={{
                 fontFamily: "var(--font-mono, monospace)",
                 color:      o.value === value ? "var(--color-cq-accent, #2563eb)" : "var(--color-cq-text, #0f172a)",
@@ -367,6 +383,7 @@ function VarianteEditRow({ v, onSaved }: { v: VarianteRow; onSaved: (v: Variante
       </td>
       <td className="px-4 py-2" />
       <td className="px-4 py-2" />
+      <td className="px-4 py-2" />
       <td className="px-4 py-2 text-right">
         <div className="relative inline-block">
           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px]" style={{ color: "var(--color-cq-muted-2, #94a3b8)" }}>$</span>
@@ -403,25 +420,29 @@ function ProductoTableRow({
   onToggle,
   onDelete,
   onPatched,
+  onDraft,
   editMode,
   categorias,
+  marcas,
 }: {
   p: ProductoRow;
   selected: boolean;
   onToggle: () => void;
   onDelete: () => void;
   onPatched: (id: number, patch: Partial<ProductoRow>) => void;
+  onDraft: (id: number, patch: Record<string, string | number | null>) => void;
   editMode: boolean;
   categorias: { id: number; nombre: string }[];
+  marcas: { id: number; nombre: string }[];
 }) {
   const router = useRouter();
   const [titulo, setTitulo] = useState(p.titulo);
   const [estado, setEstado] = useState(p.estado);
   const [categoriaId, setCategoriaId] = useState(p.categoria_id);
+  const [marcaId, setMarcaId] = useState(p.marca_id);
   const [precio, setPrecio] = useState(p.precio != null ? String(p.precio) : "");
   const [stock,  setStock]  = useState(String(p.stock));
-  const [saving, setSaving] = useState<string | null>(null);
-  const [multiWarning, setMultiWarning] = useState(false);
+  const [saving] = useState<string | null>(null);
 
   const [expanded,         setExpanded]         = useState(false);
   const [variantes,        setVariantes]        = useState<VarianteRow[] | null>(null);
@@ -453,77 +474,41 @@ function ProductoTableRow({
     if (next && variantes === null) void loadVariantes();
   };
 
-  const patchProducto = async (body: Record<string, string | number | null>) => {
-    const res  = await fetch(`/api/admin/productos/${p.id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-    });
-    const json = await res.json();
-    return json as { success: boolean; error?: string };
-  };
+  /* En modo edición masiva los cambios NO se envían al servidor: se acumulan
+     en el borrador del padre y se confirman con el botón "Guardar". */
 
-  const saveTitulo = async (value: string) => {
+  const saveTitulo = (value: string) => {
     if (!value.trim() || value === p.titulo) { setTitulo(p.titulo); return; }
-    setSaving("titulo");
-    try {
-      const json = await patchProducto({ titulo: value });
-      if (json.success) onPatched(p.id, { titulo: value });
-      else { setTitulo(p.titulo); alert("Error al guardar el título."); }
-    } finally { setSaving(null); }
+    onDraft(p.id, { titulo: value });
   };
 
-  const saveEstado = async (value: string) => {
+  const saveEstado = (value: string) => {
     setEstado(value);
-    setSaving("estado");
-    try {
-      const json = await patchProducto({ estado: value });
-      if (json.success) onPatched(p.id, { estado: value });
-      else { setEstado(p.estado); alert("Error al guardar el estado."); }
-    } finally { setSaving(null); }
+    onDraft(p.id, { estado: value });
   };
 
-  const saveCategoria = async (value: string) => {
+  const saveCategoria = (value: string) => {
     const catId = value ? Number(value) : null;
     setCategoriaId(catId);
-    setSaving("categoria");
-    try {
-      const json = await patchProducto({ categoria_id: catId });
-      if (json.success) {
-        const nombre = categorias.find(c => c.id === catId)?.nombre ?? null;
-        onPatched(p.id, { categoria_id: catId, categorias: nombre });
-      } else { setCategoriaId(p.categoria_id); alert("Error al guardar la categoría."); }
-    } finally { setSaving(null); }
+    onDraft(p.id, { categoria_id: catId });
   };
 
-  const savePrecio = async (value: string) => {
+  const saveMarca = (value: string) => {
+    const mId = value ? Number(value) : null;
+    setMarcaId(mId);
+    onDraft(p.id, { marca_id: mId });
+  };
+
+  const savePrecio = (value: string) => {
     const original = p.precio != null ? String(p.precio) : "";
     if (value === original) return;
-    const num = value === "" ? 0 : parseFloat(value);
-    setSaving("precio");
-    try {
-      const json = await patchProducto({ precio: num });
-      if (json.success) { onPatched(p.id, { precio: num }); setMultiWarning(false); }
-      else if (json.error === "MULTIPLE_VARIANTES") {
-        setPrecio(original);
-        setMultiWarning(true);
-        if (!expanded) { setExpanded(true); if (variantes === null) void loadVariantes(); }
-      } else { setPrecio(original); alert("Error al guardar el precio."); }
-    } finally { setSaving(null); }
+    onDraft(p.id, { precio: value === "" ? 0 : parseFloat(value) });
   };
 
-  const saveStock = async (value: string) => {
+  const saveStock = (value: string) => {
     const original = String(p.stock);
     if (value === original) return;
-    const num = value === "" ? 0 : parseInt(value, 10);
-    setSaving("stock");
-    try {
-      const json = await patchProducto({ stock: num });
-      if (json.success) { onPatched(p.id, { stock: num }); setMultiWarning(false); }
-      else if (json.error === "MULTIPLE_VARIANTES") {
-        setStock(original);
-        setMultiWarning(true);
-        if (!expanded) { setExpanded(true); if (variantes === null) void loadVariantes(); }
-      } else { setStock(original); alert("Error al guardar el stock."); }
-    } finally { setSaving(null); }
+    onDraft(p.id, { stock: value === "" ? 0 : parseInt(value, 10) });
   };
 
   const onVarianteSaved = (updated: VarianteRow) => {
@@ -567,13 +552,14 @@ function ProductoTableRow({
               <span className="ptbl-title-link" title="Editar producto">
                 {p.titulo}
               </span>
-              {p.marca && (
-                <span className="text-[11px] truncate" style={{ color: "var(--color-cq-muted-2, #94a3b8)", fontFamily: "var(--font-mono, monospace)" }}>
-                  {p.marca}
-                </span>
-              )}
             </div>
           </div>
+        </td>
+
+        <td className="px-4 py-3.5">
+          <span className="text-[12px] truncate" style={{ color: "var(--color-cq-muted, #64748b)", fontFamily: "var(--font-body, sans-serif)" }}>
+            {p.marca || <span style={{ color: "var(--color-cq-muted-2)" }}>—</span>}
+          </span>
         </td>
 
         <td className="px-4 py-3.5">
@@ -668,43 +654,60 @@ function ProductoTableRow({
                 disabled={saving === "titulo"}
                 className="ptbl-cell-input ptbl-cell-title"
               />
-              {p.marca && (
-                <span className="text-[11px] truncate" style={{ color: "var(--color-cq-muted-2, #94a3b8)", fontFamily: "var(--font-mono, monospace)" }}>
-                  {p.marca}
-                </span>
-              )}
             </div>
           </div>
         </td>
 
+        {/* Marca — select editable */}
+        <td className="px-4 py-3.5">
+          <Dropdown
+            value={marcaId != null ? String(marcaId) : ""}
+            onChange={v => saveMarca(v)}
+            disabled={saving === "marca"}
+            align="left"
+            width={176}
+            placeholder="Sin marca"
+            options={[
+              { value: "", label: "Sin marca" },
+              ...marcas.map(m => ({ value: String(m.id), label: m.nombre })),
+            ]}
+            triggerClassName="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors"
+          />
+        </td>
+
         {/* Estado — select editable */}
         <td className="px-4 py-3.5">
-          <select
+          <Dropdown
             value={estado}
-            onChange={e => saveEstado(e.target.value)}
+            onChange={v => saveEstado(v)}
             disabled={saving === "estado"}
-            className="ptbl-cell-select"
-            style={{ background: badge.bg, color: badge.color, border: `1px solid ${badge.border}` }}
-          >
-            <option value="activo">Activo</option>
-            <option value="inactivo">Inactivo</option>
-            <option value="borrador">Borrador</option>
-          </select>
+            align="left"
+            width={150}
+            options={[
+              { value: "activo",   label: "Activo"   },
+              { value: "inactivo", label: "Inactivo" },
+              { value: "borrador", label: "Borrador" },
+            ]}
+            triggerClassName="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors"
+            triggerStyle={{ background: badge.bg, color: badge.color, border: `1px solid ${badge.border}` }}
+          />
         </td>
 
         {/* Categoría — select editable */}
         <td className="px-4 py-3.5">
-          <select
-            value={categoriaId ?? ""}
-            onChange={e => saveCategoria(e.target.value)}
+          <Dropdown
+            value={categoriaId != null ? String(categoriaId) : ""}
+            onChange={v => saveCategoria(v)}
             disabled={saving === "categoria"}
-            className="ptbl-cell-select"
-          >
-            <option value="">Sin categoría</option>
-            {categorias.map(c => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
-            ))}
-          </select>
+            align="left"
+            width={190}
+            placeholder="Sin categoría"
+            options={[
+              { value: "", label: "Sin categoría" },
+              ...categorias.map(c => ({ value: String(c.id), label: c.nombre })),
+            ]}
+            triggerClassName="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors"
+          />
         </td>
 
         {/* Precio — editable (solo si el producto tiene una única variante) */}
@@ -721,9 +724,6 @@ function ProductoTableRow({
               style={{ width: 100, paddingLeft: 14, fontWeight: 700 }}
             />
           </div>
-          {multiWarning && (
-            <p className="text-[10px] mt-1" style={{ color: "#d97706" }}>Tiene variantes — edítalas abajo</p>
-          )}
         </td>
 
         {/* Stock — editable (solo si el producto tiene una única variante) */}
@@ -769,13 +769,13 @@ function ProductoTableRow({
 
       {expanded && (
         loadingVariantes ? (
-          <tr className="ptbl-subrow"><td colSpan={7} className="px-5 py-3 text-center">
+          <tr className="ptbl-subrow"><td colSpan={8} className="px-5 py-3 text-center">
             <span className="text-[11px]" style={{ color: "var(--color-cq-muted-2, #94a3b8)", fontFamily: "var(--font-mono, monospace)" }}>Cargando variantes…</span>
           </td></tr>
         ) : variantes && variantes.length > 0 ? (
           variantes.map(v => <VarianteEditRow key={v.id} v={v} onSaved={onVarianteSaved} />)
         ) : (
-          <tr className="ptbl-subrow"><td colSpan={7} className="px-5 py-3 text-center">
+          <tr className="ptbl-subrow"><td colSpan={8} className="px-5 py-3 text-center">
             <span className="text-[11px]" style={{ color: "var(--color-cq-muted-2, #94a3b8)", fontFamily: "var(--font-mono, monospace)" }}>Sin variantes</span>
           </td></tr>
         )
@@ -789,9 +789,10 @@ interface Props {
   initialProductos: ProductoRow[];
   initialTotal:     number;
   categorias:       { id: number; nombre: string }[];
+  marcas:           { id: number; nombre: string }[];
 }
 
-export function ProductosTable({ initialProductos, initialTotal, categorias }: Props) {
+export function ProductosTable({ initialProductos, initialTotal, categorias, marcas }: Props) {
   const router = useRouter();
 
   const [productos, setProductos] = useState<ProductoRow[]>(initialProductos);
@@ -804,7 +805,15 @@ export function ProductosTable({ initialProductos, initialTotal, categorias }: P
   const [loading,   setLoading]   = useState(false);
   const [selected,  setSelected]  = useState<Set<number>>(new Set());
   const [view,      setView]      = useState<"list" | "grid">("list");
-  const [editMode,  setEditMode]  = useState(false);
+  const { editMode, setEditMode } = useBulkEdit();
+
+  // Borrador de la edición masiva: { [productoId]: { campo: valor } }
+  const [drafts,      setDrafts]      = useState<Record<number, Record<string, string | number | null>>>({});
+  const [savingBulk,  setSavingBulk]  = useState(false);
+  // Fuerza el remount de las filas al cancelar, para descartar el estado local de cada input
+  const [editEpoch,   setEditEpoch]   = useState(0);
+
+  const draftCount = Object.keys(drafts).length;
 
   // Modal eliminar
   const [deleteTarget,  setDeleteTarget]  = useState<{ id: number; titulo: string } | null>(null);
@@ -844,9 +853,67 @@ export function ProductosTable({ initialProductos, initialTotal, categorias }: P
   const patchLocal = (id: number, patch: Partial<ProductoRow>) =>
     setProductos(prev => prev.map(p => (p.id === id ? { ...p, ...patch } : p)));
 
-  const toggleEditMode = () => {
-    setEditMode(v => !v);
+  const enterEditMode = () => {
+    setDrafts({});
     setSelected(new Set());
+    setEditMode(true);
+  };
+
+  /** Registra un cambio en el borrador (no toca el servidor). */
+  const addDraft = (id: number, patch: Record<string, string | number | null>) =>
+    setDrafts(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+
+  const cancelEdit = () => {
+    setDrafts({});
+    setEditEpoch(n => n + 1);
+    setEditMode(false);
+  };
+
+  const saveEdit = async () => {
+    const entries = Object.entries(drafts);
+    if (entries.length === 0) { setEditMode(false); return; }
+
+    setSavingBulk(true);
+    try {
+      const results = await Promise.all(entries.map(async ([id, body]) => {
+        const res  = await fetch(`/api/admin/productos/${id}`, {
+          method:  "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify(body),
+        });
+        const json = await res.json().catch(() => ({ success: false }));
+        return { id: Number(id), body, ok: Boolean(json?.success), error: json?.error as string | undefined };
+      }));
+
+      // Refleja en la lista local lo que sí se guardó
+      results.filter(r => r.ok).forEach(r => {
+        const patch: Partial<ProductoRow> = { ...r.body } as Partial<ProductoRow>;
+        if ("categoria_id" in r.body) {
+          const catId = r.body.categoria_id as number | null;
+          patch.categorias = categorias.find(c => c.id === catId)?.nombre ?? null;
+        }
+        if ("marca_id" in r.body) {
+          const mId = r.body.marca_id as number | null;
+          patch.marca = marcas.find(m => m.id === mId)?.nombre ?? null;
+        }
+        patchLocal(r.id, patch);
+      });
+
+      const failed = results.filter(r => !r.ok);
+      if (failed.length) {
+        const conVariantes = failed.some(r => r.error === "MULTIPLE_VARIANTES");
+        alert(
+          conVariantes
+            ? "Algunos productos tienen varias variantes: su precio y stock deben editarse en las variantes."
+            : `${failed.length} producto${failed.length !== 1 ? "s" : ""} no se pudieron guardar.`
+        );
+      }
+
+      setDrafts({});
+      setEditEpoch(n => n + 1);
+      setEditMode(false);
+      router.refresh();
+    } finally { setSavingBulk(false); }
   };
 
   const [bulkEstado,        setBulkEstado]        = useState("");
@@ -871,28 +938,23 @@ export function ProductosTable({ initialProductos, initialTotal, categorias }: P
     } finally { setBulkEstadoLoading(false); }
   };
 
-  const [bulkCategoria,        setBulkCategoria]        = useState("");
-  const [bulkCategoriaLoading, setBulkCategoriaLoading]  = useState(false);
+  const [bulkDeleteOpen,    setBulkDeleteOpen]    = useState(false);
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
 
-  const applyBulkCategoria = async () => {
-    if (!bulkCategoria || selected.size === 0) return;
-    setBulkCategoriaLoading(true);
+  const applyBulkDelete = async () => {
+    if (selected.size === 0) return;
+    setBulkDeleteLoading(true);
     try {
       const ids = Array.from(selected);
-      const categoriaId = Number(bulkCategoria);
-      const nombre = categorias.find(c => c.id === categoriaId)?.nombre ?? null;
       const results = await Promise.all(ids.map(id =>
-        fetch(`/api/admin/productos/${id}`, {
-          method:  "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ categoria_id: categoriaId }),
-        }).then(r => r.ok)
+        fetch(`/api/admin/productos/${id}`, { method: "DELETE" }).then(r => r.ok)
       ));
-      ids.forEach((id, i) => { if (results[i]) patchLocal(id, { categoria_id: categoriaId, categorias: nombre }); });
-      if (results.some(ok => !ok)) alert("Algunos productos no se pudieron actualizar.");
-      setBulkCategoria("");
+      if (results.some(ok => !ok)) alert("Algunos productos no se pudieron eliminar.");
       setSelected(new Set());
-    } finally { setBulkCategoriaLoading(false); }
+      setBulkDeleteOpen(false);
+      router.refresh();
+      void fetchData({});
+    } finally { setBulkDeleteLoading(false); }
   };
 
   const confirmDelete = async () => {
@@ -939,8 +1001,7 @@ export function ProductosTable({ initialProductos, initialTotal, categorias }: P
         .ptbl-row { border-bottom: 1px solid var(--color-cq-border, #e2e8f0); transition: background .1s; }
         .ptbl-row:hover { background: var(--color-cq-surface-2, #f8fafc); }
         .ptbl-row.sel { background: var(--color-cq-accent-glow, rgba(37,99,235,0.05)); }
-        .ptbl-act { display:flex; align-items:center; justify-content:flex-end; gap:4px; opacity:0; transition:opacity .15s; }
-        .ptbl-row:hover .ptbl-act { opacity: 1; }
+        .ptbl-act { display:flex; align-items:center; justify-content:flex-end; gap:4px; opacity:1; }
         .ptbl-btn {
           width:28px; height:28px; border-radius:8px;
           display:flex; align-items:center; justify-content:center;
@@ -1001,23 +1062,25 @@ export function ProductosTable({ initialProductos, initialTotal, categorias }: P
         .ptbl-expand-btn:hover { background: var(--color-cq-surface-2, #f1f5f9); color: var(--color-cq-text, #0f172a); }
         .ptbl-cell-input {
           width: 100%; padding: 5px 7px; border-radius: 6px; outline: none;
-          border: 1px solid transparent; background: transparent;
+          border: 1px solid var(--color-cq-border, #e2e8f0); background: transparent;
           font-size: 12.5px; color: var(--color-cq-text, #0f172a);
           font-family: var(--font-body, sans-serif);
           transition: border-color .15s, background .15s;
         }
-        .ptbl-cell-input:hover:not(:disabled) { background: var(--color-cq-surface-2, #f1f5f9); }
+        .ptbl-cell-input:hover:not(:disabled) {
+          background: var(--color-cq-surface-2, #f1f5f9);
+          border-color: var(--color-cq-muted-2, #94a3b8);
+        }
         .ptbl-cell-input:focus {
           border-color: var(--color-cq-accent, #2563eb);
           background: var(--color-cq-surface, #fff);
           box-shadow: 0 0 0 3px var(--color-cq-accent-glow, rgba(37,99,235,0.12));
         }
         .ptbl-cell-input:disabled { opacity: .5; }
+        .ptbl-cell-input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+        .ptbl-cell-input[type=number]::-webkit-outer-spin-button,
+        .ptbl-cell-input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }
         .ptbl-cell-title { font-size: 13px; font-weight: 600; font-family: var(--font-display, sans-serif); }
-        .ptbl-cell-select {
-          padding: 5px 8px; border-radius: 999px; outline: none; cursor: pointer;
-          font-size: 10.5px; font-weight: 600; font-family: var(--font-mono, monospace);
-        }
       `}</style>
 
       <DeleteModal
@@ -1027,7 +1090,64 @@ export function ProductosTable({ initialProductos, initialTotal, categorias }: P
         loading={deleteLoading}
       />
 
+      <DeleteModal
+        producto={bulkDeleteOpen ? { id: -1, titulo: `${selected.size} producto${selected.size !== 1 ? "s" : ""}` } : null}
+        onConfirm={applyBulkDelete}
+        onCancel={() => setBulkDeleteOpen(false)}
+        loading={bulkDeleteLoading}
+      />
+
+      {/* ── Barra de edición masiva (reemplaza toda la barra de herramientas) ── */}
+      {editMode && (
+        <div
+          className="flex items-center gap-3 flex-wrap px-5 py-3.5"
+          style={{ background: "var(--color-cq-accent-glow, rgba(37,99,235,0.06))", borderBottom: "1px solid var(--color-cq-border, #e2e8f0)" }}
+        >
+          <span
+            className="text-[12px] font-semibold shrink-0"
+            style={{ fontFamily: "var(--font-mono, monospace)", color: "var(--color-cq-accent, #2563eb)" }}
+          >
+            Edición masiva
+            {draftCount > 0 && ` — ${draftCount} producto${draftCount !== 1 ? "s" : ""} con cambios`}
+          </span>
+
+          <div className="flex items-center gap-2 ml-auto shrink-0">
+            <button
+              onClick={cancelEdit}
+              disabled={savingBulk}
+              className="px-4 py-2 rounded-lg text-[12px] font-semibold transition-colors"
+              style={{
+                border:     "1px solid var(--color-cq-border, #e2e8f0)",
+                background: "var(--color-cq-surface, #fff)",
+                color:      "var(--color-cq-muted, #64748b)",
+                fontFamily: "var(--font-mono, monospace)",
+                cursor:     savingBulk ? "not-allowed" : "pointer",
+                opacity:    savingBulk ? 0.5 : 1,
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={saveEdit}
+              disabled={savingBulk}
+              className="px-4 py-2 rounded-lg text-[12px] font-semibold transition-colors"
+              style={{
+                border:     "1px solid var(--color-cq-accent, #2563eb)",
+                background: "var(--color-cq-accent, #2563eb)",
+                color:      "#fff",
+                fontFamily: "var(--font-mono, monospace)",
+                cursor:     savingBulk ? "not-allowed" : "pointer",
+                opacity:    savingBulk ? 0.6 : 1,
+              }}
+            >
+              {savingBulk ? "Guardando…" : "Guardar"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Barra de herramientas ─────────────────────────────── */}
+      {!editMode && (
       <div className="flex flex-col gap-3 px-5 py-4" style={{ borderBottom: "1px solid var(--color-cq-border, #e2e8f0)" }}>
 
         {/* Fila 1: búsqueda + sort + vistas */}
@@ -1066,12 +1186,12 @@ export function ProductosTable({ initialProductos, initialTotal, categorias }: P
           {/* Editar masivamente */}
           {view === "list" && (
             <button
-              onClick={toggleEditMode}
+              onClick={enterEditMode}
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] font-semibold transition-colors shrink-0"
               style={{
-                border:     editMode ? "1px solid var(--color-cq-accent, #2563eb)" : "1px solid var(--color-cq-border, #e2e8f0)",
-                background: editMode ? "var(--color-cq-accent, #2563eb)" : "var(--color-cq-surface, #fff)",
-                color:      editMode ? "#fff" : "var(--color-cq-muted, #64748b)",
+                border:     "1px solid var(--color-cq-border, #e2e8f0)",
+                background: "var(--color-cq-surface, #fff)",
+                color:      "var(--color-cq-muted, #64748b)",
                 fontFamily: "var(--font-mono, monospace)",
                 cursor:     "pointer",
               }}
@@ -1080,7 +1200,7 @@ export function ProductosTable({ initialProductos, initialTotal, categorias }: P
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
-              {editMode ? "Listo" : "Editar masivamente"}
+              Editar masivamente
             </button>
           )}
 
@@ -1138,6 +1258,7 @@ export function ProductosTable({ initialProductos, initialTotal, categorias }: P
           })}
         </div>
       </div>
+      )}
 
       {/* ── Barra de cambio de estado masivo ────────────────────── */}
       {!editMode && selected.size > 0 && (
@@ -1172,29 +1293,22 @@ export function ProductosTable({ initialProductos, initialTotal, categorias }: P
             </button>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <Dropdown
-              value={bulkCategoria}
-              onChange={setBulkCategoria}
-              options={categorias.map(c => ({ value: String(c.id), label: c.nombre }))}
-              placeholder="Categoría"
-              align="left"
-              width={176}
-              disabled={bulkCategoriaLoading}
-            />
-            <button
-              onClick={applyBulkCategoria}
-              disabled={bulkCategoriaLoading || !bulkCategoria}
-              className="px-3 py-1.5 rounded-lg text-[12px] font-semibold"
-              style={{ background: "var(--color-cq-accent, #2563eb)", color: "#fff", border: "none", cursor: bulkCategoriaLoading || !bulkCategoria ? "not-allowed" : "pointer", opacity: bulkCategoriaLoading || !bulkCategoria ? 0.5 : 1 }}
-            >
-              {bulkCategoriaLoading ? "Aplicando…" : "Aplicar"}
-            </button>
-          </div>
+          <button
+            onClick={() => setBulkDeleteOpen(true)}
+            disabled={bulkEstadoLoading || bulkDeleteLoading}
+            className="px-3 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5"
+            style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)", cursor: bulkEstadoLoading || bulkDeleteLoading ? "not-allowed" : "pointer", opacity: bulkEstadoLoading || bulkDeleteLoading ? 0.5 : 1 }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+            {bulkDeleteLoading ? "Eliminando…" : "Eliminar"}
+          </button>
 
           <button
             onClick={() => setSelected(new Set())}
-            disabled={bulkEstadoLoading || bulkCategoriaLoading}
+            disabled={bulkEstadoLoading || bulkDeleteLoading}
             className="ml-auto text-[12px] font-semibold"
             style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-cq-muted, #64748b)" }}
           >
@@ -1208,7 +1322,7 @@ export function ProductosTable({ initialProductos, initialTotal, categorias }: P
 
         {/* Vista lista */}
         {view === "list" && (
-          <div className="overflow-x-auto">
+          <div className={editMode ? "overflow-visible" : "overflow-x-auto"}>
             <table className="w-full">
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--color-cq-border, #e2e8f0)", background: "var(--color-cq-surface-2, #fafafa)" }}>
@@ -1219,9 +1333,9 @@ export function ProductosTable({ initialProductos, initialTotal, categorias }: P
                         onChange={toggleAll} />
                     )}
                   </th>
-                  {["Producto","Estado","Categoría","Precio","Stock","Acciones"].map((h, i) => (
+                  {["Producto","Marca","Estado","Categoría","Precio","Stock","Acciones"].map((h, i) => (
                     <th key={h}
-                      className={`px-4 py-3 text-[10px] font-bold tracking-widest uppercase ${i >= 3 ? "text-right" : "text-left"} ${i === 5 ? "pr-5" : ""}`}
+                      className={`px-4 py-3 text-[10px] font-bold tracking-widest uppercase ${i >= 4 ? "text-right" : "text-left"} ${i === 6 ? "pr-5" : ""}`}
                       style={{ fontFamily: "var(--font-mono, monospace)", color: "var(--color-cq-muted, #64748b)" }}>
                       {h}
                     </th>
@@ -1230,7 +1344,7 @@ export function ProductosTable({ initialProductos, initialTotal, categorias }: P
               </thead>
               <tbody>
                 {productos.length === 0 ? (
-                  <tr><td colSpan={7} className="px-5 py-16 text-center">
+                  <tr><td colSpan={8} className="px-5 py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-12 h-12 rounded-xl flex items-center justify-center"
                         style={{ background: "var(--color-cq-surface-2, #f1f5f9)" }}>
@@ -1250,14 +1364,16 @@ export function ProductosTable({ initialProductos, initialTotal, categorias }: P
                   </td></tr>
                 ) : productos.map(p => (
                   <ProductoTableRow
-                    key={p.id}
+                    key={`${p.id}-${editEpoch}`}
                     p={p}
                     selected={selected.has(p.id)}
                     onToggle={() => toggleSelect(p.id)}
                     onDelete={() => setDeleteTarget({ id: p.id, titulo: p.titulo })}
                     onPatched={patchLocal}
+                    onDraft={addDraft}
                     editMode={editMode}
                     categorias={categorias}
+                    marcas={marcas}
                   />
                 ))}
               </tbody>

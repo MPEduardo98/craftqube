@@ -203,12 +203,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!productoId) return NextResponse.json({ success: false, error: "ID inválido" }, { status: 400 });
 
   const body = await req.json();
-  const { titulo, estado, precio, stock, categoria_id } = body as {
-    titulo?: string; estado?: string; precio?: number | null; stock?: number; categoria_id?: number | null;
+  const { titulo, estado, precio, stock, categoria_id, marca_id } = body as {
+    titulo?: string; estado?: string; precio?: number | null; stock?: number;
+    categoria_id?: number | null; marca_id?: number | null;
   };
 
   const sets: string[] = [];
-  const values: (string)[] = [];
+  const values: (string | number | null)[] = [];
 
   if (titulo !== undefined) {
     if (!titulo.trim()) return NextResponse.json({ success: false, error: "Título requerido" }, { status: 400 });
@@ -219,6 +220,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (!ESTADOS_VALIDOS.has(estado)) return NextResponse.json({ success: false, error: "Estado inválido" }, { status: 400 });
     sets.push("estado = ?");
     values.push(estado);
+  }
+  if (marca_id !== undefined) {
+    sets.push("marca_id = ?");
+    values.push(marca_id === null ? null : Number(marca_id));
   }
 
   try {
@@ -276,17 +281,40 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   const productoId = Number(id);
   if (!productoId) return NextResponse.json({ success: false, error: "ID inválido" }, { status: 400 });
 
+  const conn = await pool.getConnection();
   try {
-    const [result] = await pool.execute<ResultSetHeader>(
-      "UPDATE productos SET deleted_at = NOW(), estado = 'inactivo' WHERE id = ? AND deleted_at IS NULL",
+    await conn.beginTransaction();
+
+    // El slug y los SKU llevan índice UNIQUE sin condición sobre deleted_at, así
+    // que al eliminar hay que liberarlos: el producto se conserva para el
+    // historial, pero su identificador queda disponible para volver a crearlo.
+    const [result] = await conn.execute<ResultSetHeader>(
+      `UPDATE productos
+         SET deleted_at = NOW(),
+             estado     = 'inactivo',
+             slug       = CONCAT(LEFT(slug, 180), '-eliminado-', id)
+       WHERE id = ? AND deleted_at IS NULL`,
       [productoId]
     );
     if (result.affectedRows === 0) {
+      await conn.rollback();
       return NextResponse.json({ success: false, error: "Producto no encontrado" }, { status: 404 });
     }
+
+    await conn.execute(
+      `UPDATE producto_variantes
+         SET sku = CONCAT(LEFT(sku, 80), '-eliminado-', id)
+       WHERE producto_id = ? AND sku <> ''`,
+      [productoId]
+    );
+
+    await conn.commit();
     return NextResponse.json({ success: true });
   } catch (err) {
+    await conn.rollback();
     console.error("[DELETE /api/admin/productos/[id]]", err);
     return NextResponse.json({ success: false, error: "Error interno" }, { status: 500 });
+  } finally {
+    conn.release();
   }
 }

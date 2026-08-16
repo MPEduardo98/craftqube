@@ -12,4 +12,5 @@ export interface ProductoRow {
   categorias:    string | null;
   categoria_id:  number | null;
   marca:      string | null;
+  marca_id:   number | null;
 }

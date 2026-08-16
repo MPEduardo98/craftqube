@@ -4,6 +4,7 @@ import { pool }          from "@/shared/lib/db/pool";
 import type { RowDataPacket } from "mysql2";
 import { ProductosTable } from "@/features/admin/productos/components/ProductosTable";
 import { ImportarProductosButton } from "@/features/admin/productos/components/ImportarProductosButton";
+import { BulkEditProvider, HideOnBulkEdit } from "@/features/admin/productos/components/BulkEditContext";
 import type { ProductoRow } from "@/features/admin/productos/types";
 
 export type { ProductoRow };
@@ -18,7 +19,8 @@ async function fetchProductos() {
       (SELECT pi.url FROM producto_imagenes pi WHERE pi.producto_id = p.id ORDER BY pi.orden ASC LIMIT 1) AS imagen_url,
       GROUP_CONCAT(DISTINCT c.nombre ORDER BY c.nombre SEPARATOR ', ') AS categorias,
       (SELECT pc2.categoria_id FROM producto_categorias pc2 WHERE pc2.producto_id = p.id ORDER BY pc2.categoria_id ASC LIMIT 1) AS categoria_id,
-      m.nombre AS marca
+      m.nombre AS marca,
+      p.marca_id
     FROM productos p
     LEFT JOIN producto_variantes v      ON v.producto_id = p.id
     LEFT JOIN marcas m                  ON m.id = p.marca_id
@@ -44,6 +46,13 @@ async function fetchCategorias() {
   return rows as { id: number; nombre: string }[];
 }
 
+async function fetchMarcas() {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    "SELECT id, nombre FROM marcas ORDER BY nombre ASC"
+  );
+  return rows as { id: number; nombre: string }[];
+}
+
 async function fetchStats() {
   const [[row]] = await pool.execute<RowDataPacket[]>(`
     SELECT
@@ -57,9 +66,12 @@ async function fetchStats() {
 }
 
 export default async function ProductosPage() {
-  const [{ productos, total }, stats, categorias] = await Promise.all([fetchProductos(), fetchStats(), fetchCategorias()]);
+  const [{ productos, total }, stats, categorias, marcas] = await Promise.all([
+    fetchProductos(), fetchStats(), fetchCategorias(), fetchMarcas(),
+  ]);
 
   return (
+    <BulkEditProvider>
     <div className="min-h-full" style={{ background: "var(--color-cq-bg, #f8fafc)" }}>
 
       {/* ── Encabezado ── */}
@@ -93,21 +105,24 @@ export default async function ProductosPage() {
               {total} productos en total
             </p>
           </div>
-          <div className="flex items-center gap-2.5 shrink-0">
-            <ImportarProductosButton />
-            <Link href="/admin/productos/crear" className="btn-primary text-[11px] inline-flex items-center gap-2 shrink-0">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              Agregar producto
-            </Link>
-          </div>
+          <HideOnBulkEdit>
+            <div className="flex items-center gap-2.5 shrink-0">
+              <ImportarProductosButton />
+              <Link href="/admin/productos/crear" className="btn-primary text-[11px] inline-flex items-center gap-2 shrink-0">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Agregar producto
+              </Link>
+            </div>
+          </HideOnBulkEdit>
         </div>
       </div>
 
       <div className="px-8 py-6 space-y-5">
 
         {/* ── Stats ── */}
+        <HideOnBulkEdit>
         <div className="flex items-center gap-3 flex-wrap">
           {[
             { label: "Total",      value: stats.total,      color: "var(--color-cq-muted, #64748b)" },
@@ -136,16 +151,18 @@ export default async function ProductosPage() {
             </div>
           ))}
         </div>
+        </HideOnBulkEdit>
 
         {/* ── Tabla ── */}
         <div
           className="rounded-xl overflow-hidden"
           style={{ background: "var(--color-cq-surface, #fff)", border: "1px solid var(--color-cq-border, #e2e8f0)", boxShadow: "var(--shadow-card)" }}
         >
-          <ProductosTable initialProductos={productos} initialTotal={total} categorias={categorias} />
+          <ProductosTable initialProductos={productos} initialTotal={total} categorias={categorias} marcas={marcas} />
         </div>
 
       </div>
     </div>
+    </BulkEditProvider>
   );
 }
