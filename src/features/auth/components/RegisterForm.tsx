@@ -10,6 +10,7 @@ import { useAuth }                from "@/features/auth/context/AuthContext";
 import { useAlert }               from "@/shared/context/AlertContext";
 import { useTheme }               from "@/shared/context/ThemeContext";
 import { LoadingOverlay }         from "@/shared/components/ui/LoadingOverlay";
+import MX                         from "country-flag-icons/react/3x2/MX";
 
 /* ────────────────────────────────────────────────────────── */
 /*  LeftPanel                                                  */
@@ -291,6 +292,96 @@ function Field({
 }
 
 /* ────────────────────────────────────────────────────────── */
+/*  PhoneField — prefijo de país con bandera (solo México)     */
+/* ────────────────────────────────────────────────────────── */
+function PhoneField({
+  value, onChange, hasError,
+}: {
+  value: string; onChange: (v: string) => void; hasError?: boolean;
+}) {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <label style={{
+          fontFamily:    "var(--font-mono)",
+          fontSize:      "0.62rem",
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color:         focused ? "var(--color-cq-accent)" : "var(--color-cq-muted)",
+          transition:    "color 0.2s",
+          fontWeight:    500,
+        }}>
+          Teléfono
+        </label>
+        <span style={{
+          fontFamily:    "var(--font-mono)",
+          fontSize:      "0.55rem",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          color:         "var(--color-cq-muted-2)",
+        }}>
+          Opcional
+        </span>
+      </div>
+
+      <div style={{
+        display:      "flex",
+        alignItems:   "center",
+        background:   "var(--color-cq-surface-2)",
+        border:       `1.5px solid ${hasError ? "rgba(239,68,68,0.45)" : focused ? "var(--color-cq-accent)" : "var(--color-cq-border)"}`,
+        borderRadius: "10px",
+        transition:   "border-color 0.2s",
+        overflow:     "hidden",
+      }}>
+        {/* Prefijo país: bandera + lada */}
+        <div style={{
+          display:      "flex",
+          alignItems:   "center",
+          gap:          "8px",
+          padding:      "0 12px",
+          height:       "44px",
+          flexShrink:   0,
+          borderRight:  "1.5px solid var(--color-cq-border)",
+        }}>
+          <MX title="México" style={{ width: 22, height: 16, borderRadius: 2, display: "block", flexShrink: 0 }} />
+          <span style={{
+            fontFamily: "var(--font-body)",
+            fontSize:   "0.875rem",
+            color:      "var(--color-cq-text)",
+          }}>
+            +52
+          </span>
+        </div>
+
+        <input
+          type="tel"
+          inputMode="numeric"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          autoComplete="tel"
+          placeholder="55 1234 5678"
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{
+            flex:       1,
+            minWidth:   0,
+            background: "transparent",
+            border:     "none",
+            outline:    "none",
+            padding:    "12px 14px",
+            fontFamily: "var(--font-body)",
+            fontSize:   "0.875rem",
+            color:      "var(--color-cq-text)",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────── */
 /*  PasswordStrength                                           */
 /* ────────────────────────────────────────────────────────── */
 function PasswordStrength({ password }: { password: string }) {
@@ -386,12 +477,13 @@ export function RegisterForm() {
     if (!validate()) return;
 
     setLoading(true);
+    const telefonoDigits = telefono.replace(/\D/g, "");
     const result = await register({
       nombre:   nombre.trim(),
       apellido: apellido.trim(),
       email:    email.trim(),
       password,
-      telefono: telefono.trim() || undefined,
+      telefono: telefonoDigits ? `+52 ${telefonoDigits}` : undefined,
     });
     setLoading(false);
 
@@ -504,11 +596,10 @@ export function RegisterForm() {
               hasError={errors.email} autoComplete="email" placeholder="tucorreo@empresa.com"
             />
 
-            <Field
-              label="Teléfono" type="tel" icon="fa-solid fa-phone" optional
+            <PhoneField
               value={telefono}
               onChange={(v) => { setTelefono(v); clearError("telefono"); }}
-              hasError={errors.telefono} autoComplete="tel" placeholder="55 1234 5678"
+              hasError={errors.telefono}
             />
 
             {/* Contraseña */}

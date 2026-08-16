@@ -3,6 +3,7 @@ import { notFound }     from "next/navigation";
 import { pool }         from "@/shared/lib/db/pool";
 import type { RowDataPacket } from "mysql2";
 import { ProductoForm } from "@/features/admin/productos/components/ProductoForm";
+import { getStorePricing } from "@/shared/lib/currency/store-currency";
 import type {
   ProductoFormData,
   VarianteForm,
@@ -33,6 +34,19 @@ interface VarianteRow extends RowDataPacket {
   vender_sin_existencia: number;
 }
 
+interface EnvioRow extends RowDataPacket {
+  es_fisico:     number;
+  largo:         number | null;
+  ancho:         number | null;
+  alto:          number | null;
+  peso:          number | null;
+  medida_unidad: string | null;
+  peso_unidad:   string | null;
+}
+
+interface AtributoRow         extends RowDataPacket { variante_id: number; atributo: string; valor: string; }
+interface VarMetacampoRow     extends RowDataPacket { variante_id: number; llave: string; valor: string; }
+interface VarImagenRow        extends RowDataPacket { variante_id: number; url: string; }
 interface ImagenRow   extends RowDataPacket { url: string; alt: string | null; orden: number; }
 interface MetacampoRow extends RowDataPacket { llave: string; valor: string; }
 interface CategoriaRow extends RowDataPacket { id: number; nombre: string; slug: string; }
@@ -48,10 +62,34 @@ async function fetchProducto(id: number): Promise<ProductoFormData | null> {
   if (!producto) return null;
 
   const [variantes]  = await pool.execute<VarianteRow[]>(
-    `SELECT id, sku, codigo_barras, precio_original, precio_final,
-            costo, stock, es_default, vender_sin_existencia
-     FROM producto_variantes
-     WHERE producto_id = ? ORDER BY es_default DESC, id ASC`,
+    `SELECT v.id, v.sku, v.codigo_barras, v.precio_original, v.precio_final,
+            v.costo, v.stock, v.es_default, v.vender_sin_existencia
+     FROM producto_variantes v
+     WHERE v.producto_id = ? ORDER BY v.es_default DESC, v.id ASC`,
+    [id],
+  );
+  const [[envioRow]] = await pool.execute<EnvioRow[]>(
+    `SELECT es_fisico, largo, ancho, alto, peso, medida_unidad, peso_unidad
+     FROM producto_envio WHERE producto_id = ?`,
+    [id],
+  );
+  const [varAtributos] = await pool.execute<AtributoRow[]>(
+    `SELECT vv.variante_id, a.nombre AS atributo, av.valor
+     FROM variante_valores vv
+     INNER JOIN atributos_valores av ON av.id = vv.atributo_valor_id
+     INNER JOIN atributos a          ON a.id  = av.atributo_id
+     WHERE vv.variante_id IN (SELECT id FROM producto_variantes WHERE producto_id = ?)
+     ORDER BY a.id ASC, av.id ASC`,
+    [id],
+  );
+  const [varMetacampos] = await pool.execute<VarMetacampoRow[]>(
+    `SELECT variante_id, llave, valor FROM producto_metacampos
+     WHERE producto_id = ? AND variante_id IS NOT NULL ORDER BY id ASC`,
+    [id],
+  );
+  const [varImagenes] = await pool.execute<VarImagenRow[]>(
+    `SELECT variante_id, url FROM producto_imagenes
+     WHERE producto_id = ? AND variante_id IS NOT NULL ORDER BY orden ASC, id ASC`,
     [id],
   );
   const [imagenes]   = await pool.execute<ImagenRow[]>(
@@ -81,27 +119,41 @@ async function fetchProducto(id: number): Promise<ProductoFormData | null> {
     meta_titulo:      producto.meta_titulo       ?? "",
     meta_descripcion: producto.meta_descripcion  ?? "",
     categorias:       (categorias as CategoriaRow[]).map((c) => c.id),
-    variantes: (variantes as VarianteRow[]).map((v): VarianteForm => ({
-      id:                    v.id,
-      nombre:                "",
-      sku:                   v.sku,
-      codigo_barras:         v.codigo_barras         ?? "",
-      precio_original:       String(v.precio_original),
-      precio_final:          String(v.precio_final),
-      costo:                 String(v.costo),
-      stock:                 String(v.stock),
-      es_default:            Boolean(v.es_default),
-      vender_sin_existencia: Boolean(v.vender_sin_existencia),
-      largo:                 "",
-      ancho:                 "",
-      alto:                  "",
-      peso:                  "",
-      medida_unidad:         "cm",
-      peso_unidad:           "kg",
-      es_fisico:             true,
-    })),
+    variantes: (variantes as VarianteRow[]).map((v): VarianteForm => {
+      const atributos = (varAtributos as AtributoRow[])
+        .filter((a) => a.variante_id === v.id)
+        .map((a) => ({ nombre: a.atributo, valor: a.valor }));
+      const metacampos = (varMetacampos as VarMetacampoRow[])
+        .filter((m) => m.variante_id === v.id)
+        .map((m) => ({ llave: m.llave, valor: m.valor }));
+      return {
+        id:                    v.id,
+        // Etiqueta legible derivada de los atributos (no se persiste)
+        nombre:                atributos.map((a) => a.valor).join(" / "),
+        sku:                   v.sku,
+        codigo_barras:         v.codigo_barras         ?? "",
+        precio_original:       String(v.precio_original),
+        precio_final:          String(v.precio_final),
+        costo:                 String(v.costo),
+        stock:                 String(v.stock),
+        es_default:            Boolean(v.es_default),
+        vender_sin_existencia: Boolean(v.vender_sin_existencia),
+        imagen:                (varImagenes as VarImagenRow[]).find((im) => im.variante_id === v.id)?.url ?? "",
+        atributos,
+        metacampos,
+      };
+    }),
     imagenes:   (imagenes as ImagenRow[]).map((img): ImagenForm => ({ url: img.url, alt: img.alt ?? "", orden: img.orden })),
     metacampos: (metacampos as MetacampoRow[]).map((m): MetacampoForm => ({ llave: m.llave, valor: m.valor })),
+    envio: {
+      es_fisico:     envioRow ? Boolean(envioRow.es_fisico) : true,
+      largo:         envioRow?.largo != null ? String(envioRow.largo) : "",
+      ancho:         envioRow?.ancho != null ? String(envioRow.ancho) : "",
+      alto:          envioRow?.alto  != null ? String(envioRow.alto)  : "",
+      peso:          envioRow?.peso  != null ? String(envioRow.peso)  : "",
+      medida_unidad: envioRow?.medida_unidad ?? "cm",
+      peso_unidad:   envioRow?.peso_unidad   ?? "kg",
+    },
   };
 }
 
@@ -134,16 +186,17 @@ export default async function EditarProductoPage({ params }: PageProps) {
   const productoId = Number(id);
   if (!productoId || isNaN(productoId)) notFound();
 
-  const [producto, { categorias, marcas }] = await Promise.all([
+  const [producto, { categorias, marcas }, pricing] = await Promise.all([
     fetchProducto(productoId),
     fetchCatalogData(),
+    getStorePricing(),
   ]);
 
   if (!producto) notFound();
 
   return (
     <div className="px-6 py-6 max-w-[1200px] mx-auto">
-      <ProductoForm mode="editar" initialData={producto} categorias={categorias} marcas={marcas} />
+      <ProductoForm mode="editar" initialData={producto} categorias={categorias} marcas={marcas} pricing={pricing} />
     </div>
   );
 }

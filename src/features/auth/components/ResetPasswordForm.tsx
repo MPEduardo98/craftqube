@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { authClient } from "@/features/auth/lib/auth-client";
 
 /* ────────────────────────────────────────────────────────── */
 /*  Campo password                                             */
@@ -139,14 +140,13 @@ export function ResetPasswordForm() {
   const [apiError,   setApiError]   = useState("");
   const [errors,     setErrors]     = useState<{ password?: string; confirmar?: string }>({});
 
-  /* Validar token al montar */
+  /* Better Auth valida el token al redirigir aquí; si el enlace era
+     inválido/expirado llega con ?error=... — en caso contrario, válido. */
   useEffect(() => {
-    if (!token) { setStatus("invalid"); return; }
-    fetch(`/api/auth/verificar-token?token=${token}&tipo=reset_password`)
-      .then((r) => r.json())
-      .then((j) => setStatus(j.valid ? "valid" : "invalid"))
-      .catch(() => setStatus("invalid"));
-  }, [token]);
+    const err = searchParams.get("error");
+    if (!token || err) { setStatus("invalid"); return; }
+    setStatus("valid");
+  }, [token, searchParams]);
 
   function validate() {
     const e: typeof errors = {};
@@ -164,16 +164,14 @@ export function ResetPasswordForm() {
     if (!validate()) return;
     setLoading(true);
     try {
-      const res  = await fetch("/api/auth/reset-password", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ token, password }),
+      const { error: err } = await authClient.resetPassword({
+        newPassword: password,
+        token,
       });
-      const json = await res.json();
-      if (res.ok && json.success) {
-        setStatus("success");
+      if (err) {
+        setApiError(err.message ?? "No se pudo actualizar la contraseña");
       } else {
-        setApiError(json.error ?? "No se pudo actualizar la contraseña");
+        setStatus("success");
       }
     } catch {
       setApiError("Error de conexión. Intenta de nuevo.");

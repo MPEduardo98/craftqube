@@ -5,16 +5,12 @@
 // los inyecta solo para rutas dentro de (main)/.
 // ─────────────────────────────────────────────────────────────
 import { notFound }       from "next/navigation";
-import { cookies }        from "next/headers";
-import { jwtVerify }      from "jose";
+import { headers }        from "next/headers";
+import { auth }           from "@/features/auth/lib/auth";
 import { AdminSidebar }   from "@/features/admin/components/AdminSidebar";
 import { AdminTopbar }    from "@/features/admin/components/AdminTopbar";
 
-const ACCESS_COOKIE = "cq_access";
-const ADMIN_ROLES   = new Set(["admin", "superadmin"]);
-const ACCESS_SECRET = new TextEncoder().encode(
-  process.env.JWT_ACCESS_SECRET ?? "dev-access-secret-change-me"
-);
+const ADMIN_ROLES = new Set(["admin", "superadmin"]);
 
 export const metadata = {
   title: {
@@ -29,22 +25,11 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // ── Auth Capa 2 ──────────────────────────────────────────
-  const jar         = await cookies();
-  const accessToken = jar.get(ACCESS_COOKIE)?.value;
+  // ── Auth Capa 2: sesión real + rol (Better Auth) ─────────
+  const session = await auth.api.getSession({ headers: await headers() });
+  const rol = (session?.user as { rol?: string } | undefined)?.rol ?? "";
 
-  if (!accessToken) notFound();
-
-  try {
-    const { payload } = await jwtVerify(accessToken, ACCESS_SECRET);
-    const rol = (payload as { rol?: string }).rol ?? "";
-    if (!ADMIN_ROLES.has(rol)) notFound();
-  } catch (err: unknown) {
-    const isExpired =
-      err instanceof Error &&
-      (err.message.includes("exp") || err.message.includes("JWTExpired"));
-    if (!isExpired) notFound();
-  }
+  if (!session || !ADMIN_ROLES.has(rol)) notFound();
 
   // ── Shell visual ─────────────────────────────────────────
   return (

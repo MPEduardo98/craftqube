@@ -26,10 +26,11 @@ interface PatchBody {
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await getSessionUser();
-  if (!session) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ success: false, error: "No autenticado" }, { status: 401 });
   }
+  const userId = Number(user.id);
 
   let conn: mysql.Connection | undefined;
   try {
@@ -56,7 +57,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Nada que actualizar" }, { status: 400 });
     }
 
-    vals.push(Number(session.sub));
+    vals.push(userId);
 
     conn = await mysql.createConnection(dbConfig());
 
@@ -69,7 +70,7 @@ export async function PATCH(req: NextRequest) {
       `SELECT id, email, nombre, apellido, telefono, rol, estado,
               email_verificado, avatar_url, ultimo_login, created_at
        FROM usuarios WHERE id = ? AND deleted_at IS NULL LIMIT 1`,
-      [Number(session.sub)]
+      [userId]
     );
 
     return NextResponse.json({ success: true, usuario: rows[0] ?? null });

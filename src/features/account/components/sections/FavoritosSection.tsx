@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useWishlist } from "@/features/wishlist/context/WishlistContext";
 import { useCart } from "@/features/cart/context/CartContext";
 import { formatPrice } from "@/shared/lib/format";
+import { resolveImageUrl } from "@/features/media/lib/resolveImageUrl";
 
 export function FavoritosSection() {
   const { items, removeItem } = useWishlist();
@@ -41,9 +42,7 @@ export function FavoritosSection() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <AnimatePresence>
           {items.map((item, i) => {
-            const imgSrc = item.imagenNombre
-              ? `/productos/${item.productoId}/${item.imagenNombre}`
-              : null;
+            const imgSrc = resolveImageUrl(item.imagenNombre, item.productoId);
 
             return (
               <motion.div

@@ -1,6 +1,23 @@
 /* app/globals.css */
 @import "tailwindcss";
 
+/* Tailwind v4 no aplica cursor:pointer a los botones. Restauramos el
+   puntero en todos los elementos interactivos (excepto deshabilitados). */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  label:has(> input[type="checkbox"]),
+  label:has(> input[type="radio"]),
+  summary {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+
 /* ============================================
    CRAFTQUBE — Brand Design System 2026
    Header Azul · Contenido Claro/Dark · Footer Negro
@@ -445,21 +462,3 @@ html[data-theme="dark"] .muted-dark-aware {
 .delay-300 { animation-delay: 0.3s; }
 .delay-400 { animation-delay: 0.4s; }
 .delay-500 { animation-delay: 0.5s; }
-
-/* ── PayPal Hosted Fields ─────────────────────────────────── */
-.hosted-field-input {
-  flex: 1;
-  height: 100%;
-  min-height: 24px;
-  border: none !important;
-  outline: none !important;
-  background: transparent !important;
-  overflow: hidden;
-}
-
-.hosted-field-input iframe {
-  width:  100% !important;
-  height: 100% !important;
-  border: none !important;
-  background: transparent !important;
-}

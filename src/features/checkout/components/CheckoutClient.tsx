@@ -14,6 +14,7 @@ import { StepConfirmacion }              from "./StepConfirmacion";
 import { OrderSummary }                  from "./OrderSummary";
 import type { CheckoutFormData, CheckoutStep, DatosPago } from "../types";
 import type { PaymentConfirmData }                         from "./StepPago";
+import type { CotizacionEnvio }                            from "@/shared/types/commerce";
 
 /* ── Helpers ─────────────────────────────────────────────── */
 function genOrderNumber() { return "CQ" + Date.now().toString(36).toUpperCase(); }
@@ -64,10 +65,11 @@ async function guardarPedidoDB(params: {
   formData:     CheckoutFormData;
   items:        { variante_id: number; cantidad: number; precio_unitario: number; precio_original: number }[];
   total:        number;
+  costoEnvio:   number;
   stripeId:     string | null;
   usuarioId?:   number;
 }) {
-  const { formData, items, stripeId, usuarioId } = params;
+  const { formData, items, costoEnvio, stripeId, usuarioId } = params;
   const { contacto, envio, pago } = formData;
 
   try {
@@ -97,7 +99,7 @@ async function guardarPedidoDB(params: {
         },
         items,
         metodo_pago:   pago.metodo,
-        costo_envio:   0,
+        costo_envio:   costoEnvio,
         notas_cliente: pago.notas || undefined,
         referencia_pago: stripeId ?? undefined,
       }),
@@ -172,15 +174,37 @@ export function CheckoutClient() {
   const [orderNumber]               = useState<string>(genOrderNumber);
   const [pedidoId,    setPedidoId]  = useState<string | null>(null);
   const [paymentData, setPaymentData] = useState<PaymentConfirmData | null>(null);
+  const [envioCot,    setEnvioCot]  = useState<CotizacionEnvio | null>(null);
 
   const totalSnapshot = useRef<number>(0);
+
+  const costoEnvio = envioCot?.costo_total ?? 0;
+
+  /* ── Cotizar envío con el estado + ítems del carrito ── */
+  const cotizarEnvio = useCallback(async (estado: string) => {
+    if (!estado.trim() || items.length === 0) { setEnvioCot(null); return; }
+    try {
+      const res = await fetch("/api/envio/cotizar", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          estado,
+          items: items.map((i) => ({ variante_id: i.varianteId, cantidad: i.cantidad })),
+        }),
+      });
+      const json = await res.json();
+      setEnvioCot(json.success ? (json.data as CotizacionEnvio) : null);
+    } catch {
+      setEnvioCot(null);
+    }
+  }, [items]);
 
   /* ── handlePago: DEBE estar antes de cualquier early return (Rules of Hooks) ── */
   const handlePago = useCallback(async (
     stripePaymentIntentId?: string,
     pd?: PaymentConfirmData
   ) => {
-    totalSnapshot.current = totalPrecio;
+    totalSnapshot.current = totalPrecio + costoEnvio;
     setPedidoId(stripePaymentIntentId ?? null);
     setPaymentData(pd ?? null);
     setStep("confirmacion");
@@ -196,7 +220,8 @@ export function CheckoutClient() {
     guardarPedidoDB({
       formData,
       items:      pedidoItems,
-      total:      totalPrecio,
+      total:      totalPrecio + costoEnvio,
+      costoEnvio,
       stripeId:   stripePaymentIntentId ?? null,
       usuarioId:  usuario?.id,
     });
@@ -211,7 +236,7 @@ export function CheckoutClient() {
     if (autenticado && formData.envio.guardarDireccion) {
       guardarDireccionUsuario(formData, true);
     }
-  }, [formData, items, totalPrecio, autenticado, usuario, refreshUser]);
+  }, [formData, items, totalPrecio, costoEnvio, autenticado, usuario, refreshUser]);
 
   /* ── Carrito vacío — early return DESPUÉS de todos los hooks ── */
   if (items.length === 0 && step !== "confirmacion") {
@@ -278,7 +303,7 @@ export function CheckoutClient() {
                     <StepEnvio key="envio"
                       data={formData.envio}
                       onChange={(envio) => setFormData((p) => ({ ...p, envio }))}
-                      onNext={() => setStep("pago")}
+                      onNext={() => { cotizarEnvio(formData.envio.estado); setStep("pago"); }}
                       onBack={() => setStep("contacto")}
                       contactoNombre={formData.contacto.nombre}
                       contactoApellido={formData.contacto.apellido} />
@@ -293,6 +318,7 @@ export function CheckoutClient() {
                       contactoNombre={`${formData.contacto.nombre} ${formData.contacto.apellido}`.trim()}
                       orderNumber={orderNumber}
                       envioData={formData.envio}
+                      costoEnvio={costoEnvio}
                     />
                   )}
                   {step === "confirmacion" && (
@@ -313,7 +339,7 @@ export function CheckoutClient() {
             {step !== "confirmacion" && (
               <div className="hidden lg:block shrink-0" style={{ width: 312 }}>
                 <div style={{ position: "sticky", top: 80 }}>
-                  <OrderSummary />
+                  <OrderSummary costoEnvio={step === "pago" ? costoEnvio : null} />
                 </div>
               </div>
             )}

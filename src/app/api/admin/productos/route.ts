@@ -1,7 +1,8 @@
 // app/api/admin/productos/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { pool }                       from "@/shared/lib/db/pool";
-import type { RowDataPacket }         from "mysql2";
+import type { RowDataPacket } from "mysql2";
+import { crearProducto } from "@/features/admin/productos/lib/crearProducto";
 
 const ORDER_MAP: Record<string, string> = {
   updated_at_desc: "p.updated_at DESC",
@@ -75,5 +76,43 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     console.error("[GET /api/admin/productos]", err);
     return NextResponse.json({ success: false, error: "Error interno" }, { status: 500 });
+  }
+}
+
+/* ── POST ───────────────────────────────────────────────────── */
+export async function POST(req: NextRequest) {
+  const conn = await pool.getConnection();
+  try {
+    const body = await req.json();
+    const {
+      titulo, slug, estado, marca_id, descripcion,
+      meta_titulo, meta_descripcion,
+      categorias = [], variantes = [], imagenes = [], metacampos = [], envio = null,
+    } = body;
+
+    if (!titulo?.trim() || !slug?.trim()) {
+      conn.release();
+      return NextResponse.json({ success: false, error: "Título y slug son requeridos" }, { status: 400 });
+    }
+
+    await conn.beginTransaction();
+
+    const productoId = await crearProducto(conn, {
+      titulo, slug, estado, marca_id: marca_id ? Number(marca_id) : null, descripcion, meta_titulo, meta_descripcion,
+      categorias, variantes, imagenes, metacampos, envio,
+    });
+
+    await conn.commit();
+    return NextResponse.json({ success: true, data: { id: productoId } });
+  } catch (err: unknown) {
+    await conn.rollback();
+    console.error("[POST /api/admin/productos]", err);
+    const isDuplicate = (err as NodeJS.ErrnoException & { code?: string }).code === "ER_DUP_ENTRY";
+    return NextResponse.json(
+      { success: false, error: isDuplicate ? "El slug o SKU ya existe" : "Error al crear" },
+      { status: isDuplicate ? 409 : 500 }
+    );
+  } finally {
+    conn.release();
   }
 }

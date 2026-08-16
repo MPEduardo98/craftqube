@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/features/auth/context/AuthContext";
+import { authClient }      from "@/features/auth/lib/auth-client";
 import { useAlert }        from "@/shared/context/AlertContext";
 import { LoadingOverlay }  from "@/shared/components/ui/LoadingOverlay";
 
@@ -199,19 +200,18 @@ export function PerfilSection() {
   };
 
   const handleResendVerification = async () => {
+    if (!usuario?.email) return;
     setResending(true);
     try {
-      const res  = await fetch("/api/auth/resend-verification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: usuario?.email }),
+      const { error } = await authClient.sendVerificationEmail({
+        email:      usuario.email,
+        callbackURL: "/cuenta",
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      if (error) {
+        alert.error(error.message || "No se pudo enviar el correo");
+      } else {
         setResendSent(true);
         alert.success("Correo de verificación enviado");
-      } else {
-        alert.error(data.error || "No se pudo enviar el correo");
       }
     } catch {
       alert.error("Error de conexión");
@@ -224,22 +224,19 @@ export function PerfilSection() {
     if (!newEmail.trim()) return;
     setLoadingEmail(true);
     try {
-      const res  = await fetch("/api/users/change-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email: newEmail.trim() }),
+      const { error } = await authClient.changeEmail({
+        newEmail:    newEmail.trim(),
+        callbackURL: "/cuenta",
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        alert.success("Correo actualizado. Revisa tu bandeja para verificarlo.");
+      if (error) {
+        alert.error(error.message || "No se pudo actualizar el correo");
+      } else {
+        alert.success("Solicitud enviada. Revisa tu bandeja para confirmar el cambio.");
         setEditingEmail(false);
         setNewEmail("");
-        // ── FIX: resetear resendSent para que el botón vuelva a aparecer ──
+        // ── resetear resendSent para que el botón vuelva a aparecer ──
         setResendSent(false);
         await refreshUser?.();
-      } else {
-        alert.error(data.error || "No se pudo actualizar el correo");
       }
     } catch {
       alert.error("Error de conexión");

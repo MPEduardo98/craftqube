@@ -1,6 +1,7 @@
 // app/api/productos/route.ts
 import { NextResponse } from "next/server";
 import { pool }         from "@/shared/lib/db/pool";
+import { getStorePricing, toStoreCurrency } from "@/shared/lib/currency/store-currency";
 
 export async function GET() {
   try {
@@ -36,8 +37,15 @@ export async function GET() {
       ORDER BY p.created_at DESC
     `);
 
+    const pricing = await getStorePricing();
+    const data = rows.map((p) => ({
+      ...p,
+      precio:          toStoreCurrency(p.precio, pricing),
+      precio_original: toStoreCurrency(p.precio_original, pricing),
+    }));
+
     return NextResponse.json(
-      { success: true, data: rows },
+      { success: true, data },
       { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
     );
   } catch (error) {

@@ -22,8 +22,8 @@ function dbConfig(): mysql.ConnectionOptions {
 
 /* ── GET — listar direcciones ─────────────────────────────── */
 export async function GET() {
-  const session = await getSessionUser();
-  if (!session) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ success: false, error: "No autenticado" }, { status: 401 });
   }
 
@@ -40,7 +40,7 @@ export async function GET() {
        WHERE usuario_id = ?
        ORDER BY es_predeterminada DESC, created_at DESC
        LIMIT 10`,
-      [Number(session.sub)]
+      [Number(user.id)]
     );
 
     return NextResponse.json({ success: true, data: rows });
@@ -54,10 +54,11 @@ export async function GET() {
 
 /* ── POST — guardar nueva dirección ──────────────────────── */
 export async function POST(req: NextRequest) {
-  const session = await getSessionUser();
-  if (!session) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ success: false, error: "No autenticado" }, { status: 401 });
   }
+  const userId = Number(user.id);
 
   let conn: mysql.Connection | undefined;
   try {
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
       await conn.execute(
         `UPDATE direcciones SET es_predeterminada = 0
          WHERE usuario_id = ? AND tipo IN ('envio', 'ambos')`,
-        [Number(session.sub)]
+        [userId]
       );
     }
 
@@ -110,7 +111,7 @@ export async function POST(req: NextRequest) {
           referencias, es_predeterminada, tipo)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
-        Number(session.sub), alias, nombre, apellido, empresa, telefono,
+        userId, alias, nombre, apellido, empresa, telefono,
         calle, numero_ext, numero_int, colonia, ciudad,
         municipio, estado, codigo_postal, pais,
         referencias, es_predeterminada ? 1 : 0, tipo,

@@ -58,7 +58,7 @@ export function PrivacidadContent() {
           items={[
             "Datos de identificación: nombre completo, correo electrónico, número telefónico.",
             "Datos de ubicación: dirección de envío, ciudad, estado, código postal.",
-            "Datos de pago: procesados de forma segura por Shopify Payments o PayPal; CraftQube no almacena datos financieros.",
+            "Datos de pago: procesados de forma segura por Stripe; CraftQube no almacena datos financieros.",
             "Datos de navegación: dirección IP, tipo de dispositivo, páginas visitadas, tiempo de sesión (mediante cookies).",
             "Datos de cuenta: historial de pedidos, preferencias y comunicaciones.",
           ]}
@@ -116,7 +116,7 @@ export function PrivacidadContent() {
         <PolicyList
           items={[
             "Empresas de mensajería (Paquetexpress, Estafeta, JT Express) para la entrega de pedidos.",
-            "Plataformas de pago (Shopify Payments, PayPal) para el procesamiento de transacciones.",
+            "Plataformas de pago (Stripe) para el procesamiento de transacciones.",
             "Autoridades competentes cuando sea requerido por ley.",
           ]}
         />

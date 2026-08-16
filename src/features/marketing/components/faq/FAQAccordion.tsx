@@ -35,7 +35,7 @@ const FAQ_ITEMS = [
       },
       {
         q: "¿Cuáles son las opciones de pago disponibles?",
-        a: "Aceptamos tarjetas de crédito, débito, PayPal y transferencias bancarias.",
+        a: "Aceptamos tarjetas de crédito y débito, transferencias SPEI y pagos en efectivo en OXXO.",
       },
       {
         q: "¿Tienen descuentos para compras al mayoreo?",

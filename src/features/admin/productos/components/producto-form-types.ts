@@ -1,6 +1,11 @@
 // app/admin/productos/components/producto-form-types.ts
 
 /* ── Tipos exportados ──────────────────────────────────────── */
+export interface AtributoVarianteForm {
+  nombre: string;   // p. ej. "Color"
+  valor:  string;   // p. ej. "Negro"
+}
+
 export interface VarianteForm {
   id?:                   number;
   nombre:                string;
@@ -12,14 +17,23 @@ export interface VarianteForm {
   stock:                 string;
   es_default:            boolean;
   vender_sin_existencia: boolean;
-  // Dimensiones (producto_dimensiones)
-  largo:                 string;
-  ancho:                 string;
-  alto:                  string;
-  peso:                  string;
-  medida_unidad:         string;
-  peso_unidad:           string;
-  es_fisico:             boolean;
+  // Imagen representativa de la variante (URL; "" = sin imagen propia)
+  imagen:                string;
+  // Atributos que distinguen la variante (variante_valores → selector en tienda)
+  atributos:             AtributoVarianteForm[];
+  // Especificaciones propias de la variante (producto_metacampos con variante_id)
+  metacampos:            MetacampoForm[];
+}
+
+/** Envío a nivel producto (mismas dimensiones para todas las variantes) */
+export interface EnvioForm {
+  es_fisico:     boolean;
+  largo:         string;
+  ancho:         string;
+  alto:          string;
+  peso:          string;
+  medida_unidad: string;
+  peso_unidad:   string;
 }
 
 export interface ImagenForm {
@@ -46,6 +60,7 @@ export interface ProductoFormData {
   variantes:        VarianteForm[];
   imagenes:         ImagenForm[];
   metacampos:       MetacampoForm[];
+  envio:            EnvioForm;
 }
 
 export interface Categoria { id: number; nombre: string; slug: string; }
@@ -73,13 +88,21 @@ export function emptyVariante(): VarianteForm {
     stock:                 "",
     es_default:            false,
     vender_sin_existencia: false,
-    largo:                 "",
-    ancho:                 "",
-    alto:                  "",
-    peso:                  "",
-    medida_unidad:         "cm",
-    peso_unidad:           "kg",
-    es_fisico:             true,
+    imagen:                "",
+    atributos:             [],
+    metacampos:            [],
+  };
+}
+
+export function emptyEnvio(): EnvioForm {
+  return {
+    es_fisico:     true,
+    largo:         "",
+    ancho:         "",
+    alto:          "",
+    peso:          "",
+    medida_unidad: "cm",
+    peso_unidad:   "kg",
   };
 }
 

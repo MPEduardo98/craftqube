@@ -1,4 +1,10 @@
-// app/global/context/AuthContext.tsx
+// features/auth/context/AuthContext.tsx
+// ─────────────────────────────────────────────────────────────
+// Wrapper de React sobre el cliente de Better Auth.
+// Mantiene la MISMA interfaz pública que la versión anterior
+// (usuario, cargando, autenticado, login, register, logout,
+// refreshUser) para no tocar los componentes que la consumen.
+// ─────────────────────────────────────────────────────────────
 "use client";
 
 import {
@@ -9,7 +15,8 @@ import {
   useCallback,
   ReactNode,
 } from "react";
-import type { UsuarioPublico } from "@/features/auth/types/auth";
+import { authClient }            from "@/features/auth/lib/auth-client";
+import type { UsuarioPublico }   from "@/features/auth/types/auth";
 
 interface AuthState {
   usuario:     UsuarioPublico | null;
@@ -32,6 +39,41 @@ interface RegisterInput {
   telefono?: string;
 }
 
+/* ── Mapea el user de Better Auth → UsuarioPublico ─────────── */
+type BetterAuthUser = {
+  id:            string | number;
+  email:         string;
+  name:          string;
+  emailVerified: boolean;
+  image?:        string | null;
+  createdAt?:    string | Date;
+  nombre?:       string;
+  apellido?:     string;
+  telefono?:     string | null;
+  rol?:          string;
+  estado?:       string;
+  rfc?:          string | null;
+  razon_social?: string | null;
+};
+
+function toUsuario(u: BetterAuthUser): UsuarioPublico {
+  return {
+    id:               Number(u.id),
+    email:            u.email,
+    nombre:           u.nombre   ?? u.name ?? "",
+    apellido:         u.apellido ?? "",
+    telefono:         u.telefono ?? null,
+    rol:              (u.rol    ?? "cliente") as UsuarioPublico["rol"],
+    estado:           (u.estado ?? "pendiente_verificacion") as UsuarioPublico["estado"],
+    email_verificado: Boolean(u.emailVerified),
+    avatar_url:       u.image ?? null,
+    rfc:              u.rfc ?? null,
+    razon_social:     u.razon_social ?? null,
+    ultimo_login:     null,
+    created_at:       u.createdAt ? new Date(u.createdAt).toISOString() : "",
+  };
+}
+
 const AuthContext = createContext<AuthContextValue>({
   usuario:     null,
   cargando:    true,
@@ -48,13 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const res = await fetch("/api/auth/me", { credentials: "include" });
-      if (res.ok) {
-        const json = await res.json();
-        setUsuario(json.usuario ?? null);
-      } else {
-        setUsuario(null);
-      }
+      const { data } = await authClient.getSession();
+      setUsuario(data?.user ? toUsuario(data.user as BetterAuthUser) : null);
     } catch {
       setUsuario(null);
     } finally {
@@ -65,79 +102,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => { refreshUser(); }, [refreshUser]);
 
   const login = useCallback(async (email: string, password: string) => {
-    try {
-      const res  = await fetch("/api/auth/login", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ email, password }),
-        credentials: "include",
-      });
-      const json = await res.json();
-      if (res.ok && json.success) {
-        setUsuario(json.usuario);
-        return { ok: true };
-      }
-      return { ok: false, error: json.error ?? "Error al iniciar sesión" };
-    } catch {
-      return { ok: false, error: "Error de conexión" };
+    const { data, error } = await authClient.signIn.email({ email, password });
+    if (error || !data) {
+      return { ok: false, error: error?.message ?? "Credenciales incorrectas" };
     }
-  }, []);
+    await refreshUser();
+    return { ok: true };
+  }, [refreshUser]);
 
   const register = useCallback(async (payload: RegisterInput) => {
-    console.group("🔐 [AuthContext] register()");
-    console.log("📤 Payload enviado:", {
-      nombre:   payload.nombre,
-      apellido: payload.apellido,
-      email:    payload.email,
-      telefono: payload.telefono ?? "(vacío)",
-      password: "***",
+    const { data, error } = await authClient.signUp.email({
+      email:       payload.email,
+      password:    payload.password,
+      name:        `${payload.nombre} ${payload.apellido}`.trim(),
+      nombre:      payload.nombre,
+      apellido:    payload.apellido,
+      telefono:    payload.telefono ?? undefined,
+      callbackURL: "/verificar",
     });
-
-    try {
-      const res = await fetch("/api/auth/register", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(payload),
-        credentials: "include",
-      });
-
-      console.log("📥 HTTP Status:", res.status, res.statusText);
-
-      // Leer el body como texto primero para ver exactamente qué devuelve
-      const rawText = await res.text();
-      console.log("📄 Respuesta raw:", rawText);
-
-      let json: { success?: boolean; error?: string; usuario?: UsuarioPublico };
-      try {
-        json = JSON.parse(rawText);
-        console.log("✅ JSON parseado:", json);
-      } catch (parseErr) {
-        console.error("❌ Error al parsear JSON:", parseErr);
-        console.groupEnd();
-        return { ok: false, error: "Respuesta inválida del servidor" };
-      }
-
-      if (res.ok && json.success) {
-        console.log("🎉 Registro exitoso. Usuario:", json.usuario);
-        setUsuario(json.usuario ?? null);
-        console.groupEnd();
-        return { ok: true };
-      }
-
-      console.warn("⚠️ Registro fallido. Error:", json.error);
-      console.groupEnd();
-      return { ok: false, error: json.error ?? "Error al registrarse" };
-
-    } catch (err) {
-      console.error("💥 Excepción en register fetch:", err);
-      console.groupEnd();
-      return { ok: false, error: "Error de conexión" };
+    if (error || !data) {
+      return { ok: false, error: error?.message ?? "Error al registrarse" };
     }
-  }, []);
+    await refreshUser();
+    return { ok: true };
+  }, [refreshUser]);
 
   const logout = useCallback(async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      await authClient.signOut();
     } finally {
       setUsuario(null);
     }

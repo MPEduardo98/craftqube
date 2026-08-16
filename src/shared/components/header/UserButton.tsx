@@ -160,10 +160,14 @@ export function UserButton() {
 /* ── Theme row ─────────────────────────────────────────────── */
 function ThemeRow({ isDark, onToggle }: { isDark: boolean; onToggle: () => void }) {
   return (
-    <div
+    <button
+      onClick={onToggle}
+      aria-label="Cambiar tema"
       style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "10px 20px",
+        padding: "10px 20px", width: "100%",
+        background: "none", border: "none", cursor: "pointer",
+        fontFamily: "inherit", textAlign: "left",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -177,10 +181,9 @@ function ThemeRow({ isDark, onToggle }: { isDark: boolean; onToggle: () => void 
       </div>
 
       {/* Toggle pill */}
-      <motion.button
-        onClick={onToggle}
+      <motion.span
         whileTap={{ scale: 0.93 }}
-        aria-label="Cambiar tema"
+        aria-hidden="true"
         style={{
           position: "relative",
           width: "40px",
@@ -211,8 +214,8 @@ function ThemeRow({ isDark, onToggle }: { isDark: boolean; onToggle: () => void 
               : "0 1px 3px rgba(0,0,0,0.15)",
           }}
         />
-      </motion.button>
-    </div>
+      </motion.span>
+    </button>
   );
 }
 

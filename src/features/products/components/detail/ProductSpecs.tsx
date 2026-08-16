@@ -2,11 +2,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import type { Metacampo, ProductoVariante } from "@/features/products/types/product-detail";
+import type { Metacampo, ProductoVariante, ProductoEnvio } from "@/features/products/types/product-detail";
 
 interface Props {
   metacampos:       Metacampo[];
   varianteActiva:   ProductoVariante | null;
+  envio:            ProductoEnvio | null;
 }
 
 function SpecRow({ label, value, index }: { label: string; value: string; index: number }) {
@@ -40,7 +41,7 @@ function SpecRow({ label, value, index }: { label: string; value: string; index:
   );
 }
 
-export function ProductSpecs({ metacampos, varianteActiva }: Props) {
+export function ProductSpecs({ metacampos, varianteActiva, envio }: Props) {
   const rows: { label: string; value: string }[] = [];
 
   // Product-level metacampos
@@ -53,17 +54,21 @@ export function ProductSpecs({ metacampos, varianteActiva }: Props) {
     for (const m of varianteActiva.metacampos) {
       rows.push({ label: m.llave, value: m.valor });
     }
+  }
 
-    // Dimensions
-    const d = varianteActiva;
-    if (d.largo)  rows.push({ label: "Largo",  value: `${d.largo} ${d.medida_unidad ?? "cm"}` });
-    if (d.ancho)  rows.push({ label: "Ancho",  value: `${d.ancho} ${d.medida_unidad ?? "cm"}` });
-    if (d.alto)   rows.push({ label: "Alto",   value: `${d.alto}  ${d.medida_unidad ?? "cm"}` });
-    if (d.peso)   rows.push({ label: "Peso",   value: `${d.peso}  ${d.peso_unidad   ?? "kg"}` });
+  // Dimensiones / peso a nivel producto (mismas para todas las variantes)
+  if (envio) {
+    const mu = envio.medida_unidad ?? "cm";
+    if (envio.largo) rows.push({ label: "Largo", value: `${envio.largo} ${mu}` });
+    if (envio.ancho) rows.push({ label: "Ancho", value: `${envio.ancho} ${mu}` });
+    if (envio.alto)  rows.push({ label: "Alto",  value: `${envio.alto} ${mu}` });
+    if (envio.peso)  rows.push({ label: "Peso",  value: `${envio.peso} ${envio.peso_unidad ?? "kg"}` });
+  }
 
-    // SKU
-    rows.push({ label: "SKU", value: d.sku });
-    if (d.codigo_barras) rows.push({ label: "Código de barras", value: d.codigo_barras });
+  // SKU de la variante
+  if (varianteActiva) {
+    rows.push({ label: "SKU", value: varianteActiva.sku });
+    if (varianteActiva.codigo_barras) rows.push({ label: "Código de barras", value: varianteActiva.codigo_barras });
   }
 
   if (rows.length === 0) return null;

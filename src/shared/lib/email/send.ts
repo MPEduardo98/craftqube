@@ -1,5 +1,5 @@
 // app/global/lib/email/send.ts
-import { resend, FROM_EMAIL, BASE_URL } from "./resend";
+import { resend, FROM_EMAIL } from "./resend";
 import { WelcomeEmail }                 from "./templates/WelcomeEmail";
 import { VerifyEmail }                  from "./templates/VerifyEmail";
 import { ResetPasswordEmail }           from "./templates/ResetPasswordEmail";
@@ -82,12 +82,11 @@ async function getLogoAttachment(): Promise<LogoAttachment | null> {
 
 /* ── Welcome ───────────────────────────────────────────────── */
 export async function sendWelcomeEmail(
-  to:          string,
-  nombre:      string,
-  verifyToken: string
+  to:        string,
+  nombre:    string,
+  verifyUrl: string
 ): Promise<EmailResult> {
   try {
-    const verifyUrl = `${BASE_URL}/verificar?token=${verifyToken}`;
     const logo      = await getLogoAttachment();
     const html      = await render(React.createElement(WelcomeEmail, { nombre, verifyUrl }));
 
@@ -108,12 +107,11 @@ export async function sendWelcomeEmail(
 
 /* ── Reenvío de verificación ───────────────────────────────── */
 export async function sendVerificationEmail(
-  to:          string,
-  nombre:      string,
-  verifyToken: string
+  to:        string,
+  nombre:    string,
+  verifyUrl: string
 ): Promise<EmailResult> {
   try {
-    const verifyUrl = `${BASE_URL}/verificar?token=${verifyToken}`;
     const logo      = await getLogoAttachment();
     const html      = await render(React.createElement(VerifyEmail, { nombre, verifyUrl }));
 
@@ -134,12 +132,11 @@ export async function sendVerificationEmail(
 
 /* ── Reset de contraseña ───────────────────────────────────── */
 export async function sendPasswordResetEmail(
-  to:         string,
-  nombre:     string,
-  resetToken: string
+  to:       string,
+  nombre:   string,
+  resetUrl: string
 ): Promise<EmailResult> {
   try {
-    const resetUrl = `${BASE_URL}/reset-password?token=${resetToken}`;
     const logo     = await getLogoAttachment();
     const html     = await render(React.createElement(ResetPasswordEmail, { nombre, resetUrl }));
 

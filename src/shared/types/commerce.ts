@@ -69,7 +69,9 @@ export interface ZonaEnvio {
   activa:      boolean;
 }
 
-export type TarifaTipo = "monto_fijo" | "por_peso" | "por_monto_compra" | "gratis";
+export type TarifaTipo =
+  | "monto_fijo" | "por_peso" | "por_monto_compra" | "gratis"
+  | "por_guia"   | "flete";
 
 export interface TarifaEnvio {
   id:                   number;
@@ -89,6 +91,19 @@ export interface TarifaEnvio {
 export interface OpcionEnvio extends TarifaEnvio {
   precio_calculado: number;
   envio_gratis:     boolean;
+}
+
+/** Resultado del cálculo de envío por guías (+ flete de sobredimensionados) */
+export interface CotizacionEnvio {
+  zona:                  string | null;
+  zona_id:               number | null;
+  guias:                 number;
+  peso_total_kg:         number;
+  volumen_total_m3:      number;
+  costo_guias:           number;
+  costo_flete:           number;
+  costo_total:           number;
+  hay_sobredimensionado: boolean;
 }
 
 // ─── RESEÑAS ─────────────────────────────────────────────────

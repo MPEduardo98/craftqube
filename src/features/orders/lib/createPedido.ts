@@ -19,13 +19,20 @@ function dbConfig() {
 
 /** Genera número de pedido: CQ-2026-000042 */
 async function generarNumeroPedido(conn: mysql.Connection): Promise<string> {
+  // Upsert atómico: crea la fila 'pedidos' si no existe e incrementa en una
+  // sola operación. LAST_INSERT_ID(expr) fija el valor asignado a ESTA conexión,
+  // que el SELECT siguiente recupera sin condiciones de carrera entre pedidos
+  // concurrentes. (El UPDATE anterior fallaba silenciosamente si la fila no
+  // existía, devolviendo siempre 1 → colisiones en uq_numero.)
   await conn.execute(
-    "UPDATE `secuencias` SET `valor` = `valor` + 1 WHERE `nombre` = 'pedidos'"
+    `INSERT INTO \`secuencias\` (\`nombre\`, \`valor\`)
+       VALUES ('pedidos', LAST_INSERT_ID(1))
+     ON DUPLICATE KEY UPDATE \`valor\` = LAST_INSERT_ID(\`valor\` + 1)`
   );
   const [rows] = await conn.execute<mysql.RowDataPacket[]>(
-    "SELECT `valor` FROM `secuencias` WHERE `nombre` = 'pedidos'"
+    "SELECT LAST_INSERT_ID() AS `valor`"
   );
-  const seq    = (rows[0]?.valor as number) ?? 1;
+  const seq    = Number(rows[0]?.valor ?? 1);
   const year   = new Date().getFullYear();
   const padded = String(seq).padStart(6, "0");
   return `CQ-${year}-${padded}`;

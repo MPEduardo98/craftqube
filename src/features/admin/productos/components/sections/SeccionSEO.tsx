@@ -1,9 +1,14 @@
 // app/admin/productos/components/sections/SeccionSEO.tsx
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { SectionCard } from "../producto-form-ui";
 import { inputCls, textareaCls } from "../producto-form-types";
+
+/** Convierte el HTML de la descripción a texto plano recortado a 160 chars. */
+function toMetaDescripcion(html: string): string {
+  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
+}
 
 interface Props {
   slug:                string;
@@ -27,16 +32,38 @@ export function SeccionSEO({
   onMetaDescripcion,
 }: Props) {
 
-  useEffect(() => {
-    if (!meta_titulo && tituloFallback) onMetaTitulo(tituloFallback);
-  }, [tituloFallback]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ── Auto-duplicado título/descripción → meta ──────────────────
+  // Mientras el usuario NO haya editado manualmente el campo meta, este
+  // refleja en vivo el título / descripción principal. Cuando el usuario
+  // escribe algo propio se marca como "tocado" y deja de sincronizarse,
+  // para no pisar lo que escribió. Si lo vuelve a vaciar, retoma el
+  // duplicado automático.
+  //
+  // En modo edición, un meta ya guardado (no vacío) se considera tocado de
+  // entrada, así que nunca se sobreescribe al cambiar el título.
+  const [tituloTouched, setTituloTouched] = useState(() => meta_titulo.trim() !== "");
+  const [descTouched,   setDescTouched]   = useState(() => meta_descripcion.trim() !== "");
 
   useEffect(() => {
-    if (!meta_descripcion && descripcionFallback) {
-      const texto = descripcionFallback.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-      onMetaDescripcion(texto.slice(0, 160));
-    }
-  }, [descripcionFallback]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (tituloTouched) return;
+    if (meta_titulo !== tituloFallback) onMetaTitulo(tituloFallback);
+  }, [tituloFallback, tituloTouched]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (descTouched) return;
+    const texto = toMetaDescripcion(descripcionFallback);
+    if (meta_descripcion !== texto) onMetaDescripcion(texto);
+  }, [descripcionFallback, descTouched]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleMetaTitulo = (v: string) => {
+    setTituloTouched(v.trim() !== ""); // vacío → retoma duplicado automático
+    onMetaTitulo(v);
+  };
+
+  const handleMetaDescripcion = (v: string) => {
+    setDescTouched(v.trim() !== "");
+    onMetaDescripcion(v);
+  };
 
   const tituloDisplay      = meta_titulo      || tituloFallback || "";
   const descripcionDisplay = meta_descripcion || "";
@@ -51,7 +78,7 @@ export function SeccionSEO({
           <input
             type="text"
             value={meta_titulo}
-            onChange={(e) => onMetaTitulo(e.target.value)}
+            onChange={(e) => handleMetaTitulo(e.target.value)}
             placeholder={tituloFallback || "Meta título del producto"}
             className={inputCls}
             maxLength={100}
@@ -69,7 +96,7 @@ export function SeccionSEO({
           <label className="block text-sm font-medium text-slate-700">Meta descripción</label>
           <textarea
             value={meta_descripcion}
-            onChange={(e) => onMetaDescripcion(e.target.value)}
+            onChange={(e) => handleMetaDescripcion(e.target.value)}
             rows={4}
             placeholder="Descripción breve para motores de búsqueda…"
             className={textareaCls}

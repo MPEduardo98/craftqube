@@ -2,6 +2,7 @@
 import { pool } from "@/shared/lib/db/pool";
 import type { RowDataPacket } from "mysql2";
 import type { Producto }      from "@/features/products/types/product";
+import { getStorePricing, toStoreCurrency } from "@/shared/lib/currency/store-currency";
 
 export interface CatalogoFiltros {
   q?:         string;
@@ -116,5 +117,13 @@ export async function getProductosCatalogo({
   const total = (countRows[0]?.total as number) ?? 0;
   const pages = Math.ceil(total / safeLimit);
 
-  return { productos: rows as Producto[], total, pages };
+  // Convertir precios de moneda de captura → moneda de la tienda
+  const pricing   = await getStorePricing();
+  const productos = (rows as Producto[]).map((p) => ({
+    ...p,
+    precio:          toStoreCurrency(p.precio, pricing),
+    precio_original: toStoreCurrency(p.precio_original, pricing),
+  }));
+
+  return { productos, total, pages };
 }

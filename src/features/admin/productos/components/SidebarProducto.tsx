@@ -4,7 +4,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { SectionCard, Field } from "./producto-form-ui";
-import { inputCls, slugify, type Categoria, type Marca } from "./producto-form-types";
+import { inputCls, type Categoria, type Marca } from "./producto-form-types";
+import { ModalCrearMarca } from "./modals/ModalCrearMarca";
+import { ModalCrearCategoria } from "./modals/ModalCrearCategoria";
 
 /* ── MarcaSelector ─────────────────────────────────────────── */
 function MarcaSelector({
@@ -153,14 +155,9 @@ function CategorySelector({
   selected: number[];
   onChange: (ids: number[]) => void;
 }) {
-  const [open,      setOpen]      = useState(false);
-  const [search,    setSearch]    = useState("");
-  const [creating,  setCreating]  = useState(false);
-  const [newName,   setNewName]   = useState("");
-  const [saving,    setSaving]    = useState(false);
-  const [localAll,  setLocalAll]  = useState<Categoria[]>(all);
-  const [createErr, setCreateErr] = useState("");
-  const [dropPos,   setDropPos]   = useState({ top: 0, left: 0, width: 0 });
+  const [open,    setOpen]    = useState(false);
+  const [search,  setSearch]  = useState("");
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropRef    = useRef<HTMLDivElement>(null);
@@ -171,7 +168,7 @@ function CategorySelector({
     setDropPos({ top: r.bottom + window.scrollY + 4, left: r.left + window.scrollX, width: r.width });
   }, []);
 
-  const handleOpen = () => { recalcPos(); setOpen((v) => !v); setCreating(false); setSearch(""); };
+  const handleOpen = () => { recalcPos(); setOpen((v) => !v); setSearch(""); };
 
   useEffect(() => {
     if (!open) return;
@@ -185,40 +182,20 @@ function CategorySelector({
     function handle(e: MouseEvent) {
       const t = e.target as Node;
       if (dropRef.current && !dropRef.current.contains(t) && triggerRef.current && !triggerRef.current.contains(t)) {
-        setOpen(false); setCreating(false); setSearch("");
+        setOpen(false); setSearch("");
       }
     }
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
   }, [open]);
 
-  const filtered = localAll.filter((c) => c.nombre.toLowerCase().includes(search.toLowerCase()));
+  const filtered = all.filter((c) => c.nombre.toLowerCase().includes(search.toLowerCase()));
 
   const toggle = (id: number) => {
     onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
   };
 
-  const handleCreate = async () => {
-    const nombre = newName.trim();
-    if (!nombre) return;
-    setSaving(true);
-    setCreateErr("");
-    try {
-      const res  = await fetch("/api/admin/categorias", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, slug: slugify(nombre) }),
-      });
-      const json = await res.json();
-      if (!json.success) { setCreateErr(json.error ?? "Error al crear categoría"); return; }
-      const nueva: Categoria = json.data;
-      setLocalAll((prev) => [...prev, nueva].sort((a, b) => a.nombre.localeCompare(b.nombre)));
-      onChange([...selected, nueva.id]);
-      setNewName(""); setCreating(false);
-    } catch { setCreateErr("Error de conexión"); }
-    finally { setSaving(false); }
-  };
-
-  const selectedNames = localAll.filter((c) => selected.includes(c.id)).map((c) => c.nombre);
+  const selectedNames = all.filter((c) => selected.includes(c.id)).map((c) => c.nombre);
 
   const dropdown = open ? createPortal(
     <div
@@ -257,44 +234,6 @@ function CategorySelector({
               </button>
             );
           })
-        )}
-      </div>
-
-      <div className="border-t border-slate-100 p-2">
-        {!creating ? (
-          <button type="button" onClick={() => { setCreating(true); setCreateErr(""); }}
-            className="w-full text-xs text-indigo-600 hover:text-indigo-700 font-medium py-1.5 flex items-center justify-center gap-1"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Nueva categoría
-          </button>
-        ) : (
-          <div className="space-y-2">
-            {createErr && <p className="text-xs text-red-500 px-1">{createErr}</p>}
-            <div className="flex gap-2">
-              <input
-                autoFocus type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCreate(); } }}
-                placeholder="Nombre de categoría"
-                className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition placeholder:text-slate-300"
-              />
-              <button type="button" onClick={handleCreate} disabled={saving || !newName.trim()}
-                className="px-3 py-2 bg-indigo-500 text-white text-xs font-medium rounded-lg hover:bg-indigo-600 disabled:opacity-50 transition"
-              >
-                {saving ? "…" : "Crear"}
-              </button>
-              <button type="button" onClick={() => { setCreating(false); setCreateErr(""); setNewName(""); }}
-                className="px-3 py-2 border border-slate-200 text-slate-500 text-xs rounded-lg hover:bg-slate-50 transition"
-              >
-                ✕
-              </button>
-            </div>
-            {newName.trim() && (
-              <p className="text-xs text-slate-400 px-1">Slug: <span className="font-mono">{slugify(newName)}</span></p>
-            )}
-          </div>
         )}
       </div>
     </div>,
@@ -338,6 +277,28 @@ export function SidebarProducto({
   estado, marca_id, categorias, marcas, todasCategorias,
   onEstado, onMarca, onCategorias,
 }: Props) {
+  // Marcas locales: parten de las del servidor y crecen al crear una nueva.
+  const [localMarcas, setLocalMarcas] = useState<Marca[]>(marcas);
+  const [marcaModalOpen, setMarcaModalOpen] = useState(false);
+
+  const handleMarcaCreated = (marca: Marca) => {
+    setLocalMarcas((prev) =>
+      [...prev, marca].sort((a, b) => a.nombre.localeCompare(b.nombre))
+    );
+    onMarca(String(marca.id)); // seleccionar la marca recién creada
+  };
+
+  // Categorías locales: igual que marcas, crecen al crear una nueva.
+  const [localCategorias, setLocalCategorias] = useState<Categoria[]>(todasCategorias);
+  const [categoriaModalOpen, setCategoriaModalOpen] = useState(false);
+
+  const handleCategoriaCreated = (categoria: Categoria) => {
+    setLocalCategorias((prev) =>
+      [...prev, categoria].sort((a, b) => a.nombre.localeCompare(b.nombre))
+    );
+    onCategorias([...categorias, categoria.id]); // seleccionar la recién creada
+  };
+
   return (
     <div className="space-y-5">
 
@@ -370,11 +331,43 @@ export function SidebarProducto({
         <div className="space-y-4">
 
           <Field label="Marca">
-            <MarcaSelector all={marcas} value={marca_id} onChange={onMarca} />
+            <div className="flex items-stretch gap-2">
+              <div className="flex-1 min-w-0">
+                <MarcaSelector all={localMarcas} value={marca_id} onChange={onMarca} />
+              </div>
+              <button
+                type="button"
+                onClick={() => setMarcaModalOpen(true)}
+                aria-label="Crear marca"
+                title="Crear nueva marca"
+                className="shrink-0 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-indigo-600 transition"
+                style={{ width: "38px" }}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </div>
           </Field>
 
           <Field label="Categorías">
-            <CategorySelector all={todasCategorias} selected={categorias} onChange={onCategorias} />
+            <div className="flex items-stretch gap-2">
+              <div className="flex-1 min-w-0">
+                <CategorySelector all={localCategorias} selected={categorias} onChange={onCategorias} />
+              </div>
+              <button
+                type="button"
+                onClick={() => setCategoriaModalOpen(true)}
+                aria-label="Crear categoría"
+                title="Crear nueva categoría"
+                className="shrink-0 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-indigo-600 transition"
+                style={{ width: "38px" }}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </div>
             {categorias.length > 0 && (
               <p className="text-xs text-slate-400 mt-1">
                 {categorias.length} categoría{categorias.length !== 1 ? "s" : ""} seleccionada{categorias.length !== 1 ? "s" : ""}
@@ -384,6 +377,18 @@ export function SidebarProducto({
 
         </div>
       </SectionCard>
+
+      <ModalCrearMarca
+        open={marcaModalOpen}
+        onClose={() => setMarcaModalOpen(false)}
+        onCreated={handleMarcaCreated}
+      />
+
+      <ModalCrearCategoria
+        open={categoriaModalOpen}
+        onClose={() => setCategoriaModalOpen(false)}
+        onCreated={handleCategoriaCreated}
+      />
 
     </div>
   );

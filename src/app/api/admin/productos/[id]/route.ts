@@ -2,6 +2,12 @@
 import { NextRequest, NextResponse }                  from "next/server";
 import { pool }                                       from "@/shared/lib/db/pool";
 import type { RowDataPacket, ResultSetHeader }        from "mysql2";
+import {
+  syncProductoEnvio,
+  syncVarianteAtributos,
+  syncVarianteMetacampos,
+  syncVarianteImagen,
+}                                                     from "@/features/admin/productos/lib/variante-sync";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -63,12 +69,14 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const {
       titulo, slug, estado, marca_id, descripcion,
       meta_titulo, meta_descripcion,
-      categorias = [], variantes = [], imagenes = [], metacampos = [],
+      categorias = [], variantes = [], imagenes = [], metacampos = [], envio = null,
     } = body;
 
     if (!titulo?.trim() || !slug?.trim()) {
       return NextResponse.json({ success: false, error: "Título y slug son requeridos" }, { status: 400 });
     }
+
+    const marcaId = marca_id ? Number(marca_id) : null;
 
     await conn.beginTransaction();
 
@@ -78,7 +86,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
          titulo = ?, slug = ?, estado = ?, marca_id = ?, descripcion = ?,
          meta_titulo = ?, meta_descripcion = ?, updated_at = NOW()
        WHERE id = ?`,
-      [titulo, slug, estado, marca_id ?? null, descripcion ?? null,
+      [titulo, slug, estado, marcaId, descripcion ?? null,
        meta_titulo ?? null, meta_descripcion ?? null, productoId]
     );
 
@@ -88,18 +96,23 @@ export async function PUT(req: NextRequest, { params }: Params) {
       await conn.execute("INSERT INTO producto_categorias (producto_id, categoria_id) VALUES (?, ?)", [productoId, catId]);
     }
 
-    // 3. Variantes
+    // 3. Variantes (+ dimensiones, atributos y metacampos por variante)
     const variantesExistentes = variantes.filter((v: { id?: number }) => v.id);
     const variantesNuevas     = variantes.filter((v: { id?: number }) => !v.id);
     const idsActualizados     = variantesExistentes.map((v: { id: number }) => v.id);
 
-    if (idsActualizados.length > 0) {
-      await conn.execute(
-        `DELETE FROM producto_variantes WHERE producto_id = ? AND id NOT IN (${idsActualizados.map(() => "?").join(",")})`,
-        [productoId, ...idsActualizados]
-      );
-    } else {
-      await conn.execute("DELETE FROM producto_variantes WHERE producto_id = ?", [productoId]);
+    // Eliminar variantes que ya no están, junto con sus filas hijas
+    const [variantesActuales] = await conn.execute<RowDataPacket[]>(
+      "SELECT id FROM producto_variantes WHERE producto_id = ?", [productoId]
+    );
+    const idsAEliminar = variantesActuales
+      .map((r) => r.id as number)
+      .filter((vid) => !idsActualizados.includes(vid));
+    for (const delId of idsAEliminar) {
+      await conn.execute("DELETE FROM variante_valores   WHERE variante_id = ?", [delId]);
+      await conn.execute("DELETE FROM producto_metacampos WHERE variante_id = ?", [delId]);
+      await conn.execute("DELETE FROM producto_imagenes   WHERE variante_id = ?", [delId]);
+      await conn.execute("DELETE FROM producto_variantes  WHERE id = ? AND producto_id = ?", [delId, productoId]);
     }
 
     for (const v of variantesExistentes) {
@@ -114,10 +127,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
          v.es_default ? 1 : 0, v.vender_sin_existencia ? 1 : 0,
          v.id, productoId]
       );
+      await syncVarianteAtributos(conn, v.id, v.atributos ?? []);
+      await syncVarianteMetacampos(conn, productoId, v.id, v.metacampos ?? []);
+      await syncVarianteImagen(conn, productoId, v.id, v.imagen, v.nombre);
     }
 
     for (const v of variantesNuevas) {
-      await conn.execute(
+      const [varRes] = await conn.execute<ResultSetHeader>(
         `INSERT INTO producto_variantes
            (producto_id, sku, codigo_barras, precio_original, precio_final, costo, stock, es_default, vender_sin_existencia)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -126,7 +142,14 @@ export async function PUT(req: NextRequest, { params }: Params) {
          Number(v.costo) || 0, Number(v.stock) || 0,
          v.es_default ? 1 : 0, v.vender_sin_existencia ? 1 : 0]
       );
+      const varianteId = varRes.insertId;
+      await syncVarianteAtributos(conn, varianteId, v.atributos ?? []);
+      await syncVarianteMetacampos(conn, productoId, varianteId, v.metacampos ?? []);
+      await syncVarianteImagen(conn, productoId, varianteId, v.imagen, v.nombre);
     }
+
+    // Envío (a nivel producto)
+    await syncProductoEnvio(conn, productoId, envio);
 
     // 4. Imágenes — guarda la URL tal cual (R2 completa o nombre local)
     await conn.execute(
@@ -168,6 +191,72 @@ export async function PUT(req: NextRequest, { params }: Params) {
     );
   } finally {
     conn.release();
+  }
+}
+
+/* ── PATCH: edición rápida en línea (titulo, estado, precio, stock) ── */
+const ESTADOS_VALIDOS = new Set(["activo", "inactivo", "borrador"]);
+
+export async function PATCH(req: NextRequest, { params }: Params) {
+  const { id } = await params;
+  const productoId = Number(id);
+  if (!productoId) return NextResponse.json({ success: false, error: "ID inválido" }, { status: 400 });
+
+  const body = await req.json();
+  const { titulo, estado, precio, stock } = body as {
+    titulo?: string; estado?: string; precio?: number | null; stock?: number;
+  };
+
+  const sets: string[] = [];
+  const values: (string)[] = [];
+
+  if (titulo !== undefined) {
+    if (!titulo.trim()) return NextResponse.json({ success: false, error: "Título requerido" }, { status: 400 });
+    sets.push("titulo = ?");
+    values.push(titulo);
+  }
+  if (estado !== undefined) {
+    if (!ESTADOS_VALIDOS.has(estado)) return NextResponse.json({ success: false, error: "Estado inválido" }, { status: 400 });
+    sets.push("estado = ?");
+    values.push(estado);
+  }
+
+  try {
+    if (sets.length) {
+      sets.push("updated_at = NOW()");
+      await pool.execute(
+        `UPDATE productos SET ${sets.join(", ")} WHERE id = ? AND deleted_at IS NULL`,
+        [...values, productoId]
+      );
+    }
+
+    if (precio !== undefined || stock !== undefined) {
+      const [variantes] = await pool.execute<RowDataPacket[]>(
+        "SELECT id FROM producto_variantes WHERE producto_id = ?",
+        [productoId]
+      );
+      if (variantes.length === 0) {
+        return NextResponse.json({ success: false, error: "El producto no tiene variantes" }, { status: 400 });
+      }
+      if (variantes.length > 1) {
+        return NextResponse.json({ success: false, error: "MULTIPLE_VARIANTES" }, { status: 409 });
+      }
+
+      const varSets: string[] = [];
+      const varValues: number[] = [];
+      if (precio !== undefined) { varSets.push("precio_final = ?"); varValues.push(precio ?? 0); }
+      if (stock  !== undefined) { varSets.push("stock = ?");        varValues.push(stock); }
+
+      await pool.execute(
+        `UPDATE producto_variantes SET ${varSets.join(", ")} WHERE id = ?`,
+        [...varValues, variantes[0].id]
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("[PATCH /api/admin/productos/[id]]", err);
+    return NextResponse.json({ success: false, error: "Error interno" }, { status: 500 });
   }
 }
 

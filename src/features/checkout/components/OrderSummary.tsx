@@ -6,6 +6,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/features/cart/context/CartContext";
 import { formatPrice } from "@/shared/lib/format";
+import { resolveImageUrl } from "@/features/media/lib/resolveImageUrl";
 
 function esAtributoVisible(a: string, v: string): boolean {
   const al = a.toLowerCase().trim();
@@ -15,12 +16,17 @@ function esAtributoVisible(a: string, v: string): boolean {
   return true;
 }
 
-interface Props { compact?: boolean; }
+interface Props {
+  compact?:    boolean;
+  /** Costo de envío ya cotizado; null = aún por cotizar */
+  costoEnvio?: number | null;
+}
 
-export function OrderSummary({ compact = false }: Props) {
+export function OrderSummary({ compact = false, costoEnvio = null }: Props) {
   const { items, totalPrecio } = useCart();
   const [open, setOpen] = useState(!compact);
-  const envio = 0;
+  const envio = costoEnvio ?? 0;
+  const envioPorCotizar = costoEnvio === null;
 
   const CardWrapper = ({ children }: { children: React.ReactNode }) => (
     <div style={{
@@ -88,9 +94,7 @@ export function OrderSummary({ compact = false }: Props) {
               {/* Items */}
               <div className="px-5 py-4 flex flex-col gap-3" style={{ maxHeight: 320, overflowY: "auto" }}>
                 {items.map((item) => {
-                  const imageSrc = item.imagenNombre
-                    ? `/productos/${item.productoId}/${item.imagenNombre}`
-                    : null;
+                  const imageSrc = resolveImageUrl(item.imagenNombre, item.productoId);
                   const atributosVisibles = item.atributos.filter((a) =>
                     esAtributoVisible(a.atributo, a.valor)
                   );
@@ -144,7 +148,7 @@ export function OrderSummary({ compact = false }: Props) {
                     <span style={{ fontFamily: "var(--font-body)", fontSize: "0.82rem", color: "var(--color-cq-muted)" }}>Envío</span>
                   </div>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "var(--color-cq-muted-2)" }}>
-                    {envio === 0 ? "Por cotizar" : formatPrice(envio)}
+                    {envioPorCotizar ? "Por cotizar" : envio === 0 ? "Gratis" : formatPrice(envio)}
                   </span>
                 </div>
                 <div style={{ height: 1, background: "var(--color-cq-border)", margin: "2px 0" }} />

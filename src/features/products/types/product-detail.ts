@@ -31,14 +31,19 @@ export interface ProductoVariante {
   stock:                 number;
   es_default:            number;
   vender_sin_existencia: number;
-  largo:                 number | null;
-  ancho:                 number | null;
-  alto:                  number | null;
-  peso:                  number | null;
-  medida_unidad:         string | null;
-  peso_unidad:           string | null;
   atributos:             VarianteAtributo[];
   metacampos:            Metacampo[];
+}
+
+/** Datos de envío a nivel producto (mismas dimensiones para todas las variantes) */
+export interface ProductoEnvio {
+  es_fisico:     boolean;
+  largo:         number | null;
+  ancho:         number | null;
+  alto:          number | null;
+  peso:          number | null;
+  medida_unidad: string | null;
+  peso_unidad:   string | null;
 }
 
 export interface ProductoCategoria {
@@ -73,4 +78,5 @@ export interface ProductoDetalle {
   variantes:        ProductoVariante[];
   metacampos:       Metacampo[];
   etiquetas:        ProductoEtiqueta[];
+  envio:            ProductoEnvio | null;
 }

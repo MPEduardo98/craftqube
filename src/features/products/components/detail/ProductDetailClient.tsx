@@ -104,7 +104,7 @@ export function ProductDetailClient({ producto }: Props) {
       sku:          selectedVariante.sku,
       precio,
       cantidad,
-      imagenNombre: imagenActiva?.url.split("/").pop() ?? null,
+      imagenNombre: imagenActiva?.url ?? null,
       imagenAlt:    imagenActiva?.alt ?? null,
       atributos:    selectedVariante.atributos.map((a) => ({ atributo: a.atributo, valor: a.valor })),
     });
@@ -118,7 +118,7 @@ export function ProductDetailClient({ producto }: Props) {
       slug:         producto.slug,
       titulo:       producto.titulo,
       precio,
-      imagenNombre: imagenActiva?.url.split("/").pop() ?? null,
+      imagenNombre: imagenActiva?.url ?? null,
       imagenAlt:    imagenActiva?.alt ?? null,
       marca:        producto.marca ?? null,
     });
@@ -327,9 +327,9 @@ export function ProductDetailClient({ producto }: Props) {
             </motion.div>
 
             {/* Especificaciones */}
-            {(producto.metacampos.length > 0 || selectedVariante) && (
+            {(producto.metacampos.length > 0 || selectedVariante || producto.envio) && (
               <motion.div {...fadeUp(0.42)}>
-                <ProductSpecs metacampos={producto.metacampos} varianteActiva={selectedVariante} />
+                <ProductSpecs metacampos={producto.metacampos} varianteActiva={selectedVariante} envio={producto.envio} />
               </motion.div>
             )}
           </div>

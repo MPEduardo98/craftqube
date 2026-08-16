@@ -10,7 +10,7 @@ interface NavMenuProps {
 }
 
 const simpleLinks = [
-  { label: "Nosotros", href: "/nosotros" },
+  { label: "Nosotros", href: "/about/nosotros" },
   { label: "Contacto", href: "/contacto" },
 ];
 

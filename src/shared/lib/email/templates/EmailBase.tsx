@@ -50,7 +50,7 @@ export function EmailBase({ subtitulo, titulo, footerText, children }: Props) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>{titulo} — Craftqube</title>
+        <title>{`${titulo} — Craftqube`}</title>
         <style>{`body { margin: 0; padding: 0; } img { border: 0; display: block; }`}</style>
       </head>
       <body style={{ margin: 0, padding: 0, backgroundColor: "#f1f5f9", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>

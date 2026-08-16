@@ -97,6 +97,7 @@ interface Props {
   contactoNombre: string;
   orderNumber:    string;
   envioData:      DatosEnvio;
+  costoEnvio:     number;
 }
 
 type Metodo = "tarjeta" | "transferencia" | "oxxo";
@@ -110,12 +111,13 @@ const METODOS: { id: Metodo; label: string; icon: string; desc: string }[] = [
 /* ══════════════════════════════════════════════════════════ */
 /* Panel Tarjeta                                              */
 /* ══════════════════════════════════════════════════════════ */
-function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError, orderNumber, email, nombre, envioData }: {
+function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError, orderNumber, email, nombre, envioData, costoEnvio }: {
   cardName: string; onCardNameChange: (v: string) => void;
   onSuccess: (piId: string) => void; onError: (msg: string) => void;
-  orderNumber: string; email: string; nombre: string; envioData: DatosEnvio;
+  orderNumber: string; email: string; nombre: string; envioData: DatosEnvio; costoEnvio: number;
 }) {
   const { totalPrecio, items } = useCart();
+  const total = totalPrecio + costoEnvio;
   const [stripe,   setStripe]   = useState<StripeInstance | null>(null);
   const [elements, setElements] = useState<StripeElements | null>(null);
   const [cardEl,   setCardEl]   = useState<StripeCardNumberElement | null>(null);
@@ -153,7 +155,7 @@ function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError, orderNum
     try {
       const res = await fetch("/api/stripe/create-payment-intent", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: totalPrecio, currency: "mxn" }),
+        body: JSON.stringify({ amount: total, currency: "mxn" }),
       });
       const { clientSecret, error: serverError } = await res.json();
       if (serverError) throw new Error(serverError);
@@ -162,7 +164,7 @@ function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError, orderNum
       });
       if (error) throw new Error(error.message ?? "Error al procesar el pago.");
       if (paymentIntent?.status === "succeeded") {
-        enviarEmailConfirmacion({ orderNumber, email, nombre, total: totalPrecio, items, envio: envioData, metodo: "tarjeta" });
+        enviarEmailConfirmacion({ orderNumber, email, nombre, total, items, envio: envioData, metodo: "tarjeta" });
         onSuccess(paymentIntent.id);
       } else {
         throw new Error("El pago no fue completado.");
@@ -170,7 +172,7 @@ function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError, orderNum
     } catch (err: unknown) {
       onError(err instanceof Error ? err.message : "Error inesperado.");
     } finally { setPaying(false); }
-  }, [stripe, elements, cardEl, cardName, totalPrecio, items, orderNumber, email, nombre, envioData, onSuccess, onError]);
+  }, [stripe, elements, cardEl, cardName, total, items, orderNumber, email, nombre, envioData, onSuccess, onError]);
 
   const fieldBox = (id: string): React.CSSProperties => ({
     display: "flex", alignItems: "center", height: 46, padding: "0 12px", borderRadius: 10,
@@ -222,7 +224,7 @@ function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError, orderNum
         style={{ height: 52, fontFamily: "var(--font-body)", fontWeight: 600, fontSize: "0.95rem",
           background: "var(--color-cq-accent)", color: "white", border: "none",
           cursor: paying || mounting ? "not-allowed" : "pointer", opacity: paying || mounting ? 0.65 : 1 }}>
-        {paying ? <><Spinner light /> Procesando…</> : <><i className="fa-solid fa-lock" style={{ fontSize: "0.8rem" }} /> Pagar {formatPrice(totalPrecio)}</>}
+        {paying ? <><Spinner light /> Procesando…</> : <><i className="fa-solid fa-lock" style={{ fontSize: "0.8rem" }} /> Pagar {formatPrice(total)}</>}
       </motion.button>
       <div className="flex items-center justify-center gap-2">
         <i className="fa-solid fa-shield-halved" style={{ fontSize: "0.7rem", color: "var(--color-cq-muted-2)" }} />
@@ -238,13 +240,14 @@ function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError, orderNum
 /* Panel OXXO                                                 */
 /* Al generar el voucher → navega directamente a confirmación */
 /* ══════════════════════════════════════════════════════════ */
-function PanelOxxo({ email, nombre, onSuccess, onError, orderNumber, envioData }: {
+function PanelOxxo({ email, nombre, onSuccess, onError, orderNumber, envioData, costoEnvio }: {
   email: string; nombre: string;
   onSuccess: (piId: string, data: OxxoConfirmData) => void;
   onError: (msg: string) => void;
-  orderNumber: string; envioData: DatosEnvio;
+  orderNumber: string; envioData: DatosEnvio; costoEnvio: number;
 }) {
   const { totalPrecio, items } = useCart();
+  const total = totalPrecio + costoEnvio;
   const [loading, setLoading] = useState(false);
 
   const generarVoucher = async () => {
@@ -253,7 +256,7 @@ function PanelOxxo({ email, nombre, onSuccess, onError, orderNumber, envioData }
     try {
       const res  = await fetch("/api/stripe/create-oxxo-payment", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: totalPrecio, email, nombre }),
+        body: JSON.stringify({ amount: total, email, nombre }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Error al generar voucher.");
@@ -265,7 +268,7 @@ function PanelOxxo({ email, nombre, onSuccess, onError, orderNumber, envioData }
       };
 
       // Email (non-blocking)
-      enviarEmailConfirmacion({ orderNumber, email, nombre, total: totalPrecio, items, envio: envioData, metodo: "oxxo", oxxo: oxxoData });
+      enviarEmailConfirmacion({ orderNumber, email, nombre, total, items, envio: envioData, metodo: "oxxo", oxxo: oxxoData });
 
       // Ir a confirmación inmediatamente con los datos
       onSuccess(data.paymentIntentId, oxxoData);
@@ -301,13 +304,14 @@ function PanelOxxo({ email, nombre, onSuccess, onError, orderNumber, envioData }
 /* Panel SPEI                                                 */
 /* Al generar la CLABE → navega directamente a confirmación  */
 /* ══════════════════════════════════════════════════════════ */
-function PanelSpei({ email, nombre, onSuccess, onError, orderNumber, envioData }: {
+function PanelSpei({ email, nombre, onSuccess, onError, orderNumber, envioData, costoEnvio }: {
   email: string; nombre: string;
   onSuccess: (piId: string, data: SpeiConfirmData) => void;
   onError: (msg: string) => void;
-  orderNumber: string; envioData: DatosEnvio;
+  orderNumber: string; envioData: DatosEnvio; costoEnvio: number;
 }) {
   const { totalPrecio, items } = useCart();
+  const total = totalPrecio + costoEnvio;
   const [loading, setLoading] = useState(false);
 
   const generarClabe = async () => {
@@ -316,7 +320,7 @@ function PanelSpei({ email, nombre, onSuccess, onError, orderNumber, envioData }
     try {
       const res  = await fetch("/api/stripe/create-spei-payment", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: totalPrecio, email, nombre }),
+        body: JSON.stringify({ amount: total, email, nombre }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Error al generar datos SPEI.");
@@ -330,7 +334,7 @@ function PanelSpei({ email, nombre, onSuccess, onError, orderNumber, envioData }
       };
 
       // Email (non-blocking)
-      enviarEmailConfirmacion({ orderNumber, email, nombre, total: totalPrecio, items, envio: envioData, metodo: "transferencia", spei: speiData });
+      enviarEmailConfirmacion({ orderNumber, email, nombre, total, items, envio: envioData, metodo: "transferencia", spei: speiData });
 
       // Ir a confirmación inmediatamente con los datos
       onSuccess(data.paymentIntentId, speiData);
@@ -365,7 +369,7 @@ function PanelSpei({ email, nombre, onSuccess, onError, orderNumber, envioData }
 /* ══════════════════════════════════════════════════════════ */
 /* StepPago                                                   */
 /* ══════════════════════════════════════════════════════════ */
-export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contactoNombre, orderNumber, envioData }: Props) {
+export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contactoNombre, orderNumber, envioData, costoEnvio }: Props) {
   const [error,    setError]    = useState<string | null>(null);
   const [cardName, setCardName] = useState(data.nombreTarjeta ?? "");
 
@@ -444,7 +448,7 @@ export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contac
               onCardNameChange={(v) => { setCardName(v); onChange({ ...data, nombreTarjeta: v }); }}
               onSuccess={(piId) => onNext(piId)}
               onError={(msg) => setError(msg)}
-              orderNumber={orderNumber} email={contactoEmail} nombre={contactoNombre} envioData={envioData}
+              orderNumber={orderNumber} email={contactoEmail} nombre={contactoNombre} envioData={envioData} costoEnvio={costoEnvio}
             />
           </motion.div>
         )}
@@ -456,7 +460,7 @@ export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contac
               email={contactoEmail} nombre={contactoNombre}
               onSuccess={(piId, spei) => onNext(piId, { spei })}
               onError={(msg) => setError(msg)}
-              orderNumber={orderNumber} envioData={envioData}
+              orderNumber={orderNumber} envioData={envioData} costoEnvio={costoEnvio}
             />
           </motion.div>
         )}
@@ -468,7 +472,7 @@ export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contac
               email={contactoEmail} nombre={contactoNombre}
               onSuccess={(piId, oxxo) => onNext(piId, { oxxo })}
               onError={(msg) => setError(msg)}
-              orderNumber={orderNumber} envioData={envioData}
+              orderNumber={orderNumber} envioData={envioData} costoEnvio={costoEnvio}
             />
           </motion.div>
         )}

@@ -44,44 +44,23 @@ function StatusIcon({ status }: { status: "success" | "error" }) {
 function VerifyContent() {
   const searchParams = useSearchParams();
   const router       = useRouter();
-  const token        = searchParams.get("token");
 
   const [status,    setStatus]    = useState<Status>("loading");
   const [message,   setMessage]   = useState("");
   const [countdown, setCountdown] = useState(4);
 
-  /* ── Verificar token al montar ── */
+  /* ── Better Auth ya verificó el token antes de redirigir aquí ──
+     Solo leemos el resultado: si hubo problema llega con ?error=... */
   useEffect(() => {
-    if (!token) {
+    const err = searchParams.get("error");
+    if (err) {
       setStatus("error");
-      setMessage("No se encontró el token de verificación en la URL.");
-      return;
+      setMessage("El enlace de verificación es inválido o ya expiró.");
+    } else {
+      setStatus("success");
+      setMessage("Tu correo ha sido verificado correctamente.");
     }
-
-    async function verify() {
-      try {
-        const res  = await fetch("/api/auth/verify", {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ token }),
-        });
-        const data = await res.json();
-
-        if (res.ok && data.success) {
-          setStatus("success");
-          setMessage("Tu correo ha sido verificado correctamente.");
-        } else {
-          setStatus("error");
-          setMessage(data.error ?? "No fue posible verificar tu correo.");
-        }
-      } catch {
-        setStatus("error");
-        setMessage("Error de conexión. Intenta de nuevo.");
-      }
-    }
-
-    verify();
-  }, [token]);
+  }, [searchParams]);
 
   /* ── Countdown → redirect en éxito ── */
   useEffect(() => {

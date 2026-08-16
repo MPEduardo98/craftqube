@@ -49,11 +49,4 @@ export const STEPS: { id: CheckoutStep; label: string; shortLabel: string; icon:
   { id: "confirmacion", label: "Listo",     shortLabel: "Listo",    icon: "fa-check"      },
 ];
 
-export const ESTADOS_MX = [
-  "Aguascalientes","Baja California","Baja California Sur","Campeche",
-  "Chiapas","Chihuahua","Ciudad de México","Coahuila","Colima","Durango",
-  "Estado de México","Guanajuato","Guerrero","Hidalgo","Jalisco",
-  "Michoacán","Morelos","Nayarit","Nuevo León","Oaxaca","Puebla",
-  "Querétaro","Quintana Roo","San Luis Potosí","Sinaloa","Sonora",
-  "Tabasco","Tamaulipas","Tlaxcala","Veracruz","Yucatán","Zacatecas",
-];
+export { ESTADOS_MX } from "@/shared/data/estados-mx";

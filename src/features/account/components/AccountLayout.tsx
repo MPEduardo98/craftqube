@@ -62,7 +62,7 @@ export function AccountLayout({ children }: { children: React.ReactNode }) {
   const [loggingOut, setLoggingOut] = useState(false);
 
   // Las capas 1 y 2 garantizan sesión válida antes de llegar aquí.
-  // Solo esperamos a que AuthContext termine su fetch a /api/auth/me.
+  // Solo esperamos a que AuthContext resuelva la sesión de Better Auth.
   if (cargando) {
     return (
       <div style={{

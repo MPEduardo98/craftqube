@@ -5,11 +5,12 @@ import { useState, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 import {
-  slugify, emptyVariante,
+  slugify, emptyVariante, emptyEnvio,
   type ProductoFormData,
   type VarianteForm,
   type ImagenForm,
   type MetacampoForm,
+  type EnvioForm,
   type Categoria,
   type Marca,
   inputCls,
@@ -17,7 +18,7 @@ import {
 
 import { SectionCard, Field }  from "./producto-form-ui";
 import { SeccionVariantes }    from "./sections/SeccionVariantes";
-import { SeccionPrecios }      from "./sections/SeccionPrecios";
+import { SeccionPrecios, type PricingHint } from "./sections/SeccionPrecios";
 import { SeccionInventario }   from "./sections/SeccionInventario";
 import { SeccionEnvio }        from "./sections/SeccionEnvio";
 import { SeccionMultimedia }   from "./sections/multimedia/SeccionMultimedia";
@@ -30,13 +31,14 @@ import { ModalUnsavedChanges } from "@/shared/components/ui/ModalUnsavedChanges"
 import { useAlert }            from "@/shared/context/AlertContext";
 import { useUnsavedChanges }   from "@/shared/hooks/useUnsavedChanges";
 
-export type { ProductoFormData, VarianteForm, ImagenForm, MetacampoForm, Categoria, Marca };
+export type { ProductoFormData, VarianteForm, ImagenForm, MetacampoForm, EnvioForm, Categoria, Marca };
 
 interface Props {
   initialData?: Partial<ProductoFormData>;
   categorias:   Categoria[];
   marcas:       Marca[];
   mode:         "crear" | "editar";
+  pricing?:     PricingHint;
 }
 
 function buildInitialForm(initialData: Partial<ProductoFormData> | undefined, mode: "crear" | "editar"): ProductoFormData {
@@ -55,10 +57,11 @@ function buildInitialForm(initialData: Partial<ProductoFormData> | undefined, mo
       : [{ ...emptyVariante(), es_default: true }],
     imagenes:   (initialData?.imagenes   as ImagenForm[])   ?? [],
     metacampos: (initialData?.metacampos as MetacampoForm[]) ?? [],
+    envio:      (initialData?.envio       as EnvioForm)       ?? emptyEnvio(),
   };
 }
 
-export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
+export function ProductoForm({ initialData, categorias, marcas, mode, pricing }: Props) {
   const router    = useRouter();
   const alert     = useAlert();
   const [saving,        setSaving]        = useState(false);
@@ -97,6 +100,27 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
   const addVariante    = ()          => set("variantes", [...form.variantes, { ...emptyVariante() }]);
   const removeVariante = (i: number) => set("variantes", form.variantes.filter((_, idx) => idx !== i));
 
+  // Helper: reemplaza una lista anidada (atributos | metacampos) de la variante i
+  const setVarianteLista = <K extends "atributos" | "metacampos">(
+    i: number, key: K, list: VarianteForm[K],
+  ) => set("variantes", form.variantes.map((vr, idx) => idx === i ? { ...vr, [key]: list } : vr));
+
+  /* Atributos por variante (Color, Talla, …) */
+  const addVarAtributo    = (i: number) =>
+    setVarianteLista(i, "atributos", [...form.variantes[i].atributos, { nombre: "", valor: "" }]);
+  const removeVarAtributo = (i: number, ai: number) =>
+    setVarianteLista(i, "atributos", form.variantes[i].atributos.filter((_, idx) => idx !== ai));
+  const changeVarAtributo = (i: number, ai: number, k: "nombre" | "valor", v: string) =>
+    setVarianteLista(i, "atributos", form.variantes[i].atributos.map((a, idx) => idx === ai ? { ...a, [k]: v } : a));
+
+  /* Metacampos por variante */
+  const addVarMetacampo    = (i: number) =>
+    setVarianteLista(i, "metacampos", [...form.variantes[i].metacampos, { llave: "", valor: "" }]);
+  const removeVarMetacampo = (i: number, mi: number) =>
+    setVarianteLista(i, "metacampos", form.variantes[i].metacampos.filter((_, idx) => idx !== mi));
+  const changeVarMetacampo = (i: number, mi: number, k: "llave" | "valor", v: string) =>
+    setVarianteLista(i, "metacampos", form.variantes[i].metacampos.map((m, idx) => idx === mi ? { ...m, [k]: v } : m));
+
   /* ── Imágenes ──────────────────────────────────────────── */
   const addImagenes = (items: MediaItem[]) => {
     const nuevas: ImagenForm[] = items.map((item) => ({ url: item.url, alt: "", orden: 0 }));
@@ -112,6 +136,10 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
     next.splice(to, 0, moved);
     set("imagenes", next.map((img, i) => ({ ...img, orden: i })));
   };
+
+  /* ── Envío (a nivel producto) ──────────────────────────── */
+  const setEnvio = (k: keyof EnvioForm, v: string | boolean) =>
+    set("envio", { ...form.envio, [k]: v });
 
   /* ── Metacampos ────────────────────────────────────────── */
   const addMetacampo    = ()          => set("metacampos", [...form.metacampos, { llave: "", valor: "" }]);
@@ -202,8 +230,10 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
     }
   };
 
-  const isProcessing = saving || deleting;
-  const storeSlug    = form.slug ? `/producto/${form.slug}` : null;
+  const isProcessing  = saving || deleting;
+  const storeSlug     = form.slug ? `/producto/${form.slug}` : null;
+  const baseIndex     = Math.max(0, form.variantes.findIndex((v) => v.es_default));
+  const baseVariante  = form.variantes[baseIndex] ?? form.variantes[0];
 
   /* ── Render ────────────────────────────────────────────── */
   return (
@@ -286,15 +316,6 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
                 className={inputCls}
               />
             </Field>
-            <Field label="Slug *">
-              <input
-                type="text"
-                value={form.slug}
-                onChange={(e) => set("slug", e.target.value)}
-                placeholder="url-del-producto"
-                className={inputCls}
-              />
-            </Field>
             <EditorDescripcion
                 value={form.descripcion}
                 onChange={(v) => set("descripcion", v)}
@@ -312,30 +333,36 @@ export function ProductoForm({ initialData, categorias, marcas, mode }: Props) {
             onReorder={reorderImagenes}
           />
 
-          {/* 3. Precios */}
+          {/* 3-4. Precios / Inventario del producto (variante base) — siempre
+                  visibles. Las variantes adicionales se editan en su tabla. */}
           <SeccionPrecios
-            variantes={form.variantes}
-            onChange={handleVarianteChange}
+            variante={baseVariante}
+            onChange={(k, v) => handleVarianteChange(baseIndex, k, v)}
+            pricing={pricing}
           />
-
-          {/* 4. Inventario */}
           <SeccionInventario
-            variantes={form.variantes}
-            onChange={handleVarianteChange}
+            variante={baseVariante}
+            onChange={(k, v) => handleVarianteChange(baseIndex, k, v)}
           />
 
-          {/* 5. Envío */}
-          <SeccionEnvio
-            variantes={form.variantes}
-            onChange={handleVarianteChange}
-          />
+          {/* 5. Envío — SIEMPRE a nivel producto (mismas dimensiones para todas
+                 las variantes). */}
+          <SeccionEnvio envio={form.envio} onChange={setEnvio} />
 
-          {/* 6. Variantes */}
+          {/* 6. Variantes adicionales (sin la base) */}
           <SeccionVariantes
             variantes={form.variantes}
+            productoId={form.id}
             onChange={handleVarianteChange}
             onAdd={addVariante}
             onRemove={removeVariante}
+            pricing={pricing}
+            onAddAtributo={addVarAtributo}
+            onRemoveAtributo={removeVarAtributo}
+            onChangeAtributo={changeVarAtributo}
+            onAddMetacampo={addVarMetacampo}
+            onRemoveMetacampo={removeVarMetacampo}
+            onChangeMetacampo={changeVarMetacampo}
           />
 
           {/* 7. Metacampos */}

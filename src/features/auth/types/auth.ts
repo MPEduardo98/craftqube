@@ -29,51 +29,11 @@ export interface Usuario {
 /** Versión pública (sin password_hash ni notas_internas) */
 export type UsuarioPublico = Usuario;
 
-export interface Sesion {
-  id:             number;
-  usuario_id:     number;
-  refresh_token:  string;
-  ip:             string | null;
-  activa:         boolean;
-  expira_en:      string;
-  last_used_at:   string | null;
-  created_at:     string;
-}
-
-export type TokenTipo =
-  | "verificar_email"
-  | "reset_password"
-  | "magic_link"
-  | "invitacion";
-
-export interface TokenVerificacion {
-  id:         number;
-  usuario_id: number;
-  token:      string;
-  tipo:       TokenTipo;
-  usado:      boolean;
-  expira_en:  string;
-  created_at: string;
-}
-
-// ─── Payloads de API ─────────────────────────────────────────
-
+// ─── Payload de registro (usado por el formulario / AuthContext) ──
 export interface RegisterPayload {
   nombre:    string;
   apellido:  string;
   email:     string;
   password:  string;
   telefono?: string;
-}
-
-export interface LoginPayload {
-  email:    string;
-  password: string;
-}
-
-export interface AuthResponse {
-  success:      boolean;
-  accessToken?: string;
-  usuario?:     UsuarioPublico;
-  error?:       string;
 }

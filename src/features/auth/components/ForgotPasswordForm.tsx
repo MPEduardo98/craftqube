@@ -5,6 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
+import { authClient } from "@/features/auth/lib/auth-client";
 
 export function ForgotPasswordForm() {
   const [email,     setEmail]     = useState("");
@@ -26,16 +27,14 @@ export function ForgotPasswordForm() {
     if (!validate()) return;
     setLoading(true);
     try {
-      const res  = await fetch("/api/auth/recuperar-password", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ email: email.trim() }),
+      const { error: err } = await authClient.requestPasswordReset({
+        email:      email.trim(),
+        redirectTo: "/reset-password",
       });
-      const json = await res.json();
-      if (res.ok && json.success) {
-        setSent(true);
+      if (err) {
+        setError(err.message ?? "No se pudo enviar el correo");
       } else {
-        setError(json.error ?? "No se pudo enviar el correo");
+        setSent(true);
       }
     } catch {
       setError("Error de conexión. Intenta de nuevo.");

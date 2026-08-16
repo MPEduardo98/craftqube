@@ -10,9 +10,9 @@
 // y este render, redirige desde el servidor sin exponer HTML.
 // ─────────────────────────────────────────────────────────────
 import { redirect }       from "next/navigation";
-import { cookies }        from "next/headers";
-import { jwtVerify }      from "jose";
+import { headers }        from "next/headers";
 import type { Metadata }  from "next";
+import { auth }           from "@/features/auth/lib/auth";
 import { AccountLayout }  from "@/features/account/components/AccountLayout";
 
 export const metadata: Metadata = {
@@ -20,32 +20,16 @@ export const metadata: Metadata = {
   description: "Gestiona tu perfil, pedidos, favoritos y direcciones de envío",
 };
 
-const ACCESS_COOKIE = "cq_access";
-const ACCESS_SECRET = new TextEncoder().encode(
-  process.env.JWT_ACCESS_SECRET ?? "dev-access-secret-change-me"
-);
-
 export default async function CuentaLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const jar         = await cookies();
-  const accessToken = jar.get(ACCESS_COOKIE)?.value;
+  // Capa 2: verificación real de sesión en el servidor (Better Auth).
+  const session = await auth.api.getSession({ headers: await headers() });
 
-  if (!accessToken) {
+  if (!session) {
     redirect("/login?redirect=/cuenta");
-  }
-
-  try {
-    await jwtVerify(accessToken, ACCESS_SECRET);
-  } catch (err: unknown) {
-    // Token expirado: el cliente se encarga del refresh via AuthContext.
-    // Solo bloqueamos si la firma es inválida (token falsificado).
-    const isExpired = err instanceof Error && err.message.includes("exp");
-    if (!isExpired) {
-      redirect("/login?redirect=/cuenta");
-    }
   }
 
   return <AccountLayout>{children}</AccountLayout>;

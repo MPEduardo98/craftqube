@@ -1,6 +1,7 @@
 // app/global/lib/db/getProductoBySlug.ts
 import { pool }    from "@/shared/lib/db/pool";
 import type { ProductoDetalle } from "@/features/products/types/product-detail";
+import { getStorePricing, toStoreCurrency } from "@/shared/lib/currency/store-currency";
 
 export async function getProductoBySlug(slug: string): Promise<ProductoDetalle | null> {
   try {
@@ -48,10 +49,8 @@ export async function getProductoBySlug(slug: string): Promise<ProductoDetalle |
       pool.execute<any[]>(`
         SELECT
           v.id, v.sku, v.codigo_barras, v.precio_original, v.precio_final,
-          v.stock, v.es_default, v.vender_sin_existencia,
-          d.largo, d.ancho, d.alto, d.peso, d.medida_unidad, d.peso_unidad
+          v.stock, v.es_default, v.vender_sin_existencia
         FROM producto_variantes v
-        LEFT JOIN producto_dimensiones d ON d.variante_id = v.id
         WHERE v.producto_id = ?
         ORDER BY v.es_default DESC, v.id ASC
       `, [producto.id]),
@@ -98,11 +97,25 @@ export async function getProductoBySlug(slug: string): Promise<ProductoDetalle |
       });
     }
 
+    // Convertir precios de moneda de captura → moneda de la tienda
+    const pricing = await getStorePricing();
     const variantesCompletas = variantes.map((v: any) => ({
       ...v,
+      precio_final:    toStoreCurrency(v.precio_final, pricing),
+      precio_original: toStoreCurrency(v.precio_original, pricing),
       atributos:  atributosPorVariante[v.id] || [],
       metacampos: metacampos.filter((m: any) => m.variante_id === v.id),
     }));
+
+    // Envío a nivel producto
+    const [[envioRow]] = await pool.execute<any[]>(
+      `SELECT es_fisico, largo, ancho, alto, peso, medida_unidad, peso_unidad
+       FROM producto_envio WHERE producto_id = ?`,
+      [producto.id]
+    );
+    const envio = envioRow
+      ? { ...envioRow, es_fisico: Boolean(envioRow.es_fisico) }
+      : null;
 
     return {
       ...producto,
@@ -111,6 +124,7 @@ export async function getProductoBySlug(slug: string): Promise<ProductoDetalle |
       variantes:  variantesCompletas,
       metacampos: metacampos.filter((m: any) => m.variante_id === null),
       etiquetas,
+      envio,
     } as ProductoDetalle;
 
   } catch (error) {

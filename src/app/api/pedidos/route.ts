@@ -35,9 +35,9 @@ export async function POST(req: NextRequest) {
 
     // Intentar asociar usuario autenticado si viene sin usuario_id
     if (!body.usuario_id) {
-      const session = await getSessionUser();
-      if (session?.sub) {
-        body.usuario_id = Number(session.sub);
+      const user = await getSessionUser();
+      if (user?.id) {
+        body.usuario_id = Number(user.id);
       }
     }
 
@@ -64,10 +64,11 @@ export async function POST(req: NextRequest) {
 
 /* ── GET — historial de pedidos del usuario autenticado ───── */
 export async function GET(req: NextRequest) {
-  const session = await getSessionUser();
-  if (!session) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ success: false, error: "No autenticado" }, { status: 401 });
   }
+  const userId = Number(user.id);
 
   const { searchParams } = new URL(req.url);
   const page  = Math.max(1, Number(searchParams.get("page")  ?? 1));
@@ -89,12 +90,12 @@ export async function GET(req: NextRequest) {
        GROUP BY p.id
        ORDER BY p.created_at DESC
        LIMIT ? OFFSET ?`,
-      [Number(session.sub), limit, offset]
+      [userId, limit, offset]
     );
 
     const [[{ total }]] = await conn.execute<RowDataPacket[]>(
       `SELECT COUNT(*) AS total FROM pedidos WHERE usuario_id = ?`,
-      [Number(session.sub)]
+      [userId]
     ) as [RowDataPacket[], unknown];
 
     return NextResponse.json({

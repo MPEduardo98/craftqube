@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool }                       from "@/shared/lib/db/pool";
 import type { RowDataPacket }         from "mysql2";
+import { getStorePricing, toStoreCurrency } from "@/shared/lib/currency/store-currency";
 
 const ORDER_MAP: Record<string, string> = {
   reciente:    "p.created_at DESC",
@@ -99,8 +100,15 @@ export async function GET(req: NextRequest) {
     const total = (countRows[0]?.total as number) ?? 0;
     const pages = Math.ceil(total / limit);
 
+    const pricing = await getStorePricing();
+    const data = (rows as RowDataPacket[]).map((p) => ({
+      ...p,
+      precio:          toStoreCurrency(p.precio, pricing),
+      precio_original: toStoreCurrency(p.precio_original, pricing),
+    }));
+
     return NextResponse.json(
-      { success: true, data: rows, meta: { total, page, limit, pages } },
+      { success: true, data, meta: { total, page, limit, pages } },
       { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
     );
   } catch (error) {

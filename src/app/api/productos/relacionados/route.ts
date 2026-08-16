@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool }                       from "@/shared/lib/db/pool";
 import type { RowDataPacket }         from "mysql2";
+import { getStorePricing, toStoreCurrency } from "@/shared/lib/currency/store-currency";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -72,8 +73,15 @@ export async function GET(req: NextRequest) {
       LIMIT ? OFFSET ?
     `, [excluirSlug, categoriaSlug, limit, offset]);
 
+    const pricing = await getStorePricing();
+    const data = (rows as RowDataPacket[]).map((p) => ({
+      ...p,
+      precio:          toStoreCurrency(p.precio, pricing),
+      precio_original: toStoreCurrency(p.precio_original, pricing),
+    }));
+
     return NextResponse.json(
-      { success: true, data: rows },
+      { success: true, data },
       { headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600" } }
     );
   } catch (error) {
