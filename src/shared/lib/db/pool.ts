@@ -23,6 +23,10 @@ function createPool(): mysql.Pool {
     connectionLimit:   10,
     queueLimit:        0,
     connectTimeout:    10_000,
+    // Devolver DECIMAL como number y no como string. Sin esto, los precios
+    // llegan como "1000.00" y las comparaciones (precio_original > precio)
+    // se evalúan lexicográficamente: "1000.00" > "900.00" es false.
+    decimalNumbers:    true,
     // Mantener conexiones vivas
     enableKeepAlive:   true,
     keepAliveInitialDelay: 0,

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { SectionCard, Field } from "../producto-form-ui";
+import { SectionCard, Field, InfoTooltip } from "../producto-form-ui";
 import { inputSmallCls, type VarianteForm } from "../producto-form-types";
 import type { PricingHint } from "./SeccionPrecios";
 import { resolveImageUrl } from "@/features/media/lib/resolveImageUrl";
@@ -79,7 +79,20 @@ function VarianteDetalle({ v, i, p, productoId, onPick }: {
 
       {/* Precios */}
       <div className="flex flex-col gap-2">
-        <span className={subTitleCls}>Precio</span>
+        <span className={`${subTitleCls} flex items-center gap-1.5`}>
+          Precio
+          <InfoTooltip>
+            <span className="block mb-1.5">
+              <span className="font-semibold text-white">Precio final</span> — lo que el cliente paga. Es el único obligatorio.
+            </span>
+            <span className="block mb-1.5">
+              <span className="font-semibold text-white">Precio original</span> — precio de lista tachado en la tienda. Déjalo en 0 si no hay oferta; si lo pones mayor al final, se muestra tachado con el % de descuento.
+            </span>
+            <span className="block">
+              <span className="font-semibold text-white">Costo</span> — uso interno. Nunca se muestra en la tienda; solo sirve para calcular el margen.
+            </span>
+          </InfoTooltip>
+        </span>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <Field label="Precio original">
             <div className="relative">

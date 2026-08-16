@@ -23,6 +23,36 @@ export function SectionCard({ title, children, action }: {
   );
 }
 
+/* ── InfoTooltip ───────────────────────────────────────────── */
+// Icono "i" que revela un panel de ayuda al pasar el mouse (o al enfocar
+// con teclado). El panel se ancla a la derecha por defecto para no salirse
+// del contenedor cuando el icono está pegado al borde de la tarjeta.
+export function InfoTooltip({ children, align = "right", width = 420 }: {
+  children: React.ReactNode;
+  align?:   "left" | "right";
+  width?:   number;
+}) {
+  return (
+    <span className="relative inline-flex group align-middle">
+      <button
+        type="button"
+        aria-label="Más información"
+        className="w-4 h-4 rounded-full border border-slate-300 text-slate-400 text-[0.6rem] font-semibold leading-none flex items-center justify-center cursor-help transition-colors hover:border-indigo-400 hover:text-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+        onClick={(e) => e.preventDefault()}
+      >
+        i
+      </button>
+      <span
+        role="tooltip"
+        className={`pointer-events-none absolute z-30 top-full mt-1.5 ${align === "right" ? "left-0" : "right-0"} rounded-lg bg-slate-800 text-slate-100 px-3 py-2 text-[0.7rem] leading-relaxed font-normal normal-case tracking-normal text-left shadow-lg opacity-0 invisible translate-y-0.5 transition-all duration-150 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:visible group-focus-within:translate-y-0`}
+        style={{ width, maxWidth: "calc(100vw - 3rem)" }}
+      >
+        {children}
+      </span>
+    </span>
+  );
+}
+
 /* ── Field ─────────────────────────────────────────────────── */
 export function Field({ label, required, children, hint }: {
   label:     string;

@@ -79,8 +79,8 @@ export function ProductDetailClient({ producto }: Props) {
   const [added,    setAdded]    = useState(false);
   const [cantidad, setCantidad] = useState(1);
 
-  const precio         = selectedVariante?.precio_final    ?? 0;
-  const precioOriginal = selectedVariante?.precio_original ?? 0;
+  const precio         = Number(selectedVariante?.precio_final    ?? 0);
+  const precioOriginal = Number(selectedVariante?.precio_original ?? 0);
   const stock          = selectedVariante?.stock           ?? 0;
   const tieneStock     = stock > 0 || (selectedVariante?.vender_sin_existencia === 1);
   const tieneDescuento = precioOriginal > precio && precioOriginal > 0;

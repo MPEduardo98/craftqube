@@ -197,7 +197,7 @@ function ProductoCard({
                 >
                   ${Number(precio).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
                 </span>
-                {precio_original != null && precio_original > precio && (
+                {precio_original != null && Number(precio_original) > Number(precio) && (
                   <span
                     style={{
                       fontFamily:            "var(--font-mono)",

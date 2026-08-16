@@ -79,9 +79,9 @@ function AlertItem({ alert }: { alert: Alert }) {
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 12, scale: 0.96 }}
-      animate={{ opacity: 1,  y: 0,  scale: 1    }}
-      exit={{    opacity: 0,  y: 6,  scale: 0.97, transition: { duration: 0.15 } }}
+      initial={{ opacity: 0, y: -24, scale: 0.96 }}
+      animate={{ opacity: 1,  y: 0,   scale: 1    }}
+      exit={{    opacity: 0,  y: -24, scale: 0.97, transition: { duration: 0.18 } }}
       transition={{ type: "spring", stiffness: 400, damping: 32 }}
       style={{
         position:     "relative",
@@ -185,13 +185,16 @@ export function AlertContainer() {
     <div
       style={{
         position:      "fixed",
-        bottom:        "24px",
-        right:         "24px",
+        top:           "24px",
+        left:          "50%",
+        transform:     "translateX(-50%)",
         zIndex:        9999,
         display:       "flex",
         flexDirection: "column",
         gap:           "8px",
-        alignItems:    "flex-end",
+        alignItems:    "center",
+        width:         "max-content",
+        maxWidth:      "calc(100vw - 32px)",
         pointerEvents: alerts.length ? "auto" : "none",
       }}
       aria-live="polite"

@@ -34,10 +34,10 @@ function ListSkeleton() {
 function ListRow({ producto }: { producto: Producto }) {
   const imageSrc = resolveImageUrl(producto.imagen_nombre, producto.id);
   const tieneStock = (producto.stock ?? 0) > 0;
-  const tieneDescuento =
-    producto.precio_original !== null &&
-    producto.precio_original > 0 &&
-    producto.precio_original > (producto.precio ?? 0);
+
+  const precio         = Number(producto.precio ?? 0);
+  const precioOriginal = Number(producto.precio_original ?? 0);
+  const tieneDescuento = precioOriginal > 0 && precioOriginal > precio;
 
   return (
     <div
@@ -102,15 +102,15 @@ function ListRow({ producto }: { producto: Producto }) {
 
       <div className="shrink-0 flex flex-col items-end gap-2 ml-2">
         <div>
-          {producto.precio !== null && producto.precio > 0 ? (
+          {producto.precio !== null && precio > 0 ? (
             <div className="flex flex-col items-end">
               <span style={{ fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 700, color: "var(--color-cq-text)" }}>
-                ${producto.precio.toLocaleString("es-MX")}
+                ${precio.toLocaleString("es-MX")}
                 <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.58rem", color: "var(--color-cq-muted-2)", marginLeft: "3px" }}>MXN</span>
               </span>
               {tieneDescuento && (
                 <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", color: "var(--color-cq-muted-2)", textDecoration: "line-through" }}>
-                  ${producto.precio_original!.toLocaleString("es-MX")}
+                  ${precioOriginal.toLocaleString("es-MX")}
                 </span>
               )}
             </div>

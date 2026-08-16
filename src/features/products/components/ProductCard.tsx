@@ -58,16 +58,16 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
   const { addItem, updateQty, items } = useCart();
   const { format }                    = useCurrency();
 
-  const tieneStock     = (producto.stock ?? 0) > 0;
-  const tieneDescuento =
-    producto.precio_original !== null &&
-    producto.precio_original > 0 &&
-    producto.precio_original > (producto.precio ?? 0);
+  const tieneStock = (producto.stock ?? 0) > 0;
+
+  const precio         = Number(producto.precio ?? 0);
+  const precioOriginal = Number(producto.precio_original ?? 0);
+  const tieneDescuento = precioOriginal > 0 && precioOriginal > precio;
 
   const imageSrc = !imgError ? resolveImageUrl(producto.imagen_nombre, producto.id) : null;
 
   const descuentoPct = tieneDescuento
-    ? Math.round(((producto.precio_original! - producto.precio!) / producto.precio_original!) * 100)
+    ? Math.round(((precioOriginal - precio) / precioOriginal) * 100)
     : 0;
 
   const wished        = isWished(producto.id);
@@ -199,7 +199,7 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
                 </span>
                 {tieneDescuento && (
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", color: "var(--color-cq-muted-2)", textDecoration: "line-through" }}>
-                    {format(producto.precio_original!)}
+                    {format(precioOriginal)}
                   </span>
                 )}
               </div>
