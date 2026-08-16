@@ -14,7 +14,7 @@ import { CatalogClient }      from "@/features/catalog/components/CatalogClient"
 import { getProductosCatalogo } from "@/features/catalog/lib/getProductosCatalogo";
 import { getCategorias }      from "@/features/categories/lib/getCategorias";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.mx";
 
 export const metadata: Metadata = {
   title:       "Catálogo | Perfiles de Aluminio y Accesorios Industriales",

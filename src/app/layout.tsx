@@ -13,7 +13,7 @@ import { AlertContainer }   from "@/shared/components/alerts/AlertContainer";
 import { buildOrganizationJsonLd } from "@/shared/lib/seo/jsonld";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.mx";
 
 const barlowCondensed = Barlow_Condensed({
   variable: "--font-barlow",

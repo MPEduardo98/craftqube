@@ -2,7 +2,7 @@
 import type { ProductoDetalle } from "@/features/products/types/product-detail";
 import type { Producto }        from "@/features/products/types/product";
 
-const SITE_URL  = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.com";
+const SITE_URL  = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.mx";
 const SITE_NAME = "CraftQube";
 const CURRENCY  = "MXN";
 

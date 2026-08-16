@@ -8,7 +8,7 @@ import { getProductosCatalogo } from "@/features/catalog/lib/getProductosCatalog
 import { buildBreadcrumbJsonLd, buildCategoryJsonLd } from "@/shared/lib/seo/jsonld";
 import { resolveImageUrl } from "@/features/media/lib/resolveImageUrl";
 
-const SITE_URL  = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.com";
+const SITE_URL  = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.mx";
 const PAGE_SIZE = 24;
 
 interface PageProps {

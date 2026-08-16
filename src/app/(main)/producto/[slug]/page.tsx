@@ -7,7 +7,7 @@ import { getProductoBySlug }       from "@/features/products/lib/getProductoBySl
 import { getAllProductoSlugs }      from "@/features/products/lib/getAllSlugs";
 import { buildProductJsonLd, buildBreadcrumbJsonLd } from "@/shared/lib/seo/jsonld";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.mx";
 
 interface PageProps {
   params: Promise<{ slug: string }>;

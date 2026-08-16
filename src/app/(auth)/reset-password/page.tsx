@@ -1,5 +1,6 @@
 // app/(auth)/reset-password/page.tsx
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { ResetPasswordForm } from "@/features/auth/components/ResetPasswordForm";
 import { redirectIfAuthenticated } from "@/features/auth/lib/getSessionUser";
 
@@ -10,5 +11,10 @@ export const metadata: Metadata = {
 
 export default async function ResetPasswordPage() {
   await redirectIfAuthenticated();
-  return <ResetPasswordForm />;
+  // ResetPasswordForm usa useSearchParams() → requiere Suspense boundary.
+  return (
+    <Suspense fallback={null}>
+      <ResetPasswordForm />
+    </Suspense>
+  );
 }
