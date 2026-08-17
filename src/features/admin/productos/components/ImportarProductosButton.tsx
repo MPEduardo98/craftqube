@@ -316,7 +316,7 @@ export function ImportarProductosButton() {
                   />
 
                   {error && (
-                    <p className="text-[12px] px-3 py-2 rounded-lg" style={{ background: "rgba(239,68,68,0.08)", color: "#dc2626" }}>
+                    <p className="text-[12px] px-3 py-2 rounded-lg" style={{ background: "rgba(239,68,68,0.08)", color: "var(--color-cq-badge-err, #dc2626)" }}>
                       {error}
                     </p>
                   )}
@@ -326,11 +326,11 @@ export function ImportarProductosButton() {
               {resultados && (
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center gap-3">
-                    <span className="text-[12px] font-semibold px-3 py-1.5 rounded-lg" style={{ background: "rgba(5,150,105,0.08)", color: "#065f46" }}>
+                    <span className="text-[12px] font-semibold px-3 py-1.5 rounded-lg" style={{ background: "rgba(5,150,105,0.08)", color: "var(--color-cq-badge-ok, #065f46)" }}>
                       {creados} creado{creados !== 1 ? "s" : ""}
                     </span>
                     {fallidos > 0 && (
-                      <span className="text-[12px] font-semibold px-3 py-1.5 rounded-lg" style={{ background: "rgba(239,68,68,0.08)", color: "#dc2626" }}>
+                      <span className="text-[12px] font-semibold px-3 py-1.5 rounded-lg" style={{ background: "rgba(239,68,68,0.08)", color: "var(--color-cq-badge-err, #dc2626)" }}>
                         {fallidos} con error
                       </span>
                     )}
@@ -351,7 +351,7 @@ export function ImportarProductosButton() {
                         </span>
                         <div className="min-w-0">
                           <p className="font-semibold truncate" style={{ color: "var(--color-cq-text, #0f172a)" }}>{r.titulo}</p>
-                          {!r.success && <p style={{ color: "#dc2626" }}>{r.error}</p>}
+                          {!r.success && <p style={{ color: "var(--color-cq-badge-err, #dc2626)" }}>{r.error}</p>}
                         </div>
                       </div>
                     ))}

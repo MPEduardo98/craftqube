@@ -1,6 +1,7 @@
 // app/global/lib/seo/jsonld.ts
 import type { ProductoDetalle } from "@/features/products/types/product-detail";
 import type { Producto }        from "@/features/products/types/product";
+import { richTextToPlain }      from "@/shared/lib/rich-text";
 
 const SITE_URL  = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.mx";
 const SITE_NAME = "CraftQube";
@@ -52,7 +53,8 @@ export function buildProductJsonLd(producto: ProductoDetalle): object {
     "@context":   "https://schema.org",
     "@type":      "Product",
     name:         producto.titulo,
-    description:  producto.descripcion ?? undefined,
+    // La descripción se guarda como HTML del editor; schema.org espera texto.
+    description:  richTextToPlain(producto.descripcion) || undefined,
     sku:          varianteDefault?.sku,
     url:          canonicalUrl,
     image:        imageUrl,

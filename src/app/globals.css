@@ -113,6 +113,15 @@ html[data-theme="light"] {
   --shadow-card:    0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
   --shadow-card-md: 0 4px 16px rgba(0,0,0,0.08);
 
+  /* Overlay sobre imágenes (botones flotantes en thumbnails) */
+  --color-cq-surface-overlay: rgba(255,255,255,0.9);
+
+  /* Texto de badges de estado (admin) */
+  --color-cq-badge-ok:      #065f46;
+  --color-cq-badge-warn:    #92400e;
+  --color-cq-badge-neutral: #475569;
+  --color-cq-badge-err:     #dc2626;
+
   /* Grid pattern opacity */
   --grid-opacity: 0.04;
 
@@ -169,6 +178,15 @@ html[data-theme="dark"] {
   /* Card shadows dark */
   --shadow-card:    0 1px 3px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4);
   --shadow-card-md: 0 4px 20px rgba(0,0,0,0.6);
+
+  /* Overlay sobre imágenes (botones flotantes en thumbnails) */
+  --color-cq-surface-overlay: rgba(20,20,20,0.85);
+
+  /* Texto de badges de estado (admin) — claros para contraste en dark */
+  --color-cq-badge-ok:      #34D399;
+  --color-cq-badge-warn:    #FBBF24;
+  --color-cq-badge-neutral: #C2C2C2;
+  --color-cq-badge-err:     #F87171;
 
   /* Grid pattern opacity */
   --grid-opacity: 0.04;
@@ -457,8 +475,150 @@ html[data-theme="dark"] .muted-dark-aware {
   animation: fade-in 0.5s ease forwards;
 }
 
+/* HTML de las descripciones creadas con el editor TipTap. */
+.cq-rich-text {
+  color: var(--color-cq-muted);
+  line-height: 1.7;
+}
+
+.cq-rich-text > *:first-child { margin-top: 0; }
+.cq-rich-text > *:last-child  { margin-bottom: 0; }
+
+.cq-rich-text p,
+.cq-rich-text ul,
+.cq-rich-text ol,
+.cq-rich-text blockquote,
+.cq-rich-text pre {
+  margin: 0 0 0.9em;
+}
+
+/* TipTap deja <p></p> vacíos al pulsar Enter dos veces: no deben ocupar línea. */
+.cq-rich-text p:empty { display: none; }
+
+.cq-rich-text h1,
+.cq-rich-text h2,
+.cq-rich-text h3,
+.cq-rich-text h4 {
+  margin: 1.4em 0 0.5em;
+  color: var(--color-cq-text);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.cq-rich-text h1 { font-size: 1.35em; }
+.cq-rich-text h2 { font-size: 1.2em; }
+.cq-rich-text h3 { font-size: 1.08em; }
+.cq-rich-text h4 { font-size: 1em; }
+
+.cq-rich-text strong { color: var(--color-cq-text); font-weight: 600; }
+.cq-rich-text em     { font-style: italic; }
+
+.cq-rich-text ul,
+.cq-rich-text ol { padding-left: 1.35em; }
+.cq-rich-text ul { list-style: disc; }
+.cq-rich-text ol { list-style: decimal; }
+.cq-rich-text li { margin: 0.25em 0; }
+
+.cq-rich-text a {
+  color: var(--color-cq-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cq-rich-text blockquote {
+  padding-left: 0.9em;
+  border-left: 2px solid var(--color-cq-border);
+  color: var(--color-cq-muted-2);
+}
+
+.cq-rich-text code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: var(--color-cq-surface);
+}
+
+.cq-rich-text pre {
+  padding: 0.85em 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  background: var(--color-cq-surface);
+  border: 1px solid var(--color-cq-border);
+}
+
+.cq-rich-text pre code { padding: 0; background: none; }
+
+.cq-rich-text hr {
+  margin: 1.4em 0;
+  border: 0;
+  border-top: 1px solid var(--color-cq-border);
+}
+
 .delay-100 { animation-delay: 0.1s; }
 .delay-200 { animation-delay: 0.2s; }
 .delay-300 { animation-delay: 0.3s; }
 .delay-400 { animation-delay: 0.4s; }
 .delay-500 { animation-delay: 0.5s; }
+/* ============================================
+   ADMIN SHELL — Dark mode remap
+   ────────────────────────────────────────────
+   Varias vistas del panel (formulario de producto, modales,
+   dropdowns) se escribieron con utilidades slate/white fijas.
+   En vez de reescribir ~230 clases, se remapean aquí a los
+   tokens semánticos cuando el tema es oscuro.
+   ============================================ */
+html[data-theme="dark"] .admin-shell {
+  /* Superficies */
+  .bg-white          { background-color: var(--color-cq-surface)   !important; }
+  .bg-slate-50       { background-color: var(--color-cq-surface-2) !important; }
+  .bg-slate-100      { background-color: var(--color-cq-surface-2) !important; }
+  .bg-slate-200      { background-color: var(--color-cq-border)    !important; }
+  .bg-slate-800      { background-color: var(--color-cq-surface-2) !important; }
+
+  .hover\:bg-white:hover     { background-color: var(--color-cq-surface)   !important; }
+  .hover\:bg-slate-50:hover  { background-color: var(--color-cq-surface-2) !important; }
+  .hover\:bg-slate-100:hover { background-color: var(--color-cq-border)    !important; }
+
+  /* Bordes */
+  .border-slate-100 { border-color: var(--color-cq-border)   !important; }
+  .border-slate-200 { border-color: var(--color-cq-border)   !important; }
+  .border-slate-300 { border-color: var(--color-cq-border-2) !important; }
+  .divide-slate-100 > * + * { border-color: var(--color-cq-border) !important; }
+
+  .hover\:border-slate-300:hover { border-color: var(--color-cq-border-2) !important; }
+
+  /* Texto */
+  .text-slate-800, .text-slate-900 { color: var(--color-cq-text)    !important; }
+  .text-slate-600, .text-slate-700 { color: var(--color-cq-text-2)  !important; }
+  .text-slate-400, .text-slate-500 { color: var(--color-cq-muted)   !important; }
+  .text-slate-300                  { color: var(--color-cq-muted-2) !important; }
+  .text-slate-100                  { color: var(--color-cq-text)    !important; }
+
+  .placeholder\:text-slate-300::placeholder { color: var(--color-cq-muted-2) !important; }
+  .hover\:text-slate-600:hover       { color: var(--color-cq-text-2) !important; }
+  .hover\:text-slate-700:hover       { color: var(--color-cq-text)   !important; }
+  .group:hover .group-hover\:text-slate-500 { color: var(--color-cq-muted) !important; }
+
+  /* Acentos claros (chips/estados activos) sobre fondo oscuro */
+  .bg-indigo-50 { background-color: var(--color-cq-accent-glow) !important; }
+  .text-indigo-700 { color: var(--color-cq-highlight) !important; }
+}
+
+/* Editor TipTap dentro del admin (estilos inline del componente) */
+html[data-theme="dark"] .admin-shell .tiptap { color: var(--color-cq-text); }
+html[data-theme="dark"] .admin-shell .tiptap h2,
+html[data-theme="dark"] .admin-shell .tiptap h3 { color: var(--color-cq-text) !important; }
+html[data-theme="dark"] .admin-shell .tiptap p.is-editor-empty:first-child::before { color: var(--color-cq-muted-2) !important; }
+html[data-theme="dark"] .admin-shell .tiptap blockquote {
+  border-left-color: var(--color-cq-border) !important;
+  color: var(--color-cq-muted) !important;
+}
+html[data-theme="dark"] .admin-shell .tiptap code {
+  background: var(--color-cq-surface-2) !important;
+  color: var(--color-cq-highlight) !important;
+}
+html[data-theme="dark"] .admin-shell .tiptap pre {
+  background: var(--color-cq-surface-2) !important;
+  color: var(--color-cq-text) !important;
+}

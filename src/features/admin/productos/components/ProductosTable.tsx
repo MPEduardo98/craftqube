@@ -9,9 +9,9 @@ import { useBulkEdit } from "./BulkEditContext";
 
 /* ── Constantes ─────────────────────────────────────────────── */
 const BADGES = {
-  activo:   { label: "Activo",   dot: "#059669", color: "#065f46", bg: "rgba(5,150,105,0.08)",  border: "rgba(5,150,105,0.2)"  },
-  inactivo: { label: "Inactivo", dot: "#94a3b8", color: "#475569", bg: "rgba(148,163,184,0.1)", border: "rgba(148,163,184,0.2)" },
-  borrador: { label: "Borrador", dot: "#d97706", color: "#92400e", bg: "rgba(217,119,6,0.08)",  border: "rgba(217,119,6,0.2)"  },
+  activo:   { label: "Activo",   dot: "#059669", color: "var(--color-cq-badge-ok, #065f46)",     bg: "rgba(5,150,105,0.08)",  border: "rgba(5,150,105,0.2)"  },
+  inactivo: { label: "Inactivo", dot: "#94a3b8", color: "var(--color-cq-badge-neutral, #475569)", bg: "rgba(148,163,184,0.1)", border: "rgba(148,163,184,0.2)" },
+  borrador: { label: "Borrador", dot: "#d97706", color: "var(--color-cq-badge-warn, #92400e)",    bg: "rgba(217,119,6,0.08)",  border: "rgba(217,119,6,0.2)"  },
 };
 
 const SORT_OPTIONS = [
@@ -273,7 +273,7 @@ function ProductoCard({
           <button
             onClick={e => { e.stopPropagation(); onDelete(); }}
             className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-            style={{ background: "rgba(255,255,255,0.9)", backdropFilter: "blur(4px)", color: "#ef4444", border: "none", cursor: "pointer" }}
+            style={{ background: "var(--color-cq-surface-overlay, rgba(255,255,255,0.9))", backdropFilter: "blur(4px)", color: "#ef4444", border: "none", cursor: "pointer" }}
           >
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="3 6 5 6 21 6"/>

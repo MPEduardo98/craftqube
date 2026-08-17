@@ -22,10 +22,6 @@ function Icon({ d, d2 }: { d: string; d2?: string }) {
 }
 
 const NAV: NavItem[] = [
-  { label: "Dashboard", href: "/admin",
-    icon: <Icon d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" d2="M9 22V12h6v10" /> },
-  { label: "Pedidos",   href: "/admin/pedidos",
-    icon: <Icon d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" d2="M3 6h18M16 10a4 4 0 0 1-8 0" /> },
   { label: "Productos", href: "/admin/productos",
     icon: <Icon d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />,
     children: [
@@ -34,6 +30,10 @@ const NAV: NavItem[] = [
       { label: "Categorías",          href: "/admin/categorias" },
     ],
   },
+  { label: "Dashboard", href: "/admin",
+    icon: <Icon d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" d2="M9 22V12h6v10" /> },
+  { label: "Pedidos",   href: "/admin/pedidos",
+    icon: <Icon d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" d2="M3 6h18M16 10a4 4 0 0 1-8 0" /> },
   { label: "Clientes",  href: "/admin/clientes",
     icon: <Icon d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" d2="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /> },
   { label: "Cupones",   href: "/admin/cupones",

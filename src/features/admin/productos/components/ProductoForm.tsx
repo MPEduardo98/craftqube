@@ -243,8 +243,20 @@ export function ProductoForm({ initialData, categorias, marcas, mode, pricing }:
         <ModalUnsavedChanges onConfirm={confirmLeave} onCancel={cancelLeave} />
       )}
 
-      {/* ── Header ─────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4 mb-6">
+      {/* ── Header (sticky: la barra de acciones siempre visible) ── */}
+      <div
+        className="flex items-center justify-between gap-4 mb-6"
+        style={{
+          position:     "sticky",
+          top:          0,
+          zIndex:       30,
+          background:   "var(--color-cq-bg, #f8fafc)",
+          borderBottom: "1px solid var(--color-cq-border)",
+          /* Sangra el padding del contenedor para cubrir todo el ancho */
+          margin:       "-1.5rem -1.5rem 1.5rem",
+          padding:      "1rem 1.5rem",
+        }}
+      >
         <div>
           <h1 className="text-display" style={{ fontSize: "1.25rem", color: "var(--color-cq-text)" }}>
             {mode === "crear" ? "Nuevo producto" : "Editar producto"}
@@ -397,8 +409,24 @@ export function ProductoForm({ initialData, categorias, marcas, mode, pricing }:
             onChangeMetacampo={changeVarMetacampo}
           />
 
-          {/* 7. Metacampos */}
-          <SectionCard title="Metacampos">
+          {/* 7. Especificaciones */}
+          <SectionCard
+            title="Especificaciones"
+            action={
+              <button
+                type="button"
+                onClick={addMetacampo}
+                className="text-sm"
+                style={{
+                  color: "var(--color-cq-accent)", background: "none",
+                  border: "none", cursor: "pointer", padding: 0,
+                  fontFamily: "var(--font-mono)", fontSize: "0.72rem", letterSpacing: "0.06em",
+                }}
+              >
+                + Agregar especificación
+              </button>
+            }
+          >
             {form.metacampos.map((m, i) => (
               <div key={i} className="flex gap-2 items-center">
                 <input
@@ -429,18 +457,6 @@ export function ProductoForm({ initialData, categorias, marcas, mode, pricing }:
                 </button>
               </div>
             ))}
-            <button
-              type="button"
-              onClick={addMetacampo}
-              className="text-sm"
-              style={{
-                marginTop: 4, color: "var(--color-cq-accent)", background: "none",
-                border: "none", cursor: "pointer", padding: 0,
-                fontFamily: "var(--font-mono)", fontSize: "0.72rem", letterSpacing: "0.06em",
-              }}
-            >
-              + Agregar metacampo
-            </button>
           </SectionCard>
 
           {/* 8. SEO */}

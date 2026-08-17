@@ -103,9 +103,9 @@ export function SeccionImagenes({
         )}
       </SectionCard>
 
-      {/* ── Metacampos ─────────────────────────────────── */}
+      {/* ── Especificaciones ───────────────────────────── */}
       <SectionCard
-        title="Metacampos"
+        title="Especificaciones"
         action={
           <button
             type="button"
@@ -121,7 +121,7 @@ export function SeccionImagenes({
       >
         {metacampos.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-4">
-            Sin metacampos. Úsalos para datos técnicos o atributos personalizados.
+            Sin especificaciones. Úsalas para datos técnicos o atributos personalizados.
           </p>
         ) : (
           <div className="space-y-2">

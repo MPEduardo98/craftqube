@@ -332,7 +332,7 @@ export function ModalMediaLibrary({ onSelect, onClose, productoId, multiple = tr
                       className={`relative block w-full rounded-xl overflow-hidden border-2 transition ${
                         checked ? "border-indigo-500" : isNew ? "border-emerald-400" : "border-transparent hover:border-slate-300"
                       }`}
-                      style={{ paddingBottom: "100%", background: "#f1f5f9" }}
+                      style={{ paddingBottom: "100%", background: "var(--color-cq-surface-2, #f1f5f9)" }}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={src} alt={item.nombre}
@@ -346,7 +346,7 @@ export function ModalMediaLibrary({ onSelect, onClose, productoId, multiple = tr
                         </span>
                       )}
                     </button>
-                    <p style={{ fontSize: 9, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{item.nombre}</p>
+                    <p style={{ fontSize: 9, color: "var(--color-cq-muted, #64748b)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{item.nombre}</p>
                   </div>
                 );
               })}

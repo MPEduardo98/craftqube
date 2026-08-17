@@ -35,13 +35,17 @@ export default async function AdminLayout({
   return (
     <div
       className="flex h-screen w-screen overflow-hidden"
-      style={{ background: "#f8fafc", fontFamily: "var(--font-dm-sans, system-ui, sans-serif)" }}
+      style={{
+        background: "var(--color-cq-bg, #f8fafc)",
+        color:      "var(--color-cq-text, #0f172a)",
+        fontFamily: "var(--font-dm-sans, system-ui, sans-serif)",
+      }}
     >
       <AdminSidebar />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <AdminTopbar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="admin-shell flex-1 overflow-y-auto">
           {children}
         </main>
       </div>

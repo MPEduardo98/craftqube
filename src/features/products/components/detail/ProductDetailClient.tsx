@@ -12,6 +12,7 @@ import { ProductVariantSelector } from "./ProductVariantSelector";
 import { ProductSpecs }           from "./ProductSpecs";
 import type { ProductoDetalle, ProductoVariante } from "@/features/products/types/product-detail";
 import { resolveImageUrl }        from "@/features/media/lib/resolveImageUrl";
+import { sanitizeRichText, hasRichTextContent } from "@/shared/lib/rich-text";
 
 const Icons = {
   cart: (
@@ -218,10 +219,12 @@ export function ProductDetailClient({ producto }: Props) {
               {producto.titulo}
             </motion.h1>
 
-            {producto.descripcion && (
-              <motion.p {...fadeUp(0.14)} className="text-base leading-relaxed" style={{ color: "var(--color-cq-muted)" }}>
-                {producto.descripcion}
-              </motion.p>
+            {hasRichTextContent(producto.descripcion) && (
+              <motion.div
+                {...fadeUp(0.14)}
+                className="cq-rich-text text-base"
+                dangerouslySetInnerHTML={{ __html: sanitizeRichText(producto.descripcion) }}
+              />
             )}
 
             <div style={{ height: "1px", background: "var(--color-cq-border)" }} />

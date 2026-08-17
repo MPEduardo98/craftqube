@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter, usePathname }   from "next/navigation";
 import Link                         from "next/link";
+import { UserButton }               from "@/shared/components/header/UserButton";
 
 const SCOPES = [
   { label: "Productos", path: "/admin/productos" },
@@ -43,6 +44,15 @@ export function AdminTopbar() {
           color: var(--color-cq-accent, #2563eb);
           border-color: rgba(37,99,235,0.3);
           background: var(--color-cq-accent-glow, rgba(37,99,235,0.06));
+        }
+        /* El trigger de UserButton está pensado para el header oscuro:
+           lo reestilizamos para el topbar claro del admin. */
+        .admin-userbtn > div > button {
+          background: var(--color-cq-blue-600, #1D4ED8) !important;
+          border-color: transparent !important;
+          border-radius: 9999px !important;
+          width: 32px !important;
+          height: 32px !important;
         }
       `}</style>
 
@@ -133,14 +143,8 @@ export function AdminTopbar() {
 
           <div className="w-px h-5" style={{ background: "var(--color-cq-border, #e2e8f0)" }} />
 
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-black select-none shrink-0"
-            style={{
-              background: "var(--color-cq-blue-600, #1D4ED8)",
-              fontFamily: "var(--font-display, sans-serif)",
-            }}
-          >
-            A
+          <div className="admin-userbtn shrink-0">
+            <UserButton />
           </div>
         </div>
       </header>

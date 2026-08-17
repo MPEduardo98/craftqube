@@ -53,21 +53,9 @@ async function fetchMarcas() {
   return rows as { id: number; nombre: string }[];
 }
 
-async function fetchStats() {
-  const [[row]] = await pool.execute<RowDataPacket[]>(`
-    SELECT
-      COUNT(*)                 AS total,
-      SUM(estado = 'activo')   AS activos,
-      SUM(estado = 'inactivo') AS inactivos,
-      SUM(estado = 'borrador') AS borradores
-    FROM productos WHERE deleted_at IS NULL
-  `);
-  return row as { total: number; activos: number; inactivos: number; borradores: number };
-}
-
 export default async function ProductosPage() {
-  const [{ productos, total }, stats, categorias, marcas] = await Promise.all([
-    fetchProductos(), fetchStats(), fetchCategorias(), fetchMarcas(),
+  const [{ productos, total }, categorias, marcas] = await Promise.all([
+    fetchProductos(), fetchCategorias(), fetchMarcas(),
   ]);
 
   return (
@@ -120,38 +108,6 @@ export default async function ProductosPage() {
       </div>
 
       <div className="px-8 py-6 space-y-5">
-
-        {/* ── Stats ── */}
-        <HideOnBulkEdit>
-        <div className="flex items-center gap-3 flex-wrap">
-          {[
-            { label: "Total",      value: stats.total,      color: "var(--color-cq-muted, #64748b)" },
-            { label: "Activos",    value: stats.activos,    color: "#059669" },
-            { label: "Inactivos",  value: stats.inactivos,  color: "var(--color-cq-muted-2, #94a3b8)" },
-            { label: "Borradores", value: stats.borradores, color: "#d97706" },
-          ].map(s => (
-            <div
-              key={s.label}
-              className="flex items-center gap-2.5 px-4 py-2 rounded-lg"
-              style={{ background: "var(--color-cq-surface, #fff)", border: "1px solid var(--color-cq-border, #e2e8f0)" }}
-            >
-              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: s.color }} />
-              <span
-                className="text-[11px] uppercase tracking-wider font-semibold"
-                style={{ fontFamily: "var(--font-mono, monospace)", color: "var(--color-cq-muted, #64748b)" }}
-              >
-                {s.label}
-              </span>
-              <span
-                className="text-[16px] font-black"
-                style={{ fontFamily: "var(--font-display, sans-serif)", color: "var(--color-cq-text, #0f172a)", letterSpacing: "-0.02em" }}
-              >
-                {s.value}
-              </span>
-            </div>
-          ))}
-        </div>
-        </HideOnBulkEdit>
 
         {/* ── Tabla ── */}
         <div

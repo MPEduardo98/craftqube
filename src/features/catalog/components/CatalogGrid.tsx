@@ -8,6 +8,7 @@ import { ProductCard }         from "@/features/products/components/ProductCard"
 import { ProductCardSkeleton } from "@/features/products/components/ProductCardSkeleton";
 import type { Producto } from "@/features/products/types/product";
 import { resolveImageUrl } from "@/features/media/lib/resolveImageUrl";
+import { richTextToPlain } from "@/shared/lib/rich-text";
 
 /* ── Skeleton list row ── */
 function ListSkeleton() {
@@ -34,6 +35,7 @@ function ListSkeleton() {
 function ListRow({ producto }: { producto: Producto }) {
   const imageSrc = resolveImageUrl(producto.imagen_nombre, producto.id);
   const tieneStock = (producto.stock ?? 0) > 0;
+  const descripcionPlana = richTextToPlain(producto.descripcion);
 
   const precio         = Number(producto.precio ?? 0);
   const precioOriginal = Number(producto.precio_original ?? 0);
@@ -75,9 +77,10 @@ function ListRow({ producto }: { producto: Producto }) {
             {producto.titulo}
           </p>
         </Link>
-        {producto.descripcion && (
+        {/* La descripción viene en HTML: aquí sólo cabe una línea, va en texto plano. */}
+        {descripcionPlana && (
           <p className="line-clamp-1" style={{ fontFamily: "var(--font-body)", fontSize: "0.72rem", color: "var(--color-cq-muted)", marginTop: "2px" }}>
-            {producto.descripcion}
+            {descripcionPlana}
           </p>
         )}
         <div className="flex items-center gap-2 mt-1">

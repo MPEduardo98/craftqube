@@ -6,6 +6,7 @@ import { RelatedProducts }         from "@/features/products/components/RelatedP
 import { getProductoBySlug }       from "@/features/products/lib/getProductoBySlug";
 import { getAllProductoSlugs }      from "@/features/products/lib/getAllSlugs";
 import { buildProductJsonLd, buildBreadcrumbJsonLd } from "@/shared/lib/seo/jsonld";
+import { richTextToPlain }         from "@/shared/lib/rich-text";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.mx";
 
@@ -25,7 +26,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!producto) return { title: "Producto no encontrado — Craftqube" };
 
   const title        = producto.meta_titulo      ?? `${producto.titulo} — Craftqube`;
-  const description  = producto.meta_descripcion ?? producto.descripcion ?? undefined;
+  // La descripción es HTML del editor: en metadatos va siempre como texto plano.
+  const description  = producto.meta_descripcion
+    ?? (richTextToPlain(producto.descripcion, 160) || undefined);
   const canonicalUrl = `${SITE_URL}/producto/${slug}`;
 
   const imagenPrincipal = producto.imagenes[0];
