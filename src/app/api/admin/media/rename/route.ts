@@ -1,106 +1,100 @@
 // app/api/admin/media/rename/route.ts
 // ─────────────────────────────────────────────────────────────
 // POST /api/admin/media/rename
-// Renombra un archivo de imagen en el servidor Y actualiza la BD
-// Body: { url, productoId, nuevoNombre }
+// Renombra y/o mueve un objeto en R2 y reapunta las referencias
+// que ya estuvieran guardadas en la BD.
+//
+// Body: { url, nuevoNombre?, nuevoPrefix? }
+//   - nuevoNombre: nombre de archivo destino (con o sin extensión).
+//   - nuevoPrefix: carpeta destino ("" = raíz). Si se omite, se
+//     conserva la carpeta actual.
 // ─────────────────────────────────────────────────────────────
 import { NextRequest, NextResponse } from "next/server";
-import path from "path";
-import fs from "fs/promises";
-import { pool } from "@/shared/lib/db/pool";
+import path                          from "path";
+import { moveR2Object, r2ObjectExists, keyFromUrl } from "@/features/media/lib/r2";
+import { syncMediaUrlEnBD }                        from "@/features/media/lib/syncMediaUrl";
+import { normalizarPrefijo, nombreArchivoValido }  from "@/features/media/lib/paths";
 
 interface RenameBody {
-  url:          string;  // nombre actual del archivo o ruta relativa
-  productoId:   number;
-  nuevoNombre:  string;  // nuevo nombre (con extensión)
+  url:          string;
+  nuevoNombre?: string;
+  nuevoPrefix?: string;
 }
 
-/* ── Resolver ruta absoluta del archivo ────────────────────── */
-function resolveFilePath(url: string, productoId: number): string {
-  const normalized = url.replace(/\\/g, "/");
-
-  // URL ya contiene la ruta: "productos/2/img.webp" o "/productos/2/img.webp"
-  if (normalized.includes("/")) {
-    const withoutLeadingSlash = normalized.startsWith("/") ? normalized.slice(1) : normalized;
-    return path.join(process.cwd(), "public", withoutLeadingSlash);
-  }
-
-  // Solo filename: reconstruir desde productoId
-  return path.join(process.cwd(), "public", "productos", String(productoId), normalized);
-}
-
-/* ── Handler POST ──────────────────────────────────────────── */
 export async function POST(req: NextRequest) {
   try {
-    const body: RenameBody = await req.json();
-    const { url, productoId, nuevoNombre } = body;
+    const { url, nuevoNombre, nuevoPrefix } = await req.json() as RenameBody;
 
-    if (!url || !productoId || !nuevoNombre) {
+    if (!url) {
+      return NextResponse.json({ success: false, error: "url es requerida" }, { status: 400 });
+    }
+    if (nuevoNombre === undefined && nuevoPrefix === undefined) {
       return NextResponse.json(
-        { success: false, error: "url, productoId y nuevoNombre son requeridos" },
+        { success: false, error: "Indica un nuevo nombre o una carpeta destino" },
         { status: 400 }
       );
     }
 
-    const oldPath = resolveFilePath(url, productoId);
-    const dir = path.dirname(oldPath);
-    const newPath = path.join(dir, nuevoNombre);
-
-    // Verificar que el archivo origen existe
-    try {
-      await fs.access(oldPath);
-    } catch {
-      return NextResponse.json(
-        { success: false, error: `Archivo no encontrado: ${oldPath}` },
-        { status: 404 }
-      );
+    const viejoKey = keyFromUrl(url);
+    if (!viejoKey || viejoKey.endsWith("/")) {
+      return NextResponse.json({ success: false, error: "Ruta de archivo inválida" }, { status: 400 });
     }
 
-    // Verificar que el nuevo nombre no existe ya
-    try {
-      await fs.access(newPath);
+    const nombreActual = viejoKey.split("/").pop()!;
+    const ext          = path.extname(nombreActual);
+
+    // ── Nombre destino ──
+    let nombreFinal = nombreActual;
+    if (nuevoNombre !== undefined) {
+      const limpio = nuevoNombre.trim();
+      if (!limpio) {
+        return NextResponse.json({ success: false, error: "El nombre no puede estar vacío" }, { status: 400 });
+      }
+      // Conservar la extensión original si el usuario no la escribió.
+      nombreFinal = path.extname(limpio) ? limpio : `${limpio}${ext}`;
+      if (!nombreArchivoValido(nombreFinal)) {
+        return NextResponse.json(
+          { success: false, error: "Usa solo letras, números, guiones y puntos" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // ── Carpeta destino ──
+    const carpetaActual = viejoKey.includes("/")
+      ? `${viejoKey.slice(0, viejoKey.lastIndexOf("/"))}/`
+      : "";
+    const carpetaFinal = nuevoPrefix !== undefined ? normalizarPrefijo(nuevoPrefix) : carpetaActual;
+
+    const nuevoKey = `${carpetaFinal}${nombreFinal}`;
+
+    if (nuevoKey === viejoKey) {
+      return NextResponse.json({ success: true, data: { url, key: viejoKey, sinCambios: true } });
+    }
+
+    if (!(await r2ObjectExists(viejoKey))) {
+      return NextResponse.json({ success: false, error: "El archivo no existe en el bucket" }, { status: 404 });
+    }
+    if (await r2ObjectExists(nuevoKey)) {
       return NextResponse.json(
-        { success: false, error: `Ya existe un archivo con el nombre: ${nuevoNombre}` },
+        { success: false, error: `Ya existe un archivo llamado "${nombreFinal}" en esa carpeta` },
         { status: 409 }
       );
-    } catch {
-      // El archivo no existe, podemos continuar
     }
 
-    // Renombrar el archivo físico
-    await fs.rename(oldPath, newPath);
+    const nuevaUrl = await moveR2Object(viejoKey, nuevoKey);
 
-    // Actualizar la base de datos - SOLO guardar el nombre del archivo
-    // Extraer el nombre del archivo de la URL original
-    const oldFileName = url.split("/").pop() || url;
-    
-    try {
-      await pool.execute(
-        `UPDATE producto_imagenes 
-         SET url = ? 
-         WHERE producto_id = ? 
-         AND (url = ? OR url LIKE ?)`,
-        [nuevoNombre, productoId, url, `%/${oldFileName}`]
-      );
-      
-      console.log(`[rename] BD actualizada: ${url} → ${nuevoNombre} para producto ${productoId}`);
-    } catch (dbError) {
-      console.error("[rename] Error actualizando BD:", dbError);
-      // Si falla la BD, intentar revertir el cambio de archivo
-      try {
-        await fs.rename(newPath, oldPath);
-      } catch {
-        console.error("[rename] No se pudo revertir el cambio de archivo");
-      }
-      return NextResponse.json(
-        { success: false, error: "Error al actualizar la base de datos" },
-        { status: 500 }
-      );
-    }
+    // Reapuntar lo que ya estaba guardado para no dejar imágenes rotas.
+    const sync = await syncMediaUrlEnBD(url, nuevaUrl);
 
     return NextResponse.json({
       success: true,
-      data: { url: nuevoNombre },
+      data: {
+        url:    nuevaUrl,
+        key:    nuevoKey,
+        nombre: nombreFinal,
+        referenciasActualizadas: sync.productoImagenes + sync.categorias,
+      },
     });
   } catch (err) {
     console.error("[POST /api/admin/media/rename]", err);

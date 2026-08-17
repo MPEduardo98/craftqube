@@ -157,10 +157,10 @@ html[data-theme="dark"] {
   --color-cq-steel-200: #C2C2C2;
   --color-cq-steel-100: #E8E8E8;
 
-  /* Accent */
-  --color-cq-accent:       #4F8EF7;
-  --color-cq-accent-dim:   #2563EB;
-  --color-cq-accent-glow:  rgba(79, 142, 247, 0.12);
+  /* Accent — invariante entre temas (mismo azul que light) */
+  --color-cq-accent:       #2563EB;
+  --color-cq-accent-dim:   #1D4ED8;
+  --color-cq-accent-glow:  rgba(37, 99, 235, 0.12);
 
   /* Semantic dark */
   --color-cq-bg:        #080808;
@@ -172,8 +172,8 @@ html[data-theme="dark"] {
   --color-cq-text-2:    #C2C2C2;
   --color-cq-muted:     #8F8F8F;
   --color-cq-muted-2:   #5C5C5C;
-  --color-cq-primary:   #2563EB;
-  --color-cq-highlight: #4F8EF7;
+  --color-cq-primary:   #1D4ED8;
+  --color-cq-highlight: #2563EB;
 
   /* Card shadows dark */
   --shadow-card:    0 1px 3px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4);
@@ -603,6 +603,43 @@ html[data-theme="dark"] .admin-shell {
   /* Acentos claros (chips/estados activos) sobre fondo oscuro */
   .bg-indigo-50 { background-color: var(--color-cq-accent-glow) !important; }
   .text-indigo-700 { color: var(--color-cq-highlight) !important; }
+}
+
+/* ============================================
+   ACCENT — utilidades reutilizables
+   ────────────────────────────────────────────
+   Sirven en componentes que se renderizan en portal
+   (fuera de .admin-shell), donde el remap dark no llega.
+   El accent es invariante entre temas.
+   ============================================ */
+.cq-btn-accent {
+  background-color: var(--color-cq-accent);
+}
+.cq-btn-accent:hover:not(:disabled) {
+  background-color: var(--color-cq-accent-dim);
+}
+
+.cq-focus-accent {
+  border-color: var(--color-cq-border, #e2e8f0);
+}
+.cq-focus-accent:focus {
+  border-color: var(--color-cq-accent);
+  box-shadow: 0 0 0 2px var(--color-cq-accent-glow);
+}
+
+.cq-hover-border-accent:hover {
+  border-color: var(--color-cq-accent) !important;
+}
+
+.cq-hover-text-accent:hover {
+  color: var(--color-cq-accent) !important;
+}
+
+.cq-link-accent {
+  color: var(--color-cq-accent);
+}
+.cq-link-accent:hover {
+  color: var(--color-cq-accent-dim);
 }
 
 /* Editor TipTap dentro del admin (estilos inline del componente) */
