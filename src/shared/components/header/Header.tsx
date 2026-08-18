@@ -208,7 +208,7 @@ function FullHeader({ initialCategorias }: Required<HeaderProps>) {
                       transition={{ delay: i * 0.04, duration: 0.2 }}
                     >
                       <Link
-                        href={`/catalogo?cat=${cat.slug}`}
+                        href={`/categoria/${cat.slug}`}
                         onClick={() => setProductsOpen(false)}
                         className="flex flex-col gap-1 rounded-xl p-4 transition-colors"
                         style={{

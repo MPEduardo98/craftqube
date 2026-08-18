@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
         v.precio_original,
         v.stock,
         v.es_default,
-        SUBSTRING_INDEX(MIN(img.url), '/', -1) AS imagen_nombre,
+        MIN(img.url)                           AS imagen_nombre,
         MIN(img.alt)                           AS imagen_alt
       FROM productos p
       LEFT JOIN producto_categorias pc  ON pc.producto_id  = p.id

@@ -31,20 +31,43 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function CatalogoPage() {
+interface PageProps {
+  searchParams: Promise<{
+    cat?: string; marca?: string; sort?: string;
+    stock?: string; q?: string; page?: string;
+  }>;
+}
+
+export default async function CatalogoPage({ searchParams }: PageProps) {
+  const sp = await searchParams;
+
+  // Nota: /catalogo?cat=X → 301 /categoria/X se resuelve en
+  // next.config.ts (redirects), no aquí. permanentRedirect() en
+  // una page responde 200 con la señal de redirect en el payload
+  // RSC — el navegador navega, pero un crawler ve 200.
+
   // ── SSR: fetch inicial en el servidor ─────────────────────
   // Esto garantiza que los primeros 24 productos estén en el
   // HTML y sean indexables por Google sin ejecutar JS.
+  const page = Math.max(1, parseInt(sp.page ?? "1", 10));
   const [{ productos: initialProductos, total: initialTotal, pages: initialPages }, categorias] =
     await Promise.all([
-      getProductosCatalogo({ sort: "reciente", page: 1, limit: 24 }),
+      getProductosCatalogo({
+        sort:      sp.sort  ?? "reciente",
+        marca:     sp.marca ?? "",
+        q:         sp.q     ?? "",
+        soloStock: sp.stock === "1",
+        page,
+        limit:     24,
+      }),
       getCategorias().catch(() => []),
     ]);
 
   return (
     <>
-      {/* H1 semántico visible para crawlers — CatalogClient puede
-          ocultarlo visualmente si el diseño lo requiere */}
+      {/* H1 semántico en el servidor: CatalogClient es "use client" y
+          llega por streaming, así que su encabezado no estaría en el
+          HTML inicial que rastrea Google. */}
       <h1 className="sr-only">
         Catálogo de productos CraftQube — Perfiles de Aluminio y Accesorios Industriales
       </h1>

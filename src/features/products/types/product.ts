@@ -12,7 +12,7 @@ export interface Producto {
   precio: number | null;
   precio_original: number | null;
   stock: number | null;
-  /** Solo el nombre de archivo, ej: "abc123.png". La ruta se construye como /uploads/productos/[id]/[imagen_nombre] */
+  /** URL completa del CDN, ej: "https://cdn.craftqube.mx/productos/12/abc.png". Resolver siempre con resolveImageUrl(). */
   imagen_nombre: string | null;
   imagen_alt: string | null;
 }

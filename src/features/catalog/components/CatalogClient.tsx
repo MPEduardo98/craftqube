@@ -27,6 +27,18 @@ interface Props {
   initialTotal?:      number;
   initialPages?:      number;
   initialCategorias?: Categoria[];
+  /** Slug de categoría cuando se monta desde /categoria/[slug].
+   *  La categoría vive en la ruta, no en un query param. */
+  categoriaSlug?:     string;
+  /** Encabezado visible. En /categoria/[slug] es el nombre de la
+   *  categoría; en /catalogo, "Catálogo".
+   *  Nota: el <h1> real lo renderiza la página servidor —este
+   *  componente es "use client" y su HTML llega por streaming,
+   *  así que un <h1> aquí no estaría en la respuesta inicial. */
+  titulo?:            string;
+  descripcion?:       string | null;
+  /** Breadcrumb SSR ya renderizado por la página servidor. */
+  breadcrumb?:        React.ReactNode;
 }
 
 export function CatalogClient({
@@ -34,13 +46,18 @@ export function CatalogClient({
   initialTotal      = 0,
   initialPages      = 0,
   initialCategorias = [],
+  categoriaSlug,
+  titulo      = "Catálogo",
+  descripcion = null,
+  breadcrumb  = null,
 }: Props) {
   const router       = useRouter();
   const searchParams = useSearchParams();
 
   /* ── URL → state inicial ── */
   const [q,           setQ]           = useState(searchParams.get("q")     ?? "");
-  const [cat,         setCat]         = useState(searchParams.get("cat")   ?? "");
+  // La categoría de la ruta manda sobre cualquier ?cat= heredado.
+  const [cat,         setCat]         = useState(categoriaSlug ?? searchParams.get("cat") ?? "");
   const [marca,       setMarca]       = useState(searchParams.get("marca") ?? "");
   const [soloStock,   setSoloStock]   = useState(searchParams.get("stock") === "1");
   const [sort,        setSort]        = useState(searchParams.get("sort")  ?? "reciente");
@@ -50,10 +67,12 @@ export function CatalogClient({
 
   /* ── CAMBIO SEO: detectar si hay filtros en URL ─────────────
      Si no los hay, usamos los datos SSR del servidor directamente
-     y saltamos el primer fetch para evitar doble carga. */
+     y saltamos el primer fetch para evitar doble carga.
+     ?cat= no cuenta cuando la categoría viene de la ruta: el
+     servidor ya renderizó esa categoría. */
   const hasUrlFilters = !!(
     searchParams.get("q")     ||
-    searchParams.get("cat")   ||
+    (!categoriaSlug && searchParams.get("cat")) ||
     searchParams.get("marca") ||
     searchParams.get("stock") ||
     searchParams.get("sort")  ||
@@ -86,6 +105,15 @@ export function CatalogClient({
     return () => clearTimeout(searchTimer.current);
   }, [q]);
 
+  /* ── Ruta → estado ────────────────────────────────────────
+     Navegar entre categorías (o volver con el botón "atrás")
+     remonta la página servidor con otro categoriaSlug pero
+     reutiliza esta instancia. Sin esto, el estado local se
+     quedaría con la categoría anterior. */
+  useEffect(() => {
+    setCat(categoriaSlug ?? "");
+  }, [categoriaSlug]);
+
   /* ── Cargar categorías y marcas una sola vez ── */
   useEffect(() => {
     // Solo fetch categorías si no vinieron del servidor
@@ -103,18 +131,30 @@ export function CatalogClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ── Sincronizar URL ── */
+  /* ── Sincronizar URL ──────────────────────────────────────
+     La categoría es la única faceta que vive en la ruta
+     (/categoria/<slug>) porque es la que queremos indexable.
+     El resto —marca, orden, stock, página, búsqueda— son
+     refinamientos y quedan como query params. */
   const syncURL = useCallback((overrides: Record<string, string | number | boolean>) => {
     const params = new URLSearchParams();
     const state = { q: debouncedQ, cat, marca, stock: soloStock ? "1" : "", sort, page, ...overrides };
     if (state.q)         params.set("q",     String(state.q));
-    if (state.cat)       params.set("cat",   String(state.cat));
     if (state.marca)     params.set("marca", String(state.marca));
     if (state.stock)     params.set("stock", "1");
     if (state.sort !== "reciente") params.set("sort", String(state.sort));
     if (Number(state.page) > 1)    params.set("page", String(state.page));
-    const qs = params.toString();
-    router.replace(`/catalogo${qs ? `?${qs}` : ""}`, { scroll: false });
+
+    const base = state.cat ? `/categoria/${state.cat}` : "/catalogo";
+    const qs   = params.toString();
+    const url  = `${base}${qs ? `?${qs}` : ""}`;
+
+    // Cambiar de categoría cambia de ruta → push, para que el
+    // botón "atrás" del navegador funcione como el usuario espera.
+    // Cambiar un filtro dentro de la misma ruta → replace.
+    const cambioDeRuta = String(state.cat) !== cat;
+    if (cambioDeRuta) router.push(url, { scroll: false });
+    else              router.replace(url, { scroll: false });
   }, [debouncedQ, cat, marca, soloStock, sort, page, router]);
 
   /* ── Fetch productos ── */
@@ -156,13 +196,22 @@ export function CatalogClient({
   const handleStock = (v: boolean) => { setSoloStock(v); setPage(1); syncURL({ stock: v ? "1" : "", page: 1 }); };
   const handleSort = (v: string)   => { setSort(v); setPage(1); syncURL({ sort: v, page: 1 }); };
   const handlePage = (p: number)   => { setPage(p); syncURL({ page: p }); window.scrollTo({ top: 0, behavior: "smooth" }); };
-  const handleClearAll = ()        => { setQ(""); setCat(""); setMarca(""); setSoloStock(false); setSort("reciente"); setPage(1); router.replace("/catalogo", { scroll: false }); };
+  // "Limpiar todo" desde /categoria/<slug> conserva la categoría:
+  // es la ruta en la que estás, no un filtro que quitaste.
+  const handleClearAll = ()        => {
+    setQ(""); setDebouncedQ(""); setCat(categoriaSlug ?? "");
+    setMarca(""); setSoloStock(false); setSort("reciente"); setPage(1);
+    router.replace(categoriaSlug ? `/categoria/${categoriaSlug}` : "/catalogo", { scroll: false });
+  };
 
-  const totalActivos = [cat, marca, soloStock ? "stock" : ""].filter(Boolean).length;
+  // En /categoria/<slug> la categoría no es un filtro activo que
+  // se pueda quitar: es la página. No cuenta ni aparece como chip.
+  const catEsFiltro  = !categoriaSlug && !!cat;
+  const totalActivos = [catEsFiltro ? cat : "", marca, soloStock ? "stock" : ""].filter(Boolean).length;
 
   /* ── Active filter chips ── */
   const chips: { label: string; onRemove: () => void }[] = [];
-  if (cat)        chips.push({ label: categorias.find((c) => c.slug === cat)?.nombre ?? cat, onRemove: () => handleCat("") });
+  if (catEsFiltro) chips.push({ label: categorias.find((c) => c.slug === cat)?.nombre ?? cat, onRemove: () => handleCat("") });
   if (marca)      chips.push({ label: marca, onRemove: () => handleMarca("") });
   if (soloStock)  chips.push({ label: "En stock", onRemove: () => handleStock(false) });
   if (debouncedQ) chips.push({ label: `"${debouncedQ}"`, onRemove: () => { setQ(""); setDebouncedQ(""); syncURL({ q: "" }); } });
@@ -178,6 +227,7 @@ export function CatalogClient({
       <div className="relative z-10 max-w-[1440px] mx-auto px-4 sm:px-6 pt-20 pb-16 lg:pt-24">
 
         {/* ── Header ── */}
+        {breadcrumb}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -185,9 +235,16 @@ export function CatalogClient({
           className="mb-8"
         >
           <p className="text-label mb-1">Tienda</p>
-          <h1 className="text-display" style={{ fontSize: "clamp(2rem, 5vw, 3.2rem)", color: "var(--color-cq-text)" }}>
-            Catálogo
-          </h1>
+          {/* El <h1> semántico lo emite la página servidor (ver Props.titulo).
+              Aquí sólo va la versión visual, para no duplicar el encabezado. */}
+          <p aria-hidden className="text-display" style={{ fontSize: "clamp(2rem, 5vw, 3.2rem)", color: "var(--color-cq-text)", margin: 0 }}>
+            {titulo}
+          </p>
+          {descripcion && (
+            <p style={{ marginTop: "10px", maxWidth: "620px", fontFamily: "var(--font-body)", fontSize: "0.9rem", lineHeight: 1.6, color: "var(--color-cq-muted)" }}>
+              {descripcion}
+            </p>
+          )}
         </motion.div>
 
         {/* ── Search bar ── */}

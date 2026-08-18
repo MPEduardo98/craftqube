@@ -32,6 +32,18 @@ function redirectToLogin(req: NextRequest): NextResponse {
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // ── Limpieza de /categoria/<slug>?cat=… ────────────────────
+  // El redirect de next.config.ts (/catalogo?cat=X → /categoria/X)
+  // arrastra el `cat` de origen al destino, dejándolo duplicado en
+  // la URL final. Lo quitamos con otro 301 para que la URL canónica
+  // quede limpia. `cat` no tiene ningún significado en esta ruta:
+  // la categoría ya viene en el path.
+  if (pathname.startsWith("/categoria/") && req.nextUrl.searchParams.has("cat")) {
+    const url = req.nextUrl.clone();
+    url.searchParams.delete("cat");
+    return NextResponse.redirect(url, 301);
+  }
+
   const isProtected = PROTECTED.some(
     (p) => pathname === p || pathname.startsWith(p + "/")
   );
@@ -48,5 +60,8 @@ export const config = {
     "/cuenta/:path*",
     "/admin/:path*",
     "/admin",
+    // Sólo para limpiar el `?cat=` sobrante del redirect; no
+    // protege nada. Las categorías son públicas.
+    "/categoria/:path*",
   ],
 };

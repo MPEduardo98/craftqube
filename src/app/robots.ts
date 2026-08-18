@@ -29,6 +29,9 @@ export default function robots(): MetadataRoute.Robots {
           "/_next/",
           "/login",
           "/registro",
+          // La categoría vive en /categoria/<slug>. Esta variante
+          // sólo existe como redirect 301 hacia allá.
+          "/catalogo?cat=",
         ],
       },
     ],

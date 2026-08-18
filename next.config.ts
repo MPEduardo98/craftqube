@@ -26,6 +26,23 @@ const nextConfig: NextConfig = {
         destination: "/producto/:productSlug",
         permanent:   true,
       },
+
+      // ── /catalogo?cat=<slug> → /categoria/<slug> ────────────
+      // La categoría tiene URL propia. Va aquí y no en la page
+      // con permanentRedirect() porque ahí Next responde 200 con
+      // la señal de redirect en el payload RSC: el navegador
+      // navega, pero un crawler ve 200 y no transfiere ranking.
+      // Como redirect de config es un 301 HTTP real.
+      // `has` captura el valor del query param; los demás filtros
+      // (marca, sort, page…) se conservan automáticamente.
+      // Next arrastra el `?cat=` de origen al destino, dejándolo
+      // duplicado; el proxy lo limpia después (ver src/proxy.ts).
+      {
+        source:      "/catalogo",
+        has: [{ type: "query", key: "cat", value: "(?<catSlug>.+)" }],
+        destination: "/categoria/:catSlug",
+        permanent:   true,
+      },
     ];
   },
 

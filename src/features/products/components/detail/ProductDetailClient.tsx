@@ -205,7 +205,7 @@ export function ProductDetailClient({ producto }: Props) {
                 </span>
               )}
               {producto.categorias.map((c) => (
-                <Link key={c.id} href={`/catalogo?cat=${c.slug}`}
+                <Link key={c.id} href={`/categoria/${c.slug}`}
                   className="px-2.5 py-1 rounded-md text-xs transition-all hover:border-blue-400"
                   style={{ fontFamily: "var(--font-mono)", letterSpacing: "0.08em", textTransform: "uppercase", background: "var(--color-cq-surface)", color: "var(--color-cq-muted)", border: "1px solid var(--color-cq-border)", textDecoration: "none" }}>
                   {c.nombre}
