@@ -85,7 +85,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   const organizationLd = buildOrganizationJsonLd();
 
   return (
-    <html lang="es" className="scroll-smooth">
+    <html lang="es">
       <body className={`${barlowCondensed.variable} ${dmSans.variable} ${jetbrainsMono.variable} antialiased`}>
         <script
           type="application/ld+json"

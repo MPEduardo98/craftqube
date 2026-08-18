@@ -11,6 +11,7 @@ interface PedidoItem {
   estado: string;
   total: number;
   created_at: string;
+  moneda: "MXN" | "USD" | null;
   metodo_pago: string | null;
   total_items: number;
 }
@@ -126,16 +127,16 @@ export function PedidosSection() {
                   </span>
                 </div>
                 <p style={{ fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 700, color: "var(--color-cq-text)" }}>
-                  formatPrice(p.total)
+                  {formatPrice(Number(p.total), p.moneda ?? "MXN")}
                 </p>
               </div>
 
               {/* Meta */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 px-5 py-4">
                 {[
-                  { label: "Artículos",      value: p.total_items ? `${p.total_items}` : "—" },
+                  { label: "Artículos",      value: Number(p.total_items) ? `${Number(p.total_items)}` : "—" },
                   { label: "Método de pago", value: metodoPago(p.metodo_pago) },
-                  { label: "Moneda",         value: "MXN" },
+                  { label: "Moneda",         value: p.moneda ?? "MXN" },
                 ].map((item) => (
                   <div key={item.label}>
                     <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--color-cq-muted-2)", marginBottom: 4 }}>

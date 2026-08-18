@@ -202,7 +202,10 @@ html[data-theme="dark"] {
 }
 
 html {
-  scroll-behavior: smooth;
+  /* Sin scroll-behavior: smooth aqui. Next resetea el scroll al navegar con
+     window.scrollTo(0, 0); si el html es "smooth" el navegador ANIMA ese
+     reset: la pagina nueva se pinta en el offset anterior y baja sola.
+     Los scrolls suaves intencionales pasan behavior: "smooth" en su llamada. */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scrollbar-width: none;
