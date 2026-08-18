@@ -65,31 +65,21 @@ export function CatalogClient({
   const [view,        setView]        = useState<"grid" | "list">("grid");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  /* ── CAMBIO SEO: detectar si hay filtros en URL ─────────────
-     Si no los hay, usamos los datos SSR del servidor directamente
-     y saltamos el primer fetch para evitar doble carga.
-     ?cat= no cuenta cuando la categoría viene de la ruta: el
-     servidor ya renderizó esa categoría. */
-  const hasUrlFilters = !!(
-    searchParams.get("q")     ||
-    (!categoriaSlug && searchParams.get("cat")) ||
-    searchParams.get("marca") ||
-    searchParams.get("stock") ||
-    searchParams.get("sort")  ||
-    searchParams.get("page")
-  );
-
-  /* ── Datos ── */
-  const [productos,  setProductos]  = useState<Producto[]>(
-    hasUrlFilters ? [] : initialProductos
-  );
+  /* ── Datos ─────────────────────────────────────────────────
+     La página servidor ya hizo el fetch con los filtros que venían
+     en la URL (cat/marca/sort/stock/q/page), así que initialProductos
+     SIEMPRE corresponde al estado inicial —haya query params o no.
+     Partimos de esos datos y sin loading: descartarlos para volver a
+     pedir exactamente lo mismo dejaba el grid vacío durante la
+     hidratación, y el footer saltaba hasta chocar con el header. */
+  const [productos,  setProductos]  = useState<Producto[]>(initialProductos);
   const [meta,       setMeta]       = useState<Meta>({
-    total: hasUrlFilters ? 0 : initialTotal,
-    page:  1,
+    total: initialTotal,
+    page,
     limit: LIMIT,
-    pages: hasUrlFilters ? 0 : initialPages,
+    pages: initialPages,
   });
-  const [loading,    setLoading]    = useState(hasUrlFilters);
+  const [loading,    setLoading]    = useState(false);
   const [categorias, setCategorias] = useState<Categoria[]>(
     initialCategorias.length > 0 ? initialCategorias : []
   );
@@ -158,15 +148,15 @@ export function CatalogClient({
   }, [debouncedQ, cat, marca, soloStock, sort, page, router]);
 
   /* ── Fetch productos ── */
-  // CAMBIO SEO: saltamos el primer render si los datos vienen del servidor
+  // El primer render siempre reutiliza los datos SSR: refetchear al
+  // montar pediría la misma consulta que ya viene en el HTML.
   const isFirstRender = useRef(true);
 
   useEffect(() => {
-    if (isFirstRender.current && !hasUrlFilters) {
+    if (isFirstRender.current) {
       isFirstRender.current = false;
       return;
     }
-    isFirstRender.current = false;
 
     const params = new URLSearchParams();
     if (debouncedQ) params.set("q",     debouncedQ);

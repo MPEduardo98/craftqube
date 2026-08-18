@@ -20,7 +20,11 @@ export default async function MainLayout({
     <>
       <Header initialCategorias={categorias} />
       <CartDrawer />
-      <main>{children}</main>
+      {/* min-h reserva el alto de la ventana para el contenido: sin
+          esto, cualquier página que renderice poco (o nada, durante
+          un instante de la hidratación) deja subir el footer hasta
+          chocar con el header. */}
+      <main style={{ minHeight: "100vh" }}>{children}</main>
       <Footer />
     </>
   );
