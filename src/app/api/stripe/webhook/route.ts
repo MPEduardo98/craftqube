@@ -91,6 +91,29 @@ export async function POST(req: NextRequest) {
   }
 }
 
+/* ── Rehidratación del objeto del evento ─────────────────── */
+
+/**
+ * Los destinos de eventos pueden entregar la carga en estilo "resumen"
+ * (thin): el objeto llega con poco más que su `id`, sin metadata ni
+ * importes. Como ese ajuste no se puede cambiar una vez creado el
+ * destino, el webhook no depende de él: si detecta un objeto
+ * incompleto, lo recupera entero desde la API.
+ *
+ * Con carga completa (snapshot) no hay llamada extra.
+ */
+async function completarPaymentIntent(pi: Stripe.PaymentIntent): Promise<Stripe.PaymentIntent> {
+  // `currency` y `amount` siempre vienen en el snapshot; su ausencia
+  // es la señal fiable de que la carga llegó recortada.
+  if (pi.currency && typeof pi.amount === "number") return pi;
+  return getStripe().paymentIntents.retrieve(pi.id);
+}
+
+async function completarCargo(cargo: Stripe.Charge): Promise<Stripe.Charge> {
+  if (cargo.currency && typeof cargo.amount === "number") return cargo;
+  return getStripe().charges.retrieve(cargo.id);
+}
+
 /* ── Localización del pedido ─────────────────────────────── */
 
 /**
@@ -213,7 +236,8 @@ function importeCoincide(pi: Stripe.PaymentIntent, pedido: PedidoPago): boolean 
 
 /* ── Manejadores de evento ───────────────────────────────── */
 
-async function alPagarse(pi: Stripe.PaymentIntent) {
+async function alPagarse(evento: Stripe.PaymentIntent) {
+  const pi     = await completarPaymentIntent(evento);
   const pedido = await buscarPedido(pi);
   if (!pedido) {
     console.warn(`[Webhook] Pedido no encontrado para PI ${pi.id}`);
@@ -248,7 +272,8 @@ async function alPagarse(pi: Stripe.PaymentIntent) {
   if (ok) console.info(`[Webhook] Pedido ${pedido.numero} → pago_recibido`);
 }
 
-async function alProcesarse(pi: Stripe.PaymentIntent) {
+async function alProcesarse(evento: Stripe.PaymentIntent) {
+  const pi     = await completarPaymentIntent(evento);
   const pedido = await buscarPedido(pi);
   if (!pedido || pedido.estado !== "pendiente_pago") return;
 
@@ -262,7 +287,8 @@ async function alProcesarse(pi: Stripe.PaymentIntent) {
   );
 }
 
-async function alFallar(pi: Stripe.PaymentIntent) {
+async function alFallar(evento: Stripe.PaymentIntent) {
+  const pi     = await completarPaymentIntent(evento);
   const pedido = await buscarPedido(pi);
   if (!pedido || ESTADOS_TERMINALES.has(pedido.estado)) return;
 
@@ -275,7 +301,8 @@ async function alFallar(pi: Stripe.PaymentIntent) {
   console.warn(`[Webhook] Pago fallido en pedido ${pedido.numero}`);
 }
 
-async function alCancelarse(pi: Stripe.PaymentIntent) {
+async function alCancelarse(evento: Stripe.PaymentIntent) {
+  const pi     = await completarPaymentIntent(evento);
   const pedido = await buscarPedido(pi);
   if (!pedido || pedido.estado !== "pendiente_pago") return;
 
@@ -301,7 +328,8 @@ async function alCancelarse(pi: Stripe.PaymentIntent) {
   }
 }
 
-async function alReembolsarse(cargo: Stripe.Charge) {
+async function alReembolsarse(evento: Stripe.Charge) {
+  const cargo  = await completarCargo(evento);
   const pedido = await buscarPedidoPorCargo(cargo);
   if (!pedido || pedido.estado === "reembolsado") return;
 
@@ -323,7 +351,12 @@ async function alReembolsarse(cargo: Stripe.Charge) {
   if (ok) await devolverStock(pedido.id);
 }
 
-async function alDisputarse(disputa: Stripe.Dispute) {
+async function alDisputarse(evento: Stripe.Dispute) {
+  // `charge` y `reason` también faltan si la carga llegó recortada.
+  const disputa = evento.charge && evento.reason
+    ? evento
+    : await getStripe().disputes.retrieve(evento.id);
+
   const cargoId = typeof disputa.charge === "string" ? disputa.charge : disputa.charge?.id;
   if (!cargoId) return;
 
