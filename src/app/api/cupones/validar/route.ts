@@ -1,123 +1,94 @@
 // app/api/cupones/validar/route.ts
 // ─────────────────────────────────────────────────────────────
 // POST /api/cupones/validar
-// Valida un código de cupón y calcula el descuento
+//
+// Comprueba un código contra un carrito y devuelve lo que
+// descontaría. Es sólo una consulta: no reserva nada ni gasta el
+// cupón, eso ocurre al crear el pedido.
+//
+// El cliente manda QUÉ variantes y CUÁNTAS; el subtotal, el envío
+// y el descuento los resuelve el servidor con `calcularTotales`,
+// la misma función que después cobra. Antes esta ruta aceptaba el
+// subtotal desde el navegador y recalculaba el descuento por su
+// cuenta, así que podía diferir de lo que el checkout cobraba.
 // ─────────────────────────────────────────────────────────────
-import { NextRequest, NextResponse } from "next/server";
-import mysql                          from "mysql2/promise";
+import { NextRequest, NextResponse }     from "next/server";
+import { calcularTotales, ErrorCalculo } from "@/features/orders/lib/calcularTotales";
+import { getSessionUser }                from "@/features/auth/lib/getSessionUser";
+import { consumirLimite, ipDeRequest }   from "@/shared/lib/rate-limit";
 
-function dbConfig() {
-  return {
-    host:     process.env.DB_HOST,
-    user:     process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    port:     Number(process.env.DB_PORT) || 3306,
-    ssl:      { rejectUnauthorized: false },
-  };
-}
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  let conn;
-  try {
-    const { codigo, subtotal, usuario_id, costo_envio = 0 } = await req.json();
+  // Un formulario de cupón invita a probar códigos a lo bruto.
+  const limite = consumirLimite(`cupon:${ipDeRequest(req)}`, 20, 60_000);
+  if (!limite.permitido) {
+    return NextResponse.json(
+      { success: false, error: "Demasiados intentos. Espera un momento." },
+      { status: 429, headers: { "Retry-After": String(limite.esperaSegundos) } }
+    );
+  }
 
-    if (!codigo || subtotal == null) {
+  try {
+    const body   = await req.json();
+    const codigo = String(body.codigo ?? "").trim();
+    const estado = String(body.estado ?? "").trim();
+    const items  = Array.isArray(body.items) ? body.items : [];
+
+    if (!codigo) {
       return NextResponse.json(
-        { success: false, error: "Se requiere código y subtotal" },
+        { success: false, error: "Se requiere un código." },
+        { status: 400 }
+      );
+    }
+    if (items.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "Se requiere el contenido del carrito." },
         { status: 400 }
       );
     }
 
-    conn = await mysql.createConnection(dbConfig());
+    const usuario = await getSessionUser();
 
-    // Buscar cupón activo y vigente
-    const [rows] = await conn.execute<mysql.RowDataPacket[]>(
-      `SELECT * FROM cupones
-       WHERE UPPER(codigo) = UPPER(?)
-         AND activo = 1
-         AND (valido_desde IS NULL OR valido_desde <= NOW())
-         AND (valido_hasta IS NULL OR valido_hasta >= NOW())
-         AND (uso_maximo_total IS NULL OR usos_actuales < uso_maximo_total)
-       LIMIT 1`,
-      [codigo.trim()]
-    );
+    const totales = await calcularTotales({
+      items,
+      estado,
+      cupon_codigo:    codigo,
+      usuario_id:      usuario?.id ? Number(usuario.id) : null,
+      email:           usuario?.email ?? null,
+      cupon_tolerante: true,
+    });
 
-    if (!rows.length) {
-      return NextResponse.json({
-        success: false,
-        valido:  false,
-        error:   "Código inválido o expirado",
-      });
+    // Cupón rechazado: el carrito está bien, sólo el código no sirve.
+    if (totales.cupon_error) {
+      return NextResponse.json({ success: true, valido: false, error: totales.cupon_error });
     }
-
-    const cupon = rows[0];
-
-    // Validar monto mínimo
-    if (cupon.minimo_compra && subtotal < cupon.minimo_compra) {
-      return NextResponse.json({
-        success: false,
-        valido:  false,
-        error:   `Compra mínima de ${cupon.minimo_compra.toFixed(2)} para usar este cupón`,
-      });
-    }
-
-    // Validar uso por usuario (si aplica)
-    if (usuario_id && cupon.uso_maximo_usuario > 0) {
-      const [usosRows] = await conn.execute<mysql.RowDataPacket[]>(
-        `SELECT COUNT(*) AS usos FROM cupon_usos
-         WHERE cupon_id = ? AND usuario_id = ?`,
-        [cupon.id, usuario_id]
-      );
-      if ((usosRows[0]?.usos ?? 0) >= cupon.uso_maximo_usuario) {
-        return NextResponse.json({
-          success: false,
-          valido:  false,
-          error:   "Ya usaste este cupón el máximo de veces permitido",
-        });
-      }
-    }
-
-    // Calcular descuento
-    let descuento = 0;
-    if (cupon.tipo === "porcentaje") {
-      descuento = subtotal * (cupon.valor / 100);
-      if (cupon.maximo_descuento) {
-        descuento = Math.min(descuento, cupon.maximo_descuento);
-      }
-    } else if (cupon.tipo === "monto_fijo") {
-      descuento = Math.min(cupon.valor, subtotal);
-    } else if (cupon.tipo === "envio_gratis") {
-      descuento = costo_envio;
-    }
-
-    descuento = Math.round(descuento * 100) / 100;
 
     return NextResponse.json({
-      success:  true,
-      valido:   true,
+      success: true,
+      valido:  true,
       cupon: {
-        id:                cupon.id,
-        codigo:            cupon.codigo,
-        tipo:              cupon.tipo,
-        valor:             cupon.valor,
-        minimo_compra:     cupon.minimo_compra,
-        maximo_descuento:  cupon.maximo_descuento,
-        descripcion:       cupon.descripcion,
+        codigo: totales.cupon_codigo,
+        tipo:   totales.cupon_tipo,
       },
-      descuento,
-      mensaje: cupon.tipo === "envio_gratis"
+      descuento:   totales.descuento,
+      costo_envio: totales.costo_envio,
+      total:       totales.total,
+      moneda:      totales.moneda,
+      mensaje: totales.cupon_tipo === "envio_gratis"
         ? "¡Envío gratis aplicado!"
-        : `Descuento de $${descuento.toFixed(2)} aplicado`,
+        : "Descuento aplicado",
     });
 
   } catch (error) {
+    // Un carrito inválido sí es un 400: no hay nada contra qué validar.
+    if (error instanceof ErrorCalculo) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    }
     console.error("[POST /api/cupones/validar]", error);
     return NextResponse.json(
-      { success: false, error: "Error al validar cupón" },
+      { success: false, error: "Error al validar el cupón" },
       { status: 500 }
     );
-  } finally {
-    if (conn) await conn.end();
   }
 }

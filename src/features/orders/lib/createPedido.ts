@@ -74,7 +74,15 @@ export async function createPedido(payload: CrearPedidoPayload): Promise<Pedido 
       estado:       payload.direccion_envio.estado,
       cupon_codigo: payload.cupon_codigo ?? null,
       usuario_id:   payload.usuario_id ?? null,
-      db:           conn,
+      // Identifica al invitado en cupones de primera compra. Aquí NO se
+      // tolera un cupón inválido: si dejó de serlo entre la vista previa
+      // y el pago, se aborta en vez de cobrar un total distinto.
+      email:        payload.email ?? null,
+      // Las variantes ya están bloqueadas; el cupón se bloquea ahora, en
+      // ese mismo orden, para que dos pedidos a la vez no puedan gastar
+      // el mismo código de un solo uso.
+      bloquear_cupon: true,
+      db:             conn,
     });
 
     // 3. Número de pedido

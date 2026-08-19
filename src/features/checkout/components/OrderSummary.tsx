@@ -44,6 +44,9 @@ export interface ResumenImportes {
   impuestos:   number;
   total:       number;
   moneda:      string;
+  /** Cupón aplicado por el servidor, para nombrarlo en el desglose. */
+  cupon_codigo?: string | null;
+  cupon_tipo?:   string | null;
 }
 
 interface Props {
@@ -66,6 +69,8 @@ export function OrderSummary({ compact = false, resumen = null }: Props) {
   const envio     = resumen?.costo_envio ?? 0;
   const total     = resumen?.total ?? totalPrecio;
   const envioPorCotizar = resumen === null;
+  const cuponCodigo     = resumen?.cupon_codigo ?? null;
+  const envioGratisCupon = resumen?.cupon_tipo === "envio_gratis";
 
   /** Con resumen se formatea sin convertir; sin él, el precio local. */
   const fmt = (n: number) => (resumen ? formatMoneda(n, moneda) : formatPrice(n));
@@ -174,22 +179,37 @@ export function OrderSummary({ compact = false, resumen = null }: Props) {
                   </span>
                 </div>
                 {descuento > 0 && (
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-1.5">
-                      <i className="fa-solid fa-tag" style={{ fontSize: "0.7rem", color: "#22c55e" }} />
+                  <div className="flex justify-between items-center gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <i className="fa-solid fa-tag" style={{ fontSize: "0.7rem", color: "#22c55e", flexShrink: 0 }} />
                       <span style={{ fontFamily: "var(--font-body)", fontSize: "0.82rem", color: "var(--color-cq-muted)" }}>Descuento</span>
+                      {cuponCodigo && (
+                        <span className="truncate" style={{ fontFamily: "var(--font-mono)", fontSize: "0.62rem",
+                          letterSpacing: "0.06em", color: "#16a34a", background: "rgba(34,197,94,0.10)",
+                          borderRadius: 4, padding: "1px 5px" }}>
+                          {cuponCodigo}
+                        </span>
+                      )}
                     </div>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.82rem", color: "#22c55e" }}>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.82rem", color: "#22c55e", whiteSpace: "nowrap" }}>
                       −{fmt(descuento)}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
                     <i className="fa-solid fa-truck" style={{ fontSize: "0.7rem", color: "var(--color-cq-muted-2)" }} />
                     <span style={{ fontFamily: "var(--font-body)", fontSize: "0.82rem", color: "var(--color-cq-muted)" }}>Envío</span>
+                    {envioGratisCupon && cuponCodigo && (
+                      <span className="truncate" style={{ fontFamily: "var(--font-mono)", fontSize: "0.62rem",
+                        letterSpacing: "0.06em", color: "#16a34a", background: "rgba(34,197,94,0.10)",
+                        borderRadius: 4, padding: "1px 5px" }}>
+                        {cuponCodigo}
+                      </span>
+                    )}
                   </div>
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "var(--color-cq-muted-2)" }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem", whiteSpace: "nowrap",
+                    color: envio === 0 && !envioPorCotizar ? "#22c55e" : "var(--color-cq-muted-2)" }}>
                     {envioPorCotizar ? "Por cotizar" : envio === 0 ? "Gratis" : fmt(envio)}
                   </span>
                 </div>

@@ -37,11 +37,16 @@ export async function POST(req: NextRequest) {
 
     const usuario = await getSessionUser();
 
+    // Modo tolerante: si el cupón dejó de ser válido, el comprador
+    // debe seguir viendo su total (sin descuento) y el motivo, en vez
+    // de quedarse con la pantalla en blanco.
     const totales = await calcularTotales({
       items,
       estado,
-      cupon_codigo: body.cupon_codigo ?? null,
-      usuario_id:   usuario?.id ? Number(usuario.id) : null,
+      cupon_codigo:    body.cupon_codigo ?? null,
+      usuario_id:      usuario?.id ? Number(usuario.id) : null,
+      email:           usuario?.email ?? (typeof body.email === "string" ? body.email : null),
+      cupon_tolerante: true,
     });
 
     return NextResponse.json({
@@ -54,6 +59,8 @@ export async function POST(req: NextRequest) {
         total:        totales.total,
         moneda:       totales.moneda,
         cupon_codigo: totales.cupon_codigo,
+        cupon_tipo:   totales.cupon_tipo,
+        cupon_error:  totales.cupon_error,
         lineas:       totales.lineas.map((l) => ({
           variante_id:     l.variante_id,
           cantidad:        l.cantidad,

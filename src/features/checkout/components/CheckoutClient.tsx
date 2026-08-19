@@ -6,6 +6,8 @@ import Link                                  from "next/link";
 import { motion, AnimatePresence }           from "framer-motion";
 import { useCart }                           from "@/features/cart/context/CartContext";
 import { useAuth }                           from "@/features/auth/context/AuthContext";
+import { useAlert }                          from "@/shared/context/AlertContext";
+import { formatMoneda }                      from "@/shared/lib/format";
 import { CheckoutStepper }                   from "./CheckoutStepper";
 import { StepContacto }                      from "./StepContacto";
 import { StepEnvio }                         from "./StepEnvio";
@@ -23,6 +25,11 @@ export interface ResumenCheckout {
   impuestos:   number;
   total:       number;
   moneda:      string;
+  /** Código realmente aplicado por el servidor; null si ninguno. */
+  cupon_codigo?: string | null;
+  cupon_tipo?:   string | null;
+  /** Motivo por el que se descartó el cupón que se pidió. */
+  cupon_error?:  string | null;
 }
 
 function FontAwesomeLink() {
@@ -119,10 +126,14 @@ async function guardarDireccionUsuario(
 export function CheckoutClient() {
   const { items, clearCart } = useCart();
   const { usuario, autenticado, refreshUser } = useAuth();
+  const { success, error: alertaError } = useAlert();
 
   const [step,     setStep]     = useState<CheckoutStep>("contacto");
   const [formData, setFormData] = useState<CheckoutFormData>(emptyForm);
-  const [cupon]                 = useState<string | null>(null);
+
+  /** Código de cupón confirmado por el servidor; null si no hay ninguno. */
+  const [cupon,         setCupon]         = useState<string | null>(null);
+  const [cuponCargando, setCuponCargando] = useState(false);
 
   /** Importes autoritativos del servidor; null mientras se calculan. */
   const [resumen,       setResumen]       = useState<ResumenCheckout | null>(null);
@@ -136,8 +147,11 @@ export function CheckoutClient() {
    * cupón). Es la MISMA función que después calcula lo que se cobra,
    * así que lo mostrado y lo cobrado no pueden diferir.
    */
-  const cargarResumen = useCallback(async (estado: string) => {
-    if (!estado.trim() || items.length === 0) { setResumen(null); return; }
+  const cargarResumen = useCallback(async (
+    estado:      string,
+    codigoCupon: string | null
+  ): Promise<ResumenCheckout | null> => {
+    if (!estado.trim() || items.length === 0) { setResumen(null); return null; }
     setErrorResumen(null);
     try {
       const res = await fetch("/api/checkout/resumen", {
@@ -147,27 +161,72 @@ export function CheckoutClient() {
         body: JSON.stringify({
           estado,
           items: items.map((i) => ({ variante_id: i.varianteId, cantidad: i.cantidad })),
-          cupon_codigo: cupon || undefined,
+          cupon_codigo: codigoCupon || undefined,
+          // Identifica al invitado en cupones de primera compra, para que
+          // la vista previa coincida con lo que aceptará el cobro.
+          email: formData.contacto.email || undefined,
         }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) {
         setResumen(null);
         setErrorResumen(json.error ?? "No pudimos calcular el total.");
-        return;
+        return null;
       }
-      setResumen(json.data as ResumenCheckout);
+
+      const data = json.data as ResumenCheckout;
+      setResumen(data);
+
+      // El servidor manda sobre el cupón. Si lo rechazó —por ejemplo
+      // porque el carrito cambió y ya no llega al mínimo— se retira aquí,
+      // en un solo sitio, y el comprador se entera por qué.
+      if (data.cupon_error) {
+        setCupon(null);
+        alertaError(data.cupon_error, "Cupón no aplicado");
+      } else {
+        setCupon(data.cupon_codigo ?? null);
+      }
+
+      return data;
     } catch {
       setResumen(null);
       setErrorResumen("No pudimos calcular el total. Revisa tu conexión.");
+      return null;
     }
-  }, [items, cupon]);
+  }, [items, formData.contacto.email, alertaError]);
 
   /* Recalcular si cambia el carrito estando ya en el paso de pago. */
   useEffect(() => {
-    if (step === "pago") void cargarResumen(formData.envio.estado);
+    if (step === "pago") void cargarResumen(formData.envio.estado, cupon);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, items]);
+
+  /* ── Cupones ────────────────────────────────────────────── */
+  const aplicarCupon = useCallback(async (codigo: string) => {
+    setCuponCargando(true);
+    try {
+      const data = await cargarResumen(formData.envio.estado, codigo);
+      if (!data?.cupon_codigo) return;   // el motivo ya se avisó
+      success(
+        data.cupon_tipo === "envio_gratis"
+          ? "El envío de tu pedido es gratis."
+          : `Ahorras ${formatMoneda(data.descuento, data.moneda)}.`,
+        "Cupón aplicado"
+      );
+    } finally {
+      setCuponCargando(false);
+    }
+  }, [cargarResumen, formData.envio.estado, success]);
+
+  const quitarCupon = useCallback(async () => {
+    setCuponCargando(true);
+    setCupon(null);
+    try {
+      await cargarResumen(formData.envio.estado, null);
+    } finally {
+      setCuponCargando(false);
+    }
+  }, [cargarResumen, formData.envio.estado]);
 
   /* ── Pago aceptado: sólo tareas de cuenta; el pedido ya existe ── */
   const handlePagoConfirmado = useCallback(async (res: ResultadoPago) => {
@@ -252,7 +311,7 @@ export function CheckoutClient() {
                     <StepEnvio key="envio"
                       data={formData.envio}
                       onChange={(envio) => setFormData((p) => ({ ...p, envio }))}
-                      onNext={() => { void cargarResumen(formData.envio.estado); setStep("pago"); }}
+                      onNext={() => { void cargarResumen(formData.envio.estado, cupon); setStep("pago"); }}
                       onBack={() => setStep("contacto")}
                       contactoNombre={formData.contacto.nombre}
                       contactoApellido={formData.contacto.apellido} />
@@ -279,6 +338,15 @@ export function CheckoutClient() {
                         totalServidor={resumen?.total ?? null}
                         moneda={resumen?.moneda ?? "MXN"}
                         cuponCodigo={cupon}
+                        cuponCargando={cuponCargando}
+                        cuponEtiqueta={
+                          !resumen ? null
+                          : resumen.cupon_tipo === "envio_gratis" ? "Envío gratis"
+                          : resumen.descuento > 0 ? `−${formatMoneda(resumen.descuento, resumen.moneda)}`
+                          : null
+                        }
+                        onAplicarCupon={aplicarCupon}
+                        onQuitarCupon={quitarCupon}
                       />
                     </>
                   )}
