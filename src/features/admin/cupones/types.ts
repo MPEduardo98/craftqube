@@ -18,6 +18,8 @@ export interface CuponRow {
   usos_actuales:      number;
   aplica_a:           CuponAplica;
   aplica_ids:         number[] | null;
+  /** 1 = el descuento también considera el costo de envío. */
+  aplica_envio:       number | boolean;
   activo:             number | boolean;
   valido_desde:       string | null;
   valido_hasta:       string | null;
@@ -60,6 +62,14 @@ export const APLICA_LABEL: Record<CuponAplica, string> = {
   producto:       "Productos",
   primera_compra: "Primera compra",
 };
+
+/**
+ * Tipos en los que tiene sentido meter el envío en la base del descuento.
+ * `envio_gratis` ya deja el envío en cero y `2x1` descuenta por unidades.
+ */
+export function soportaAplicaEnvio(tipo: CuponTipo): boolean {
+  return tipo === "porcentaje" || tipo === "monto_fijo";
+}
 
 /** Etiqueta corta del valor del cupón según su tipo. */
 export function valorLabel(c: Pick<CuponRow, "tipo" | "valor">): string {

@@ -13,7 +13,8 @@ import { useBulkEdit } from "@/shared/components/ui/BulkEditContext";
 import { formatPrice } from "@/shared/lib/format";
 import { ModalCupon } from "./ModalCupon";
 import {
-  cuponEstado, estadoMeta, valorLabel, TIPO_LABEL, APLICA_LABEL,
+  cuponEstado, estadoMeta, valorLabel, soportaAplicaEnvio,
+  TIPO_LABEL, APLICA_LABEL,
   type CuponRow, type CuponTipo,
 } from "../types";
 
@@ -211,6 +212,7 @@ function CuponTableRow({
   const [codigo, setCodigo] = useState(c.codigo);
   const [tipo,   setTipo]   = useState<CuponTipo>(c.tipo);
   const [valor,  setValor]  = useState(String(c.valor ?? ""));
+  const [envio,  setEnvio]  = useState(Boolean(Number(c.aplica_envio)));
 
   /* En modo edición masiva los cambios NO se envían al servidor: se acumulan
      en el borrador del padre y se confirman con el botón "Guardar". */
@@ -227,6 +229,9 @@ function CuponTableRow({
     const patch: Record<string, string | number | null> = { tipo: value };
     // Envío gratis y 2x1 no llevan importe: se refleja de inmediato en la celda.
     if (value === "envio_gratis" || value === "2x1") { patch.valor = 0; setValor("0"); }
+    // Tampoco pueden descontar sobre el envío: la casilla se apaga aquí
+    // mismo para que la celda no prometa algo que el servidor ignora.
+    if (!soportaAplicaEnvio(value as CuponTipo)) { patch.aplica_envio = 0; setEnvio(false); }
     onDraft(c.id, patch);
   };
 
@@ -237,6 +242,7 @@ function CuponTableRow({
   };
 
   const necesitaValor = tipo === "porcentaje" || tipo === "monto_fijo";
+  const permiteEnvio  = soportaAplicaEnvio(tipo);
 
   /* ── Vista de solo lectura (por defecto) ──────────────────── */
   if (!editMode) {
@@ -264,9 +270,16 @@ function CuponTableRow({
             <span className="text-[13px] font-bold" style={{ fontFamily: "var(--font-display, sans-serif)", color: "var(--color-cq-text, #0f172a)" }}>
               {valorLabel(c)}
             </span>
-            <span className="text-[10px] uppercase tracking-wider"
+            <span className="text-[10px] uppercase tracking-wider flex items-center gap-1.5"
               style={{ fontFamily: "var(--font-mono, monospace)", color: "var(--color-cq-muted-2, #94a3b8)" }}>
               {TIPO_LABEL[c.tipo]}
+              {Boolean(Number(c.aplica_envio)) && (
+                <span
+                  title="El descuento también aplica al costo de envío"
+                  style={{ color: "#0369a1", background: "rgba(2,132,199,0.10)", borderRadius: 4, padding: "1px 4px", letterSpacing: "0.04em" }}>
+                  + envío
+                </span>
+              )}
             </span>
           </div>
         </td>
@@ -362,6 +375,27 @@ function CuponTableRow({
           className="cptbl-cell-input"
           style={{ maxWidth: 90 }}
         />
+      </td>
+
+      {/* Aplica al envío — toggle en borrador */}
+      <td className="px-4 py-3.5">
+        <label className="flex items-center gap-2"
+          style={{ cursor: permiteEnvio ? "pointer" : "not-allowed", opacity: permiteEnvio ? 1 : 0.45 }}
+          title={permiteEnvio
+            ? "El descuento también aplica al costo de envío"
+            : "Sólo los cupones de porcentaje o monto fijo pueden descontar el envío"}>
+          <input
+            type="checkbox"
+            checked={permiteEnvio && envio}
+            disabled={!permiteEnvio}
+            onChange={e => { setEnvio(e.target.checked); onDraft(c.id, { aplica_envio: e.target.checked ? 1 : 0 }); }}
+            className="w-3.5 h-3.5 rounded accent-blue-600"
+            style={{ cursor: permiteEnvio ? "pointer" : "not-allowed" }}
+          />
+          <span className="text-[11px]" style={{ fontFamily: "var(--font-mono, monospace)", color: "var(--color-cq-muted, #64748b)" }}>
+            Envío
+          </span>
+        </label>
       </td>
 
       {/* Compra mínima — editable */}
@@ -1000,7 +1034,7 @@ export function CuponesTable({ initialCupones, initialTotal }: Props) {
                   )}
                 </th>
                 {(editMode
-                  ? ["Código","Tipo","Valor","Compra mínima","Usos totales","Activo","Usos","Acciones"]
+                  ? ["Código","Tipo","Valor","Aplica envío","Compra mínima","Usos totales","Activo","Usos","Acciones"]
                   : ["Cupón","Descuento","Compra mínima","Vigencia","Estado","Usos","Acciones"]
                 ).map((h, i, arr) => (
                   <th key={h}
@@ -1013,7 +1047,7 @@ export function CuponesTable({ initialCupones, initialTotal }: Props) {
             </thead>
             <tbody>
               {cupones.length === 0 ? (
-                <tr><td colSpan={9} className="px-5 py-16 text-center">
+                <tr><td colSpan={10} className="px-5 py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-12 h-12 rounded-xl flex items-center justify-center"
                       style={{ background: "var(--color-cq-surface-2, #f1f5f9)" }}>

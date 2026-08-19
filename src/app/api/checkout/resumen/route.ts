@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
         moneda:       totales.moneda,
         cupon_codigo: totales.cupon_codigo,
         cupon_tipo:   totales.cupon_tipo,
+        cupon_aplica_envio: totales.cupon_aplica_envio,
         cupon_error:  totales.cupon_error,
         lineas:       totales.lineas.map((l) => ({
           variante_id:     l.variante_id,

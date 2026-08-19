@@ -68,8 +68,9 @@ export async function POST(req: NextRequest) {
       success: true,
       valido:  true,
       cupon: {
-        codigo: totales.cupon_codigo,
-        tipo:   totales.cupon_tipo,
+        codigo:       totales.cupon_codigo,
+        tipo:         totales.cupon_tipo,
+        aplica_envio: totales.cupon_aplica_envio,
       },
       descuento:   totales.descuento,
       costo_envio: totales.costo_envio,
@@ -77,7 +78,9 @@ export async function POST(req: NextRequest) {
       moneda:      totales.moneda,
       mensaje: totales.cupon_tipo === "envio_gratis"
         ? "¡Envío gratis aplicado!"
-        : "Descuento aplicado",
+        : totales.cupon_aplica_envio
+          ? "Descuento aplicado, envío incluido"
+          : "Descuento aplicado",
     });
 
   } catch (error) {

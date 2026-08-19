@@ -71,13 +71,21 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
     : 0;
 
   const wished        = isWished(producto.id);
-  const varianteId    = producto.id;
-  const itemEnCarrito = items.find(item => item.varianteId === varianteId);
+  /* La variante por defecto, NO producto.id: el checkout cotiza contra
+     producto_variantes y un producto_id ahí no resuelve. */
+  const varianteId    = producto.variante_id;
+  const itemEnCarrito = varianteId == null
+    ? undefined
+    : items.find(item => item.varianteId === varianteId);
+  /* Sin variante no hay nada que cotizar: el botón se comporta como
+     si no hubiera stock en vez de envenenar el carrito. */
+  const puedeAgregar  = tieneStock && varianteId != null;
 
   const handleWishlistToggle = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
     toggleItem({
       productoId:   producto.id,
+      varianteId:   producto.variante_id,
       slug:         producto.slug,
       titulo:       producto.titulo,
       precio:       producto.precio ?? 0,
@@ -89,7 +97,7 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
 
   const handleAgregarAlCarrito = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    if (!tieneStock) return;
+    if (!puedeAgregar) return;
     addItem({
       productoId:   producto.id,
       varianteId,
@@ -106,12 +114,13 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
 
   const handleIncrementar = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    if (itemEnCarrito) updateQty(varianteId, itemEnCarrito.cantidad + 1);
+    if (itemEnCarrito && varianteId != null) updateQty(varianteId, itemEnCarrito.cantidad + 1);
   };
 
   const handleDecrementar = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    if (itemEnCarrito && itemEnCarrito.cantidad > 1) updateQty(varianteId, itemEnCarrito.cantidad - 1);
+    if (itemEnCarrito && varianteId != null && itemEnCarrito.cantidad > 1)
+      updateQty(varianteId, itemEnCarrito.cantidad - 1);
   };
 
   return (
@@ -208,7 +217,7 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
             )}
           </div>
 
-          {!tieneStock ? (
+          {!puedeAgregar ? (
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", color: "var(--color-cq-muted-2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
               Agotado
             </span>

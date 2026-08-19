@@ -63,11 +63,22 @@ export interface CuponResuelto {
   codigo:       string;
   tipo:         CuponTipo;
   descripcion:  string | null;
-  /** Descuento sobre la mercancía (nunca incluye el envío). */
+  /**
+   * Descuento total del cupón. Cubre sólo la mercancía elegible salvo
+   * que el cupón tenga `aplica_envio`, en cuyo caso la base incluyó
+   * también el envío y el descuento puede pasar del importe de la
+   * mercancía.
+   */
   descuento:    number;
-  /** Costo de envío después del cupón. */
+  /**
+   * Costo de envío después del cupón. Sólo `envio_gratis` lo cambia:
+   * un cupón con `aplica_envio` no falsea la tarifa del transportista,
+   * mete el envío en la base del descuento y lo resta del total.
+   */
   costo_envio:  number;
   envio_gratis: boolean;
+  /** El envío formó parte de la base sobre la que se calculó el descuento. */
+  aplica_envio: boolean;
 }
 
 export interface CuponInvalido {
@@ -234,16 +245,35 @@ export async function resolverCupon(params: ParamsCupon): Promise<ResultadoCupon
   const baseElegible = round2(elegibles.reduce((s, l) => s + l.total_linea, 0));
   const maximo       = aTienda(cupon.maximo_descuento);
 
+  /**
+   * El admin puede decidir que el descuento considere también el envío.
+   * Sólo aplica a porcentaje y monto fijo: `envio_gratis` ya deja el
+   * envío en cero y `2x1` se calcula por unidades de producto.
+   *
+   * Nota: un cupón restringido a una categoría o a unos productos sigue
+   * sumando el envío completo a la base si el admin lo marcó; es una
+   * decisión suya, no una consecuencia del ámbito.
+   */
+  const aplicaEnvio =
+    (tipo === "porcentaje" || tipo === "monto_fijo") &&
+    Boolean(Number(cupon.aplica_envio));
+
+  // Base sobre la que muerde el cupón: mercancía elegible y, si el
+  // cupón lo permite, el envío ya cotizado.
+  const baseDescontable = round2(
+    baseElegible + (aplicaEnvio ? Math.max(0, params.costo_envio) : 0)
+  );
+
   let descuento   = 0;
   let costoEnvio  = params.costo_envio;
   let envioGratis = false;
 
   if (tipo === "porcentaje") {
-    descuento = baseElegible * (Number(cupon.valor) / 100);
+    descuento = baseDescontable * (Number(cupon.valor) / 100);
     if (maximo != null) descuento = Math.min(descuento, maximo);
 
   } else if (tipo === "monto_fijo") {
-    descuento = Math.min(aTienda(cupon.valor) ?? 0, baseElegible);
+    descuento = Math.min(aTienda(cupon.valor) ?? 0, baseDescontable);
 
   } else if (tipo === "envio_gratis") {
     // El envío gratis se refleja poniendo el costo en cero, no como
@@ -258,7 +288,7 @@ export async function resolverCupon(params: ParamsCupon): Promise<ResultadoCupon
     );
   }
 
-  descuento = round2(Math.max(0, Math.min(descuento, baseElegible)));
+  descuento = round2(Math.max(0, Math.min(descuento, baseDescontable)));
 
   // Un cupón que no cambia nada confunde más de lo que ayuda.
   if (descuento <= 0 && !envioGratis) {
@@ -278,5 +308,6 @@ export async function resolverCupon(params: ParamsCupon): Promise<ResultadoCupon
     descuento,
     costo_envio:  round2(costoEnvio),
     envio_gratis: envioGratis,
+    aplica_envio: aplicaEnvio,
   };
 }

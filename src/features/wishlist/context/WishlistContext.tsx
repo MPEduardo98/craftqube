@@ -13,6 +13,12 @@ import {
 
 export interface WishlistItem {
   productoId:   number;
+  /**
+   * Variante por defecto, para poder pasar al carrito desde Favoritos
+   * sin volver a pedir la ficha. Opcional: los favoritos guardados
+   * antes de existir este campo no la traen y hay que resolverla.
+   */
+  varianteId?:  number | null;
   slug:         string;
   titulo:       string;
   precio:       number;

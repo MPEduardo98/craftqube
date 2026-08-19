@@ -3,15 +3,68 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useWishlist } from "@/features/wishlist/context/WishlistContext";
+import { useWishlist, type WishlistItem } from "@/features/wishlist/context/WishlistContext";
 import { useCart } from "@/features/cart/context/CartContext";
+import { useAlert } from "@/shared/context/AlertContext";
 import { formatPrice } from "@/shared/lib/format";
 import { resolveImageUrl } from "@/features/media/lib/resolveImageUrl";
+
+/**
+ * Variante por defecto de un favorito. Los guardados antes de que la
+ * wishlist llevara `varianteId` sólo tienen el id del producto, que NO
+ * sirve para el carrito: el checkout cotiza contra producto_variantes.
+ * Para esos se pide la ficha, que devuelve las variantes ordenadas con
+ * la predeterminada primero.
+ */
+async function resolverVariante(
+  item: WishlistItem
+): Promise<{ id: number; sku: string | null } | null> {
+  if (item.varianteId != null) return { id: item.varianteId, sku: null };
+  try {
+    const res  = await fetch(`/api/productos/${item.slug}`);
+    const json = await res.json();
+    const def  = json?.data?.variantes?.[0];
+    return def?.id ? { id: Number(def.id), sku: def.sku ?? null } : null;
+  } catch {
+    return null;
+  }
+}
 
 export function FavoritosSection() {
   const { items, removeItem } = useWishlist();
   const { addItem } = useCart();
+  const { error: alertaError } = useAlert();
+  const [agregando, setAgregando] = useState<number | null>(null);
+
+  const agregarAlCarrito = async (item: WishlistItem) => {
+    setAgregando(item.productoId);
+    try {
+      const variante = await resolverVariante(item);
+      if (!variante) {
+        alertaError(
+          "No pudimos identificar la versión de este producto. Ábrelo para elegirla.",
+          "No se agregó al carrito"
+        );
+        return;
+      }
+      addItem({
+        productoId:   item.productoId,
+        varianteId:   variante.id,
+        titulo:       item.titulo,
+        slug:         item.slug,
+        sku:          variante.sku ?? `PROD-${item.productoId}`,
+        precio:       item.precio,
+        cantidad:     1,
+        imagenNombre: item.imagenNombre,
+        imagenAlt:    item.imagenAlt,
+        atributos:    [],
+      });
+    } finally {
+      setAgregando(null);
+    }
+  };
 
   if (items.length === 0) return (
     <div className="rounded-xl p-12 text-center"
@@ -89,26 +142,14 @@ export function FavoritosSection() {
                   {/* Acciones */}
                   <div className="flex gap-2 mt-auto pt-2">
                     <button
-                      onClick={() => {
-                        addItem({
-                          productoId:   item.productoId,
-                          varianteId:   item.productoId,
-                          titulo:       item.titulo,
-                          slug:         item.slug,
-                          sku:          `PROD-${item.productoId}`,
-                          precio:       item.precio,
-                          cantidad:     1,
-                          imagenNombre: item.imagenNombre,
-                          imagenAlt:    item.imagenAlt,
-                          atributos:    [],
-                        });
-                      }}
+                      onClick={() => void agregarAlCarrito(item)}
+                      disabled={agregando === item.productoId}
                       className="flex-1 flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold"
-                      style={{ height: 36, background: "var(--color-cq-primary)", color: "white", fontFamily: "var(--font-display)", letterSpacing: "0.06em", textTransform: "uppercase", border: "none", cursor: "pointer", boxShadow: "0 2px 10px rgba(29,78,216,0.2)" }}>
+                      style={{ height: 36, background: "var(--color-cq-primary)", color: "white", fontFamily: "var(--font-display)", letterSpacing: "0.06em", textTransform: "uppercase", border: "none", cursor: agregando === item.productoId ? "wait" : "pointer", opacity: agregando === item.productoId ? 0.65 : 1, boxShadow: "0 2px 10px rgba(29,78,216,0.2)" }}>
                       <svg viewBox="0 0 576 512" fill="currentColor" width="11" height="11">
                         <path d="M0 24C0 10.7 10.7 0 24 0H69.5c22 0 41.5 12.8 50.6 32h411c26.3 0 45.5 25 38.6 50.4l-41 152.3c-8.5 31.4-37 53.3-69.5 53.3H170.7l5.4 28.5c2.2 11.3 12.1 19.5 23.6 19.5H488c13.3 0 24 10.7 24 24s-10.7 24-24 24H199.7c-34.6 0-64.3-24.6-70.7-58.5L77.4 54.5c-.7-3.8-4-6.5-7.9-6.5H24C10.7 48 0 37.3 0 24zM128 464a48 48 0 1 1 96 0 48 48 0 1 1 -96 0zm336-48a48 48 0 1 1 0 96 48 48 0 1 1 0-96z"/>
                       </svg>
-                      Agregar
+                      {agregando === item.productoId ? "Agregando…" : "Agregar"}
                     </button>
                     <button
                       onClick={() => removeItem(item.productoId)}

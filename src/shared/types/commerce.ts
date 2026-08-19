@@ -21,6 +21,8 @@ export interface Cupon {
   usos_actuales:        number;
   aplica_a:             CuponAplica;
   aplica_ids:           number[] | null;
+  /** El descuento también muerde el costo de envío (porcentaje y monto fijo). */
+  aplica_envio:         boolean;
   activo:               boolean;
   valido_desde:         string | null;
   valido_hasta:         string | null;

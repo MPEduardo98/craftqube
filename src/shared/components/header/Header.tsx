@@ -57,7 +57,7 @@ function CheckoutOnlyHeader() {
 /* ── Export principal ────────────────────────────────────── */
 export function Header({ initialCategorias = [] }: HeaderProps) {
   const pathname = usePathname();
-  if (pathname === "/checkout") return <CheckoutOnlyHeader />;
+  if (pathname.startsWith("/checkout")) return <CheckoutOnlyHeader />;
   return <FullHeader initialCategorias={initialCategorias} />;
 }
 

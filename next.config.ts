@@ -43,6 +43,19 @@ const nextConfig: NextConfig = {
         destination: "/categoria/:catSlug",
         permanent:   true,
       },
+
+      // ── /checkout → /checkout/contacto ─────────────────────
+      // El checkout se partió en un paso por URL y ya no tiene
+      // página propia. Aquí y no en una page con redirect() por
+      // lo mismo de arriba: desde la page, Next responde 200 y
+      // resuelve el salto en el cliente, dejando una entrada de
+      // historial que rebota al pulsar "atrás". Temporal (307):
+      // esto es la puerta del flujo, no una mudanza definitiva.
+      {
+        source:      "/checkout",
+        destination: "/checkout/contacto",
+        permanent:   false,
+      },
     ];
   },
 

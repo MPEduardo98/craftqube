@@ -10,7 +10,6 @@ import {
   type StripeCardNumberElement,
 } from "@stripe/stripe-js";
 import { useCart }        from "@/features/cart/context/CartContext";
-import { CuponInput }     from "./CuponInput";
 import type { DatosPago, DatosEnvio, DatosContacto } from "../types";
 import { formatMoneda }   from "@/shared/lib/format";
 
@@ -119,13 +118,12 @@ interface Props {
   /** Total autoritativo del servidor. null mientras se calcula. */
   totalServidor: number | null;
   moneda:        string;
-  /** Cupón aplicado y confirmado por el servidor. */
+  /**
+   * Cupón aplicado y confirmado por el servidor. El campo para
+   * escribirlo vive en la columna del resumen (`CuponCard`); aquí
+   * sólo se reenvía al cobro.
+   */
   cuponCodigo?:   string | null;
-  cuponCargando?: boolean;
-  /** Efecto del cupón ya calculado ("−$120.00 MXN", "Envío gratis"). */
-  cuponEtiqueta?: string | null;
-  onAplicarCupon?: (codigo: string) => void;
-  onQuitarCupon?:  () => void;
 }
 
 const METODOS: { id: Metodo; label: string; icon: string; desc: string }[] = [
@@ -346,7 +344,6 @@ function PanelInstruccion({ icono, titulo, cuerpo, boton, iconoBoton, onClick, l
 export function StepPago({
   data, onChange, onNext, onBack,
   contacto, envioData, totalServidor, moneda, cuponCodigo,
-  cuponCargando = false, cuponEtiqueta, onAplicarCupon, onQuitarCupon,
 }: Props) {
   const { items } = useCart();
   const [error,    setError]    = useState<string | null>(null);
@@ -499,24 +496,6 @@ export function StepPago({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Cupón — aquí y no en el resumen porque el resumen sólo
-          existe en escritorio, y el descuento debe poder aplicarse
-          también desde el móvil. */}
-      {onAplicarCupon && onQuitarCupon && (
-        <div className="flex flex-col"
-          style={{ paddingBottom: 2, borderBottom: "1px solid var(--color-cq-border)" }}>
-          <div style={{ paddingBottom: 18 }}>
-            <CuponInput
-              aplicado={cuponCodigo ?? null}
-              cargando={cuponCargando}
-              etiqueta={cuponEtiqueta}
-              onAplicar={onAplicarCupon}
-              onQuitar={onQuitarCupon}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Selector de método */}
       <div className="flex flex-col gap-2.5">

@@ -117,6 +117,7 @@ export function ProductDetailClient({ producto }: Props) {
   const handleWishlist = () => {
     toggleItem({
       productoId:   producto.id,
+      varianteId:   selectedVariante?.id ?? null,
       slug:         producto.slug,
       titulo:       producto.titulo,
       precio,

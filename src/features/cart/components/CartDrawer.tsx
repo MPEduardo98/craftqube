@@ -205,7 +205,7 @@ export function CartDrawer() {
                     Envío calculado en el checkout
                   </p>
 
-                  <Link href="/checkout" onClick={closeDrawer}
+                  <Link href="/checkout/contacto" onClick={closeDrawer}
                     className="w-full flex items-center justify-center gap-2 rounded-xl font-bold"
                     style={{ height: 52, background: "var(--color-cq-primary)", color: "white", textDecoration: "none", fontFamily: "var(--font-display)", fontSize: "0.875rem", letterSpacing: "0.1em", textTransform: "uppercase", boxShadow: "0 4px 20px rgba(29,78,216,0.3)" }}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M5 12h14M12 5l7 7-7 7"/></svg>

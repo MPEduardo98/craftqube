@@ -10,6 +10,7 @@ import { pool }                                from "@/shared/lib/db/pool";
 import type { RowDataPacket, ResultSetHeader } from "mysql2";
 import {
   TIPOS_VALIDOS, APLICA_VALIDOS, normalizarCupon, SELECT_CUPONES, toMysqlDatetime,
+  normalizarAplicaEnvio, soportaAplicaEnvio,
 } from "../helpers";
 
 type Params = { params: Promise<{ id: string }> };
@@ -82,6 +83,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const usoMaximoTotal   = body.uso_maximo_total != null && body.uso_maximo_total !== "" ? Number(body.uso_maximo_total) : null;
     const usoMaximoUsuario = Number(body.uso_maximo_usuario) || 1;
     const activo           = body.activo === false || body.activo === 0 ? 0 : 1;
+    // Sólo porcentaje y monto fijo pueden descontar sobre el envío.
+    const aplicaEnvio      = normalizarAplicaEnvio(body.aplica_envio, tipo);
     const validoDesde      = toMysqlDatetime(body.valido_desde);
     const validoHasta      = toMysqlDatetime(body.valido_hasta);
 
@@ -101,11 +104,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
          codigo = ?, descripcion = ?, tipo = ?, valor = ?,
          minimo_compra = ?, maximo_descuento = ?,
          uso_maximo_total = ?, uso_maximo_usuario = ?,
-         aplica_a = ?, aplica_ids = ?, activo = ?,
+         aplica_a = ?, aplica_ids = ?, aplica_envio = ?, activo = ?,
          valido_desde = ?, valido_hasta = ?
        WHERE id = ?`,
       [codigo, descripcion, tipo, valor, minimoCompra, maximoDescuento,
-       usoMaximoTotal, usoMaximoUsuario, aplicaA, aplicaIds, activo,
+       usoMaximoTotal, usoMaximoUsuario, aplicaA, aplicaIds, aplicaEnvio, activo,
        validoDesde, validoHasta, cuponId]
     );
     if (result.affectedRows === 0) {
@@ -160,6 +163,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       if ((body.tipo === "envio_gratis" || body.tipo === "2x1") && !("valor" in body)) {
         sets.push("valor = ?"); values.push(0);
       }
+      // Tampoco pueden descontar sobre el envío: si el cupón venía con la
+      // opción puesta y cambia de tipo, se apaga para no dejar restos.
+      if (!soportaAplicaEnvio(body.tipo) && !("aplica_envio" in body)) {
+        sets.push("aplica_envio = ?"); values.push(0);
+      }
     }
     if ("valor" in body) {
       sets.push("valor = ?"); values.push(Number(body.valor) || 0);
@@ -192,6 +200,20 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if ("aplica_ids" in body) {
       const ids = Array.isArray(body.aplica_ids) ? body.aplica_ids.map(Number).filter(Boolean) : [];
       sets.push("aplica_ids = ?"); values.push(ids.length ? JSON.stringify(ids) : null);
+    }
+    if ("aplica_envio" in body) {
+      // Sin `tipo` en el body no se sabe si el cupón lo admite: se resuelve
+      // en SQL contra el tipo ya guardado en vez de leer la fila aparte.
+      const activar = body.aplica_envio === true || body.aplica_envio === 1 ||
+                      body.aplica_envio === "1" || body.aplica_envio === "true";
+      const tipoFinal = "tipo" in body ? body.tipo : null;
+      if (tipoFinal != null) {
+        sets.push("aplica_envio = ?");
+        values.push(normalizarAplicaEnvio(body.aplica_envio, tipoFinal));
+      } else {
+        sets.push("aplica_envio = (? AND tipo IN ('porcentaje','monto_fijo'))");
+        values.push(activar ? 1 : 0);
+      }
     }
     if ("activo" in body) {
       sets.push("activo = ?"); values.push(body.activo === false || body.activo === 0 ? 0 : 1);

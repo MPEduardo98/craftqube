@@ -5,6 +5,7 @@ import { useState, useEffect }        from "react";
 import { motion, AnimatePresence }    from "framer-motion";
 import { useAuth }                    from "@/features/auth/context/AuthContext";
 import { FormField }                  from "./FormField";
+import { validarEnvio }               from "../lib/validaciones";
 import type { DatosEnvio }            from "../types";
 import { ESTADOS_MX }                 from "../types";
 
@@ -84,15 +85,10 @@ export function StepEnvio({ data, onChange, onNext, onBack }: Props) {
     });
   };
 
+  /* Mismo criterio que el guard de /checkout/pago: si esto pasa,
+     aquel deja entrar. Ver lib/validaciones. */
   const validate = (): boolean => {
-    const e: typeof errors = {};
-    if (!data.calle.trim())     e.calle        = "La calle es requerida";
-    if (!data.numeroExt.trim()) e.numeroExt    = "El número exterior es requerido";
-    if (!data.colonia.trim())   e.colonia      = "La colonia es requerida";
-    if (!data.ciudad.trim())    e.ciudad       = "La ciudad es requerida";
-    if (!data.estado)           e.estado       = "Selecciona un estado";
-    if (!data.codigoPostal.trim() || data.codigoPostal.replace(/\D/g, "").length !== 5)
-      e.codigoPostal = "Código postal de 5 dígitos";
+    const e = validarEnvio(data);
     setErrors(e);
     return Object.keys(e).length === 0;
   };

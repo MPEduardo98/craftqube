@@ -50,6 +50,12 @@ export interface TotalesCalculados {
   cupon_codigo: string | null;
   cupon_tipo:   CuponTipo | null;
   /**
+   * El descuento se calculó incluyendo el envío en su base. Sirve para
+   * decirlo en el desglose: el renglón de envío conserva la tarifa real
+   * y el ahorro viaja entero en `descuento`.
+   */
+  cupon_aplica_envio: boolean;
+  /**
    * Sólo en modo tolerante: por qué se descartó el cupón que pidió el
    * cliente. El resto del desglose sigue siendo válido.
    */
@@ -204,6 +210,7 @@ export async function calcularTotales(params: ParamsCalculo): Promise<TotalesCal
   let cuponCodigo: string | null    = null;
   let cuponTipo:   CuponTipo | null = null;
   let cuponError:  string | null    = null;
+  let cuponAplicaEnvio = false;
   let descuento = 0;
 
   const codigo = params.cupon_codigo?.trim();
@@ -232,6 +239,7 @@ export async function calcularTotales(params: ParamsCalculo): Promise<TotalesCal
       cuponTipo   = resultado.tipo;
       descuento   = resultado.descuento;
       costoEnvio  = resultado.costo_envio;
+      cuponAplicaEnvio = resultado.aplica_envio;
     } else if (params.cupon_tolerante) {
       // Vista previa: se descarta el cupón y el resto del desglose
       // sigue en pie. Quien llama avisa al comprador.
@@ -242,7 +250,12 @@ export async function calcularTotales(params: ParamsCalculo): Promise<TotalesCal
   }
 
   const impuestos = 0; // IVA incluido en el precio de lista
-  const total     = round2(Math.max(0, subtotal - descuento) + costoEnvio + impuestos);
+  // El descuento se resta del importe completo (mercancía + envío): con
+  // un cupón que considera el envío puede superar al subtotal, y restarlo
+  // sólo de la mercancía dejaría fuera esa parte del ahorro. Sin
+  // `aplica_envio` el descuento nunca pasa del subtotal, así que el
+  // resultado es idéntico al de antes.
+  const total     = round2(Math.max(0, subtotal + costoEnvio - descuento) + impuestos);
 
   if (total <= 0) {
     throw new ErrorCalculo("El total del pedido debe ser mayor a cero.");
@@ -259,6 +272,7 @@ export async function calcularTotales(params: ParamsCalculo): Promise<TotalesCal
     cupon_id:     cuponId,
     cupon_codigo: cuponCodigo,
     cupon_tipo:   cuponTipo,
+    cupon_aplica_envio: cuponAplicaEnvio,
     cupon_error:  cuponError,
   };
 }

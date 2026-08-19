@@ -5,13 +5,28 @@ import type { RowDataPacket } from "mysql2";
 export const TIPOS_VALIDOS  = ["porcentaje", "monto_fijo", "envio_gratis", "2x1"];
 export const APLICA_VALIDOS = ["todos", "categoria", "producto", "primera_compra"];
 
+/**
+ * Tipos en los que el envío puede entrar en la base del descuento.
+ * `envio_gratis` ya deja el envío en cero y `2x1` descuenta por unidades
+ * de producto, así que en ambos la opción se guarda siempre en 0.
+ */
+export function soportaAplicaEnvio(tipo: unknown): boolean {
+  return tipo === "porcentaje" || tipo === "monto_fijo";
+}
+
+/** Checkbox del formulario → 0/1 de la columna `aplica_envio`. */
+export function normalizarAplicaEnvio(valor: unknown, tipo: unknown): 0 | 1 {
+  if (!soportaAplicaEnvio(tipo)) return 0;
+  return valor === true || valor === 1 || valor === "1" || valor === "true" ? 1 : 0;
+}
+
 /** Proyección del listado: los datos del cupón + lo acumulado en cupon_usos. */
 export const SELECT_CUPONES = `
   SELECT
     c.id, c.codigo, c.descripcion, c.tipo, c.valor,
     c.minimo_compra, c.maximo_descuento,
     c.uso_maximo_total, c.uso_maximo_usuario, c.usos_actuales,
-    c.aplica_a, c.aplica_ids, c.activo,
+    c.aplica_a, c.aplica_ids, c.aplica_envio, c.activo,
     c.valido_desde, c.valido_hasta, c.created_at,
     COALESCE((SELECT SUM(u.descuento) FROM cupon_usos u WHERE u.cupon_id = c.id), 0) AS descuento_total
   FROM cupones c
@@ -43,6 +58,7 @@ export function normalizarCupon(row: RowDataPacket) {
     usos_actuales:      Number(row.usos_actuales),
     descuento_total:    Number(row.descuento_total ?? 0),
     activo:             Number(row.activo),
+    aplica_envio:       Number(row.aplica_envio ?? 0),
     aplica_ids:         aplicaIds,
   };
 }

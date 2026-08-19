@@ -11,6 +11,7 @@ export async function GET() {
         MIN(c.nombre)  AS categoria,
         MIN(c.slug)    AS categoria_slug,
         m.nombre       AS marca,
+        v.id           AS variante_id,
         v.sku,
         v.precio_final AS precio,
         v.precio_original,
@@ -32,7 +33,7 @@ export async function GET() {
       WHERE p.estado = 'activo' AND p.deleted_at IS NULL
       GROUP BY
         p.id, p.titulo, p.descripcion, p.slug, p.estado,
-        m.nombre, v.sku, v.precio_final, v.precio_original,
+        m.nombre, v.id, v.sku, v.precio_final, v.precio_original,
         v.stock, v.es_default, p.created_at
       ORDER BY p.created_at DESC
     `);

@@ -21,11 +21,19 @@ interface Props {
   onQuitar:   () => void;
   /** Descuento ya calculado, para poder mostrarlo junto al código. */
   etiqueta?:  string | null;
+  /**
+   * Muestra el campo directamente, sin el enlace que lo despliega.
+   * Se usa cuando el componente ya vive en un card con su propio
+   * título, donde preguntar "¿tienes un cupón?" sobra.
+   */
+  abiertoPorDefecto?: boolean;
 }
 
-export function CuponInput({ aplicado, cargando, onAplicar, onQuitar, etiqueta }: Props) {
+export function CuponInput({
+  aplicado, cargando, onAplicar, onQuitar, etiqueta, abiertoPorDefecto = false,
+}: Props) {
   const [codigo,  setCodigo]  = useState("");
-  const [abierto, setAbierto] = useState(false);
+  const [abierto, setAbierto] = useState(abiertoPorDefecto);
   const [focused, setFocused] = useState(false);
 
   const aplicar = () => {
@@ -114,7 +122,10 @@ export function CuponInput({ aplicado, cargando, onAplicar, onQuitar, etiqueta }
         <input
           type="text"
           value={codigo}
-          autoFocus
+          // Sólo cuando el comprador lo abrió a propósito: si el campo
+          // ya viene desplegado, robar el foco al entrar al paso mueve
+          // la página sola.
+          autoFocus={!abiertoPorDefecto}
           placeholder="CÓDIGO DE CUPÓN"
           maxLength={60}
           disabled={cargando}

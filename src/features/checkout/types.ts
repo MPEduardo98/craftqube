@@ -52,3 +52,19 @@ export const STEPS: { id: CheckoutStep; label: string; shortLabel: string; icon:
 ];
 
 export { ESTADOS_MX } from "@/shared/data/estados-mx";
+/* ── Ruta de cada paso ────────────────────────────────────────
+   Cada paso es una URL propia, para que la flecha de "atrás" del
+   navegador y el recargar la página caigan donde el comprador se
+   quedó en lugar de reiniciar el flujo.                        */
+export const RUTA_PASO: Record<CheckoutStep, string> = {
+  contacto:     "/checkout/contacto",
+  envio:        "/checkout/envio",
+  pago:         "/checkout/pago",
+  confirmacion: "/checkout/confirmacion",
+};
+
+/** Paso al que corresponde un pathname; "contacto" si no encaja. */
+export function pasoDesdeRuta(pathname: string): CheckoutStep {
+  const seg = pathname.split("/")[2];
+  return seg && seg in RUTA_PASO ? (seg as CheckoutStep) : "contacto";
+}

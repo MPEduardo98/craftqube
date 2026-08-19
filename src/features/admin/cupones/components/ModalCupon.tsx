@@ -11,7 +11,7 @@ import { Loader }     from "@/shared/components/ui/Loader";
 import { Dropdown }   from "@/shared/components/ui/Dropdown";
 import { useAlert }   from "@/shared/context/AlertContext";
 import { inputCls, textareaCls } from "@/features/admin/productos/components/producto-form-types";
-import { TIPO_LABEL, APLICA_LABEL, type CuponRow, type CuponTipo, type CuponAplica } from "../types";
+import { TIPO_LABEL, APLICA_LABEL, soportaAplicaEnvio, type CuponRow, type CuponTipo, type CuponAplica } from "../types";
 
 interface Props {
   open:    boolean;
@@ -56,6 +56,7 @@ export function ModalCupon({ open, onClose, onSaved, cupon }: Props) {
   const [usoMaximoTotal,   setUsoMaximoTotal]   = useState("");
   const [usoMaximoUsuario, setUsoMaximoUsuario] = useState("1");
   const [aplicaA,          setAplicaA]          = useState<CuponAplica>("todos");
+  const [aplicaEnvio,      setAplicaEnvio]      = useState(false);
   const [activo,           setActivo]           = useState(true);
   const [validoDesde,      setValidoDesde]      = useState("");
   const [validoHasta,      setValidoHasta]      = useState("");
@@ -72,6 +73,7 @@ export function ModalCupon({ open, onClose, onSaved, cupon }: Props) {
     setUsoMaximoTotal(cupon?.uso_maximo_total != null ? String(cupon.uso_maximo_total) : "");
     setUsoMaximoUsuario(String(cupon?.uso_maximo_usuario ?? 1));
     setAplicaA(cupon?.aplica_a ?? "todos");
+    setAplicaEnvio(Boolean(Number(cupon?.aplica_envio ?? 0)));
     setActivo(cupon ? Boolean(Number(cupon.activo)) : true);
     setValidoDesde(toInputDatetime(cupon?.valido_desde ?? null));
     setValidoHasta(toInputDatetime(cupon?.valido_hasta ?? null));
@@ -84,6 +86,8 @@ export function ModalCupon({ open, onClose, onSaved, cupon }: Props) {
 
   /* Envío gratis y 2x1 no tienen importe configurable. */
   const necesitaValor = tipo === "porcentaje" || tipo === "monto_fijo";
+  /* Sólo esos dos tipos pueden descontar también sobre el envío. */
+  const permiteEnvio  = soportaAplicaEnvio(tipo);
   const puedeGuardar  = codigo.trim().length > 0 && (!necesitaValor || Number(valor) > 0);
 
   const handleSave = async () => {
@@ -120,6 +124,7 @@ export function ModalCupon({ open, onClose, onSaved, cupon }: Props) {
           uso_maximo_total:   usoMaximoTotal  === "" ? null : Number(usoMaximoTotal),
           uso_maximo_usuario: Number(usoMaximoUsuario) || 1,
           aplica_a:           aplicaA,
+          aplica_envio:       permiteEnvio && aplicaEnvio,
           activo,
           valido_desde:       validoDesde || null,
           valido_hasta:       validoHasta || null,
@@ -343,6 +348,35 @@ export function ModalCupon({ open, onClose, onSaved, cupon }: Props) {
             </span>
           )}
         </label>
+
+        {/* Descuento sobre el envío */}
+        <div className="flex flex-col gap-1.5">
+          <label
+            className="flex items-center gap-2.5"
+            style={{ cursor: permiteEnvio ? "pointer" : "not-allowed", opacity: permiteEnvio ? 1 : 0.55 }}
+          >
+            <input
+              type="checkbox"
+              checked={permiteEnvio && aplicaEnvio}
+              disabled={!permiteEnvio}
+              onChange={(e) => setAplicaEnvio(e.target.checked)}
+              className="w-4 h-4 rounded accent-blue-600"
+              style={{ cursor: permiteEnvio ? "pointer" : "not-allowed" }}
+            />
+            <span className="text-[13px]" style={{ color: "var(--color-cq-text, #0f172a)", fontFamily: "var(--font-body, sans-serif)" }}>
+              El descuento también aplica al costo de envío
+            </span>
+          </label>
+          <span className="text-[11px]" style={{ color: "var(--color-cq-muted, #64748b)", fontFamily: "var(--font-body, sans-serif)", lineHeight: 1.5, paddingLeft: 26 }}>
+            {!permiteEnvio
+              ? tipo === "envio_gratis"
+                ? "Este cupón ya deja el envío en cero."
+                : "El 2x1 descuenta por unidades de producto, no sobre el envío."
+              : aplicaEnvio
+                ? "El envío cotizado se suma a la base del descuento; el comprador ve la tarifa real de envío y el ahorro completo en el renglón de descuento."
+                : "El descuento sólo muerde la mercancía; el envío se cobra completo."}
+          </span>
+        </div>
 
         {/* Activo */}
         <label className="flex items-center gap-2.5 cursor-pointer">

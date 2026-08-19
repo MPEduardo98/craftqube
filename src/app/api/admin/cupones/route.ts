@@ -8,6 +8,7 @@ import { pool }                      from "@/shared/lib/db/pool";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import {
   TIPOS_VALIDOS, APLICA_VALIDOS, normalizarCupon, SELECT_CUPONES, toMysqlDatetime,
+  normalizarAplicaEnvio,
 } from "./helpers";
 
 /* Orden permitido (whitelist: nunca interpolar entrada del usuario en SQL). */
@@ -115,6 +116,8 @@ export async function POST(req: NextRequest) {
     const usoMaximoTotal   = body.uso_maximo_total != null && body.uso_maximo_total !== "" ? Number(body.uso_maximo_total) : null;
     const usoMaximoUsuario = Number(body.uso_maximo_usuario) || 1;
     const activo           = body.activo === false || body.activo === 0 ? 0 : 1;
+    // Sólo porcentaje y monto fijo pueden descontar sobre el envío.
+    const aplicaEnvio      = normalizarAplicaEnvio(body.aplica_envio, tipo);
     const validoDesde      = toMysqlDatetime(body.valido_desde);
     const validoHasta      = toMysqlDatetime(body.valido_hasta);
 
@@ -132,11 +135,11 @@ export async function POST(req: NextRequest) {
     const [result] = await pool.execute<ResultSetHeader>(
       `INSERT INTO cupones
          (codigo, descripcion, tipo, valor, minimo_compra, maximo_descuento,
-          uso_maximo_total, uso_maximo_usuario, aplica_a, aplica_ids,
+          uso_maximo_total, uso_maximo_usuario, aplica_a, aplica_ids, aplica_envio,
           activo, valido_desde, valido_hasta)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [codigo, descripcion, tipo, valor, minimoCompra, maximoDescuento,
-       usoMaximoTotal, usoMaximoUsuario, aplicaA, aplicaIds,
+       usoMaximoTotal, usoMaximoUsuario, aplicaA, aplicaIds, aplicaEnvio,
        activo, validoDesde, validoHasta]
     );
 

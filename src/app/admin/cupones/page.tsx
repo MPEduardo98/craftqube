@@ -25,7 +25,7 @@ async function fetchCupones() {
       c.id, c.codigo, c.descripcion, c.tipo, c.valor,
       c.minimo_compra, c.maximo_descuento,
       c.uso_maximo_total, c.uso_maximo_usuario, c.usos_actuales,
-      c.aplica_a, c.aplica_ids, c.activo,
+      c.aplica_a, c.aplica_ids, c.aplica_envio, c.activo,
       c.valido_desde, c.valido_hasta, c.created_at,
       COALESCE((SELECT SUM(u.descuento) FROM cupon_usos u WHERE u.cupon_id = c.id), 0) AS descuento_total
     FROM cupones c
@@ -71,6 +71,7 @@ async function fetchCupones() {
       usos_actuales:      Number(r.usos_actuales),
       descuento_total:    Number(r.descuento_total ?? 0),
       activo:             Number(r.activo),
+      aplica_envio:       Number(r.aplica_envio ?? 0),
       aplica_ids:         aplicaIds,
       // Los DATETIME viajan como Date al cliente: se serializan a ISO.
       valido_desde: r.valido_desde ? new Date(r.valido_desde).toISOString() : null,

@@ -6,6 +6,7 @@ import Link                              from "next/link";
 import { motion, AnimatePresence }       from "framer-motion";
 import { useAuth }                       from "@/features/auth/context/AuthContext";
 import { FormField }                     from "./FormField";
+import { validarContacto }               from "../lib/validaciones";
 import type { DatosContacto }            from "../types";
 
 interface Props {
@@ -40,14 +41,10 @@ export function StepContacto({ data, onChange, onNext }: Props) {
     data.telefono?.trim().length > 0;
 
   /* ── Validación ── */
+  /* Las reglas viven en lib/validaciones para que el guard de ruta
+     use exactamente el mismo criterio que este botón. */
   const validate = (): boolean => {
-    const e: typeof errors = {};
-    if (!data.nombre.trim())   e.nombre   = "El nombre es requerido";
-    if (!data.apellido.trim()) e.apellido = "El apellido es requerido";
-    if (!data.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email))
-      e.email = "Correo electrónico inválido";
-    if (!data.modoGuest && data.telefono && data.telefono.replace(/\D/g, "").length < 10)
-      e.telefono = "Teléfono de 10 dígitos";
+    const e = validarContacto(data);
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -102,7 +99,7 @@ export function StepContacto({ data, onChange, onNext }: Props) {
               style={{ color: "var(--color-cq-accent)", fontSize: "0.85rem", marginTop: 2, flexShrink: 0 }} />
             <p style={{ fontFamily: "var(--font-body)", fontSize: "0.82rem", color: "var(--color-cq-muted)", lineHeight: 1.7 }}>
               ¿Ya tienes cuenta?{" "}
-              <Link href="/login?redirect=/checkout"
+              <Link href="/login?redirect=/checkout/contacto"
                 style={{ color: "var(--color-cq-accent)", fontWeight: 600, textDecoration: "none" }}>
                 Inicia sesión
               </Link>{" "}

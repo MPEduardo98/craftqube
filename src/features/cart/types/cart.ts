@@ -20,4 +20,7 @@ export interface CartItem {
 export interface CartState {
   items:    CartItem[];
   isOpen:   boolean;
+  /** false hasta leer localStorage: antes de eso items=[] sólo
+   *  significa "todavía no sabemos". */
+  hidratado: boolean;
 }
