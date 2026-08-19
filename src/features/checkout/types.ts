@@ -29,10 +29,12 @@ export interface DatosEnvio {
 
 export interface DatosPago {
   metodo:        "tarjeta" | "transferencia" | "oxxo";
-  numeroTarjeta: string;
+  /**
+   * Sólo el nombre del titular. El número, el vencimiento y el CVC
+   * viven exclusivamente dentro de los iframes de Stripe Elements:
+   * nunca tocan el estado de la aplicación ni nuestro servidor.
+   */
   nombreTarjeta: string;
-  expiracion:    string;
-  cvv:           string;
   notas:         string;
 }
 

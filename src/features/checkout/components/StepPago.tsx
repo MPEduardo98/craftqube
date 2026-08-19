@@ -1,17 +1,17 @@
-// app/(main)/checkout/components/StepPago.tsx
+// features/checkout/components/StepPago.tsx
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence }           from "framer-motion";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { motion, AnimatePresence }                  from "framer-motion";
 import {
   loadStripe,
   type Stripe as StripeInstance,
   type StripeElements,
   type StripeCardNumberElement,
 } from "@stripe/stripe-js";
-import { useCart }      from "@/features/cart/context/CartContext";
-import type { DatosPago, DatosEnvio } from "../types";
-import { formatPrice } from "@/shared/lib/format";
+import { useCart }        from "@/features/cart/context/CartContext";
+import type { DatosPago, DatosEnvio, DatosContacto } from "../types";
+import { formatMoneda }   from "@/shared/lib/format";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -53,15 +53,35 @@ export interface PaymentConfirmData {
   oxxo?: OxxoConfirmData;
 }
 
+/** Lo que el checkout necesita saber cuando el pago sale bien. */
+export interface ResultadoPago {
+  pedidoId:        number;
+  /** Número REAL de la BD (CQ-2026-000042), no uno inventado en el cliente. */
+  numero:          string;
+  total:           number;
+  moneda:          string;
+  paymentIntentId: string | null;
+  paymentData:     PaymentConfirmData | null;
+}
+
+/** Respuesta de /api/checkout/pagar */
+interface RespuestaPago {
+  success:      boolean;
+  error?:       string;
+  pedido?:      { id: number; numero: string; total: number; moneda: string };
+  metodo?:      Metodo;
+  clientSecret?: string;
+  oxxo?:        OxxoConfirmData;
+  spei?:        SpeiConfirmData;
+}
+
 /* ── Helper email (non-blocking) ─────────────────────────── */
 async function enviarEmailConfirmacion(payload: {
   orderNumber: string;
-  email:       string;
   nombre:      string;
-  total:       number;
   items:       ReturnType<typeof useCart>["items"];
   envio:       DatosEnvio;
-  metodo:      "tarjeta" | "transferencia" | "oxxo";
+  metodo:      Metodo;
   spei?:       SpeiConfirmData;
   oxxo?:       OxxoConfirmData;
 }) {
@@ -78,7 +98,6 @@ async function enviarEmailConfirmacion(payload: {
     }
     const json = await res.json();
     if (!res.ok) console.error("[email] Error:", json.error);
-    else console.log("[email] ✓ Enviado");
   } catch (err) {
     console.error("[email] Fetch falló:", err);
   }
@@ -87,20 +106,20 @@ async function enviarEmailConfirmacion(payload: {
 /* ══════════════════════════════════════════════════════════ */
 /* Props                                                      */
 /* ══════════════════════════════════════════════════════════ */
-interface Props {
-  data:           DatosPago;
-  onChange:       (data: DatosPago) => void;
-  /** piId + datos opcionales de SPEI/OXXO para mostrar en confirmación */
-  onNext:         (stripePaymentIntentId?: string, paymentData?: PaymentConfirmData) => void;
-  onBack:         () => void;
-  contactoEmail:  string;
-  contactoNombre: string;
-  orderNumber:    string;
-  envioData:      DatosEnvio;
-  costoEnvio:     number;
-}
-
 type Metodo = "tarjeta" | "transferencia" | "oxxo";
+
+interface Props {
+  data:      DatosPago;
+  onChange:  (data: DatosPago) => void;
+  onNext:    (resultado: ResultadoPago) => void;
+  onBack:    () => void;
+  contacto:  DatosContacto;
+  envioData: DatosEnvio;
+  /** Total autoritativo del servidor. null mientras se calcula. */
+  totalServidor: number | null;
+  moneda:        string;
+  cuponCodigo?:  string | null;
+}
 
 const METODOS: { id: Metodo; label: string; icon: string; desc: string }[] = [
   { id: "tarjeta",       label: "Tarjeta de crédito / débito", icon: "fa-solid fa-credit-card",     desc: "Visa, Mastercard, Amex · Procesado con Stripe" },
@@ -111,68 +130,110 @@ const METODOS: { id: Metodo; label: string; icon: string; desc: string }[] = [
 /* ══════════════════════════════════════════════════════════ */
 /* Panel Tarjeta                                              */
 /* ══════════════════════════════════════════════════════════ */
-function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError, orderNumber, email, nombre, envioData, costoEnvio }: {
-  cardName: string; onCardNameChange: (v: string) => void;
-  onSuccess: (piId: string) => void; onError: (msg: string) => void;
-  orderNumber: string; email: string; nombre: string; envioData: DatosEnvio; costoEnvio: number;
+function PanelTarjeta({ cardName, onCardNameChange, onIniciarPago, onCompletado, onError, total, moneda, deshabilitado }: {
+  cardName: string;
+  onCardNameChange: (v: string) => void;
+  /** Crea pedido + PaymentIntent en el servidor y devuelve el clientSecret. */
+  onIniciarPago: () => Promise<RespuestaPago>;
+  /** El cobro quedó aceptado por Stripe. */
+  onCompletado: (respuesta: RespuestaPago, paymentIntentId: string) => void;
+  onError: (msg: string) => void;
+  total: number | null;
+  moneda: string;
+  deshabilitado: boolean;
 }) {
-  const { totalPrecio, items } = useCart();
-  const total = totalPrecio + costoEnvio;
   const [stripe,   setStripe]   = useState<StripeInstance | null>(null);
-  const [elements, setElements] = useState<StripeElements | null>(null);
   const [cardEl,   setCardEl]   = useState<StripeCardNumberElement | null>(null);
   const [mounting, setMounting] = useState(true);
   const [paying,   setPaying]   = useState(false);
   const [focused,  setFocused]  = useState("");
 
-  const stripeStyle = {
-    base: { fontSize: "14px", fontFamily: "system-ui, -apple-system, sans-serif", color: "#111827", "::placeholder": { color: "#9ca3af" } },
-    invalid: { color: "#ef4444" },
-  };
-
   useEffect(() => {
-    let mounted = true;
-    stripePromise.then((s) => {
-      if (!s || !mounted) return;
-      const els    = s.elements();
-      const number = els.create("cardNumber", { style: stripeStyle, placeholder: "1234  5678  9012  3456" });
-      const expiry = els.create("cardExpiry",  { style: stripeStyle });
-      const cvc    = els.create("cardCvc",     { style: stripeStyle });
-      number.mount("#stripe-number"); expiry.mount("#stripe-expiry"); cvc.mount("#stripe-cvc");
-      number.on("focus", () => setFocused("number")); number.on("blur", () => setFocused(""));
-      expiry.on("focus", () => setFocused("expiry")); expiry.on("blur", () => setFocused(""));
-      cvc.on("focus",    () => setFocused("cvc"));    cvc.on("blur",    () => setFocused(""));
-      setStripe(s); setElements(els); setCardEl(number); setMounting(false);
-    });
-    return () => { mounted = false; };
+    let vivo = true;
+    // Se guardan para destruirlos al desmontar: sin esto, cambiar de
+    // método de pago dejaba los iframes de Stripe huérfanos y al volver
+    // se creaba un juego nuevo sobre contenedores ya recreados.
+    let creados: { destroy: () => void }[] = [];
+    let elements: StripeElements | null = null;
+
+    const estilo = {
+      base: {
+        fontSize: "14px",
+        fontFamily: "system-ui, -apple-system, sans-serif",
+        color: "#111827",
+        "::placeholder": { color: "#9ca3af" },
+      },
+      invalid: { color: "#ef4444" },
+    };
+
+    stripePromise
+      .then((s) => {
+        if (!s || !vivo) return;
+        elements = s.elements();
+        const number = elements.create("cardNumber", { style: estilo, placeholder: "1234  5678  9012  3456" });
+        const expiry = elements.create("cardExpiry", { style: estilo });
+        const cvc    = elements.create("cardCvc",    { style: estilo });
+        creados = [number, expiry, cvc];
+
+        // Comprobación final: el desmontaje puede haber ocurrido
+        // mientras se resolvía la promesa de Stripe.
+        if (!vivo) { creados.forEach((e) => e.destroy()); return; }
+
+        number.mount("#stripe-number");
+        expiry.mount("#stripe-expiry");
+        cvc.mount("#stripe-cvc");
+
+        number.on("focus", () => setFocused("number")); number.on("blur", () => setFocused(""));
+        expiry.on("focus", () => setFocused("expiry")); expiry.on("blur", () => setFocused(""));
+        cvc.on("focus",    () => setFocused("cvc"));    cvc.on("blur",    () => setFocused(""));
+
+        setStripe(s);
+        setCardEl(number);
+        setMounting(false);
+      })
+      .catch((err) => {
+        console.error("[stripe] No se pudo cargar el formulario:", err);
+        if (vivo) {
+          setMounting(false);
+          onError("No se pudo cargar el formulario de pago. Recarga la página.");
+        }
+      });
+
+    return () => {
+      vivo = false;
+      creados.forEach((el) => {
+        try { el.destroy(); } catch { /* ya destruido */ }
+      });
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handlePay = useCallback(async () => {
-    if (!stripe || !elements || !cardEl) { onError("El formulario no está listo."); return; }
-    if (!cardName.trim()) { onError("Ingresa el nombre del titular."); return; }
+    if (!stripe || !cardEl) { onError("El formulario no está listo."); return; }
+    if (!cardName.trim())   { onError("Ingresa el nombre del titular."); return; }
+
     setPaying(true);
     try {
-      const res = await fetch("/api/stripe/create-payment-intent", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: total, currency: "mxn" }),
+      // 1. El servidor crea el pedido y el PaymentIntent por el importe real.
+      const respuesta = await onIniciarPago();
+      if (!respuesta.clientSecret) throw new Error("Respuesta de pago incompleta.");
+
+      // 2. La tarjeta se confirma en el navegador: los datos nunca
+      //    pasan por nuestro servidor. 3D Secure se resuelve en modal.
+      const { paymentIntent, error } = await stripe.confirmCardPayment(respuesta.clientSecret, {
+        payment_method: { card: cardEl, billing_details: { name: cardName.trim() } },
       });
-      const { clientSecret, error: serverError } = await res.json();
-      if (serverError) throw new Error(serverError);
-      const { paymentIntent, error } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: { card: cardEl, billing_details: { name: cardName } },
-      });
-      if (error) throw new Error(error.message ?? "Error al procesar el pago.");
-      if (paymentIntent?.status === "succeeded") {
-        enviarEmailConfirmacion({ orderNumber, email, nombre, total, items, envio: envioData, metodo: "tarjeta" });
-        onSuccess(paymentIntent.id);
-      } else {
-        throw new Error("El pago no fue completado.");
-      }
-    } catch (err: unknown) {
+
+      if (error) throw new Error(error.message ?? "No se pudo procesar el pago.");
+      if (paymentIntent?.status !== "succeeded") throw new Error("El pago no se completó.");
+
+      onCompletado(respuesta, paymentIntent.id);
+    } catch (err) {
       onError(err instanceof Error ? err.message : "Error inesperado.");
-    } finally { setPaying(false); }
-  }, [stripe, elements, cardEl, cardName, total, items, orderNumber, email, nombre, envioData, onSuccess, onError]);
+    } finally {
+      setPaying(false);
+    }
+  }, [stripe, cardEl, cardName, onIniciarPago, onCompletado, onError]);
 
   const fieldBox = (id: string): React.CSSProperties => ({
     display: "flex", alignItems: "center", height: 46, padding: "0 12px", borderRadius: 10,
@@ -181,6 +242,8 @@ function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError, orderNum
     boxShadow: focused === id ? "0 0 0 3px rgba(37,99,235,0.1)" : "none",
     transition: "border-color .2s, box-shadow .2s",
   });
+
+  const bloqueado = paying || mounting || deshabilitado;
 
   return (
     <div className="flex flex-col gap-4">
@@ -219,12 +282,14 @@ function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError, orderNum
           </div>
         </div>
       </div>
-      <motion.button type="button" onClick={handlePay} disabled={paying || mounting} whileTap={{ scale: 0.98 }}
+      <motion.button type="button" onClick={handlePay} disabled={bloqueado} whileTap={{ scale: 0.98 }}
         className="flex items-center justify-center gap-2.5 w-full rounded-xl"
         style={{ height: 52, fontFamily: "var(--font-body)", fontWeight: 600, fontSize: "0.95rem",
           background: "var(--color-cq-accent)", color: "white", border: "none",
-          cursor: paying || mounting ? "not-allowed" : "pointer", opacity: paying || mounting ? 0.65 : 1 }}>
-        {paying ? <><Spinner light /> Procesando…</> : <><i className="fa-solid fa-lock" style={{ fontSize: "0.8rem" }} /> Pagar {formatPrice(total)}</>}
+          cursor: bloqueado ? "not-allowed" : "pointer", opacity: bloqueado ? 0.65 : 1 }}>
+        {paying
+          ? <><Spinner light /> Procesando…</>
+          : <><i className="fa-solid fa-lock" style={{ fontSize: "0.8rem" }} /> Pagar {total !== null ? formatMoneda(total, moneda) : "…"}</>}
       </motion.button>
       <div className="flex items-center justify-center gap-2">
         <i className="fa-solid fa-shield-halved" style={{ fontSize: "0.7rem", color: "var(--color-cq-muted-2)" }} />
@@ -237,130 +302,32 @@ function PanelTarjeta({ cardName, onCardNameChange, onSuccess, onError, orderNum
 }
 
 /* ══════════════════════════════════════════════════════════ */
-/* Panel OXXO                                                 */
-/* Al generar el voucher → navega directamente a confirmación */
+/* Paneles OXXO / SPEI (sólo disparan el pago)                */
 /* ══════════════════════════════════════════════════════════ */
-function PanelOxxo({ email, nombre, onSuccess, onError, orderNumber, envioData, costoEnvio }: {
-  email: string; nombre: string;
-  onSuccess: (piId: string, data: OxxoConfirmData) => void;
-  onError: (msg: string) => void;
-  orderNumber: string; envioData: DatosEnvio; costoEnvio: number;
+function PanelInstruccion({ icono, titulo, cuerpo, boton, iconoBoton, onClick, loading, deshabilitado }: {
+  icono: string; titulo: React.ReactNode; cuerpo: React.ReactNode;
+  boton: string; iconoBoton: string;
+  onClick: () => void; loading: boolean; deshabilitado: boolean;
 }) {
-  const { totalPrecio, items } = useCart();
-  const total = totalPrecio + costoEnvio;
-  const [loading, setLoading] = useState(false);
-
-  const generarVoucher = async () => {
-    if (!email) { onError("Necesitamos tu email para generar el voucher OXXO."); return; }
-    setLoading(true);
-    try {
-      const res  = await fetch("/api/stripe/create-oxxo-payment", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: total, email, nombre }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Error al generar voucher.");
-
-      const oxxoData: OxxoConfirmData = {
-        numero:           data.numero,
-        expira:           data.expira,
-        hostedVoucherUrl: data.hostedVoucherUrl,
-      };
-
-      // Email (non-blocking)
-      enviarEmailConfirmacion({ orderNumber, email, nombre, total, items, envio: envioData, metodo: "oxxo", oxxo: oxxoData });
-
-      // Ir a confirmación inmediatamente con los datos
-      onSuccess(data.paymentIntentId, oxxoData);
-    } catch (err: unknown) {
-      onError(err instanceof Error ? err.message : "Error inesperado.");
-    } finally { setLoading(false); }
-  };
-
+  const bloqueado = loading || deshabilitado;
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-start gap-3 rounded-xl p-4"
         style={{ background: "rgba(37,99,235,0.05)", border: "1px solid rgba(37,99,235,0.12)" }}>
-        <i className="fa-solid fa-circle-info" style={{ color: "var(--color-cq-accent)", fontSize: "0.9rem", marginTop: 2 }} />
+        <i className={icono} style={{ color: "var(--color-cq-accent)", fontSize: "0.9rem", marginTop: 2 }} />
         <div style={{ fontFamily: "var(--font-body)", fontSize: "0.82rem", color: "var(--color-cq-muted)", lineHeight: 1.7 }}>
-          <p>Generaremos un <strong style={{ color: "var(--color-cq-text)" }}>código de barras único</strong> para pagar en cualquier tienda OXXO.</p>
-          <p style={{ marginTop: 6 }}>El voucher es válido por <strong style={{ color: "var(--color-cq-text)" }}>72 horas</strong>. El pedido se confirmará automáticamente al recibir el pago.</p>
+          <p>{titulo}</p>
+          <p style={{ marginTop: 6 }}>{cuerpo}</p>
         </div>
       </div>
-      <motion.button type="button" onClick={generarVoucher} disabled={loading} whileTap={{ scale: 0.98 }}
+      <motion.button type="button" onClick={onClick} disabled={bloqueado} whileTap={{ scale: 0.98 }}
         className="flex items-center justify-center gap-2.5 w-full rounded-xl"
         style={{ height: 52, fontFamily: "var(--font-body)", fontWeight: 600, fontSize: "0.95rem",
           background: "var(--color-cq-accent)", color: "white", border: "none",
-          cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.65 : 1 }}>
+          cursor: bloqueado ? "not-allowed" : "pointer", opacity: bloqueado ? 0.65 : 1 }}>
         {loading
-          ? <><Spinner light /> Generando código…</>
-          : <><i className="fa-solid fa-barcode" /> Generar código OXXO</>}
-      </motion.button>
-    </div>
-  );
-}
-
-/* ══════════════════════════════════════════════════════════ */
-/* Panel SPEI                                                 */
-/* Al generar la CLABE → navega directamente a confirmación  */
-/* ══════════════════════════════════════════════════════════ */
-function PanelSpei({ email, nombre, onSuccess, onError, orderNumber, envioData, costoEnvio }: {
-  email: string; nombre: string;
-  onSuccess: (piId: string, data: SpeiConfirmData) => void;
-  onError: (msg: string) => void;
-  orderNumber: string; envioData: DatosEnvio; costoEnvio: number;
-}) {
-  const { totalPrecio, items } = useCart();
-  const total = totalPrecio + costoEnvio;
-  const [loading, setLoading] = useState(false);
-
-  const generarClabe = async () => {
-    if (!email) { onError("Necesitamos tu email para generar la CLABE SPEI."); return; }
-    setLoading(true);
-    try {
-      const res  = await fetch("/api/stripe/create-spei-payment", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: total, email, nombre }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Error al generar datos SPEI.");
-
-      const speiData: SpeiConfirmData = {
-        clabe:                 data.clabe,
-        banco:                 data.banco,
-        referencia:            data.referencia,
-        monto:                 data.monto,
-        hostedInstructionsUrl: data.hostedInstructionsUrl,
-      };
-
-      // Email (non-blocking)
-      enviarEmailConfirmacion({ orderNumber, email, nombre, total, items, envio: envioData, metodo: "transferencia", spei: speiData });
-
-      // Ir a confirmación inmediatamente con los datos
-      onSuccess(data.paymentIntentId, speiData);
-    } catch (err: unknown) {
-      onError(err instanceof Error ? err.message : "Error inesperado.");
-    } finally { setLoading(false); }
-  };
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-start gap-3 rounded-xl p-4"
-        style={{ background: "rgba(37,99,235,0.05)", border: "1px solid rgba(37,99,235,0.12)" }}>
-        <i className="fa-solid fa-circle-info" style={{ color: "var(--color-cq-accent)", fontSize: "0.9rem", marginTop: 2 }} />
-        <div style={{ fontFamily: "var(--font-body)", fontSize: "0.82rem", color: "var(--color-cq-muted)", lineHeight: 1.7 }}>
-          <p>Generaremos una <strong style={{ color: "var(--color-cq-text)" }}>CLABE única</strong> para que realices tu transferencia SPEI desde cualquier banco.</p>
-          <p style={{ marginTop: 6 }}>El pedido se confirmará <strong style={{ color: "var(--color-cq-text)" }}>automáticamente</strong> al recibir el pago.</p>
-        </div>
-      </div>
-      <motion.button type="button" onClick={generarClabe} disabled={loading} whileTap={{ scale: 0.98 }}
-        className="flex items-center justify-center gap-2.5 w-full rounded-xl"
-        style={{ height: 52, fontFamily: "var(--font-body)", fontWeight: 600, fontSize: "0.95rem",
-          background: "var(--color-cq-accent)", color: "white", border: "none",
-          cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.65 : 1 }}>
-        {loading
-          ? <><Spinner light /> Generando CLABE…</>
-          : <><i className="fa-solid fa-building-columns" style={{ fontSize: "0.9rem" }} /> Obtener datos de transferencia</>}
+          ? <><Spinner light /> Generando…</>
+          : <><i className={iconoBoton} /> {boton}</>}
       </motion.button>
     </div>
   );
@@ -369,11 +336,130 @@ function PanelSpei({ email, nombre, onSuccess, onError, orderNumber, envioData, 
 /* ══════════════════════════════════════════════════════════ */
 /* StepPago                                                   */
 /* ══════════════════════════════════════════════════════════ */
-export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contactoNombre, orderNumber, envioData, costoEnvio }: Props) {
+export function StepPago({
+  data, onChange, onNext, onBack,
+  contacto, envioData, totalServidor, moneda, cuponCodigo,
+}: Props) {
+  const { items } = useCart();
   const [error,    setError]    = useState<string | null>(null);
   const [cardName, setCardName] = useState(data.nombreTarjeta ?? "");
+  const [cargando, setCargando] = useState(false);
 
-  const setMetodo = (metodo: Metodo) => { onChange({ ...data, metodo }); setError(null); };
+  /**
+   * Pedido ya creado en un intento previo. Al reintentar (tarjeta
+   * rechazada, por ejemplo) se reutiliza en vez de crear un pedido
+   * nuevo por cada clic.
+   */
+  const pedidoEnCurso = useRef<number | null>(null);
+
+  const setMetodo = (metodo: Metodo) => {
+    onChange({ ...data, metodo });
+    setError(null);
+    // El pedido se conserva a propósito: el servidor lo reaprovecha y
+    // sustituye su PaymentIntent, en vez de dejar pedidos huérfanos
+    // reteniendo stock cada vez que el comprador cambia de opinión.
+  };
+
+  /**
+   * Volver a envío puede cambiar la dirección y, con ella, el costo de
+   * envío: el pedido en curso deja de ser válido y hay que crear otro.
+   */
+  const volver = () => {
+    pedidoEnCurso.current = null;
+    onBack();
+  };
+
+  /** Llama al servidor, que crea pedido + PaymentIntent en una operación. */
+  const iniciarPago = useCallback(async (metodo: Metodo): Promise<RespuestaPago> => {
+    const res = await fetch("/api/checkout/pagar", {
+      method:      "POST",
+      headers:     { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        metodo,
+        pedidoId: pedidoEnCurso.current ?? undefined,
+        contacto: {
+          nombre:   contacto.nombre,
+          apellido: contacto.apellido,
+          email:    contacto.email,
+          telefono: contacto.telefono,
+        },
+        envio: envioData,
+        // Sólo qué y cuánto: los precios los pone el servidor.
+        items: items.map((i) => ({ variante_id: i.varianteId, cantidad: i.cantidad })),
+        cupon_codigo: cuponCodigo || undefined,
+        notas:        data.notas || undefined,
+      }),
+    });
+
+    const json: RespuestaPago = await res.json();
+    if (!res.ok || !json.success || !json.pedido) {
+      throw new Error(json.error ?? "No pudimos iniciar el pago.");
+    }
+    pedidoEnCurso.current = json.pedido.id;
+    return json;
+  }, [contacto, envioData, items, cuponCodigo, data.notas]);
+
+  /** Camino común tras un pago aceptado: correo + avanzar a confirmación. */
+  const finalizar = useCallback((
+    respuesta: RespuestaPago,
+    paymentIntentId: string | null,
+    paymentData: PaymentConfirmData | null
+  ) => {
+    const pedido = respuesta.pedido!;
+
+    // Correo con el número REAL del pedido (el mismo que ve el admin).
+    enviarEmailConfirmacion({
+      orderNumber: pedido.numero,
+      nombre:      `${contacto.nombre} ${contacto.apellido}`.trim(),
+      items,
+      envio:       envioData,
+      metodo:      data.metodo,
+      spei:        paymentData?.spei,
+      oxxo:        paymentData?.oxxo,
+    });
+
+    onNext({
+      pedidoId: pedido.id,
+      numero:   pedido.numero,
+      total:    pedido.total,
+      moneda:   pedido.moneda,
+      paymentIntentId,
+      paymentData,
+    });
+  }, [contacto, items, envioData, data.metodo, onNext]);
+
+  /* ── Tarjeta ── */
+  const iniciarPagoTarjeta = useCallback(() => {
+    setError(null);
+    return iniciarPago("tarjeta");
+  }, [iniciarPago]);
+
+  const tarjetaCompletada = useCallback((respuesta: RespuestaPago, piId: string) => {
+    finalizar(respuesta, piId, null);
+  }, [finalizar]);
+
+  /* ── OXXO / SPEI ── */
+  const pagarAsincrono = useCallback(async (metodo: "oxxo" | "transferencia") => {
+    setError(null);
+    setCargando(true);
+    try {
+      const respuesta = await iniciarPago(metodo);
+      const paymentData: PaymentConfirmData =
+        metodo === "oxxo" ? { oxxo: respuesta.oxxo } : { spei: respuesta.spei };
+
+      if (metodo === "oxxo" && !respuesta.oxxo) throw new Error("No se pudo generar el voucher OXXO.");
+      if (metodo === "transferencia" && !respuesta.spei) throw new Error("No se pudo generar la CLABE.");
+
+      finalizar(respuesta, null, paymentData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error inesperado.");
+    } finally {
+      setCargando(false);
+    }
+  }, [iniciarPago, finalizar]);
+
+  const totalListo = totalServidor !== null && totalServidor > 0;
 
   return (
     <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }}
@@ -446,9 +532,12 @@ export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contac
             <PanelTarjeta
               cardName={cardName}
               onCardNameChange={(v) => { setCardName(v); onChange({ ...data, nombreTarjeta: v }); }}
-              onSuccess={(piId) => onNext(piId)}
+              onIniciarPago={iniciarPagoTarjeta}
+              onCompletado={tarjetaCompletada}
               onError={(msg) => setError(msg)}
-              orderNumber={orderNumber} email={contactoEmail} nombre={contactoNombre} envioData={envioData} costoEnvio={costoEnvio}
+              total={totalServidor}
+              moneda={moneda}
+              deshabilitado={!totalListo}
             />
           </motion.div>
         )}
@@ -456,11 +545,15 @@ export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contac
           <motion.div key="transferencia" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }}
             className="rounded-xl p-5" style={{ background: "var(--color-cq-surface-2)", border: "1px solid var(--color-cq-border)" }}>
-            <PanelSpei
-              email={contactoEmail} nombre={contactoNombre}
-              onSuccess={(piId, spei) => onNext(piId, { spei })}
-              onError={(msg) => setError(msg)}
-              orderNumber={orderNumber} envioData={envioData} costoEnvio={costoEnvio}
+            <PanelInstruccion
+              icono="fa-solid fa-circle-info"
+              titulo={<>Generaremos una <strong style={{ color: "var(--color-cq-text)" }}>CLABE única</strong> para que realices tu transferencia SPEI desde cualquier banco.</>}
+              cuerpo={<>El pedido se confirmará <strong style={{ color: "var(--color-cq-text)" }}>automáticamente</strong> al recibir el pago.</>}
+              boton="Obtener datos de transferencia"
+              iconoBoton="fa-solid fa-building-columns"
+              onClick={() => pagarAsincrono("transferencia")}
+              loading={cargando}
+              deshabilitado={!totalListo}
             />
           </motion.div>
         )}
@@ -468,17 +561,21 @@ export function StepPago({ data, onChange, onNext, onBack, contactoEmail, contac
           <motion.div key="oxxo" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }}
             className="rounded-xl p-5" style={{ background: "var(--color-cq-surface-2)", border: "1px solid var(--color-cq-border)" }}>
-            <PanelOxxo
-              email={contactoEmail} nombre={contactoNombre}
-              onSuccess={(piId, oxxo) => onNext(piId, { oxxo })}
-              onError={(msg) => setError(msg)}
-              orderNumber={orderNumber} envioData={envioData} costoEnvio={costoEnvio}
+            <PanelInstruccion
+              icono="fa-solid fa-circle-info"
+              titulo={<>Generaremos un <strong style={{ color: "var(--color-cq-text)" }}>código de barras único</strong> para pagar en cualquier tienda OXXO.</>}
+              cuerpo={<>El voucher es válido por <strong style={{ color: "var(--color-cq-text)" }}>72 horas</strong>. El pedido se confirmará automáticamente al recibir el pago.</>}
+              boton="Generar código OXXO"
+              iconoBoton="fa-solid fa-barcode"
+              onClick={() => pagarAsincrono("oxxo")}
+              loading={cargando}
+              deshabilitado={!totalListo}
             />
           </motion.div>
         )}
       </AnimatePresence>
 
-      <motion.button type="button" onClick={onBack} whileTap={{ scale: 0.98 }}
+      <motion.button type="button" onClick={volver} whileTap={{ scale: 0.98 }}
         className="flex items-center gap-2 self-start"
         style={{ background: "none", border: "none", cursor: "pointer",
           fontFamily: "var(--font-body)", fontSize: "0.85rem", color: "var(--color-cq-muted)", padding: 0 }}>

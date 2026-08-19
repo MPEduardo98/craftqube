@@ -155,16 +155,20 @@ export interface CrearPedidoPayload {
     pais:         string;
     referencias?: string;
   };
+  /**
+   * El cliente sólo declara QUÉ variante y CUÁNTAS. Los precios los
+   * resuelve el servidor en `calcularTotales`; mandarlos desde el
+   * navegador permitía fijar el importe del pedido a voluntad.
+   */
   items: {
-    variante_id:     number;
-    cantidad:        number;
-    precio_unitario: number;
-    precio_original: number;
+    variante_id: number;
+    cantidad:    number;
   }[];
   metodo_pago:    MetodoPago;
   cupon_codigo?:  string;
-  costo_envio:    number;
   notas_cliente?: string;
   carrito_id?:    number;
+  /** PaymentIntent de Stripe. Es el enlace que usa el webhook. */
+  referencia_pago?: string | null;
   ip_origen?:     string;
 }

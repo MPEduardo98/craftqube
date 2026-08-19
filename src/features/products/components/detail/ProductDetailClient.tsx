@@ -10,6 +10,7 @@ import { useWishlist }            from "@/features/wishlist/context/WishlistCont
 import { useCurrency }            from "@/shared/context/CurrencyContext";
 import { ProductVariantSelector } from "./ProductVariantSelector";
 import { ProductSpecs }           from "./ProductSpecs";
+import { ShareButton }            from "./ShareButton";
 import type { ProductoDetalle, ProductoVariante } from "@/features/products/types/product-detail";
 import { resolveImageUrl }        from "@/features/media/lib/resolveImageUrl";
 import { sanitizeRichText, hasRichTextContent } from "@/shared/lib/rich-text";
@@ -326,6 +327,8 @@ export function ProductDetailClient({ producto }: Props) {
                 >
                   <HeartIcon filled={wished} />
                 </motion.button>
+
+                <ShareButton titulo={producto.titulo} slug={producto.slug} />
               </div>
             </motion.div>
 

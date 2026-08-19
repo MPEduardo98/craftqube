@@ -1,23 +1,29 @@
-// app/(main)/checkout/components/CheckoutClient.tsx
+// features/checkout/components/CheckoutClient.tsx
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import Link                               from "next/link";
-import { motion, AnimatePresence }        from "framer-motion";
-import { useCart }                        from "@/features/cart/context/CartContext";
-import { useAuth }                        from "@/features/auth/context/AuthContext";
-import { CheckoutStepper }               from "./CheckoutStepper";
-import { StepContacto }                  from "./StepContacto";
-import { StepEnvio }                     from "./StepEnvio";
-import { StepPago }                      from "./StepPago";
-import { StepConfirmacion }              from "./StepConfirmacion";
-import { OrderSummary }                  from "./OrderSummary";
+import { useState, useCallback, useEffect } from "react";
+import Link                                  from "next/link";
+import { motion, AnimatePresence }           from "framer-motion";
+import { useCart }                           from "@/features/cart/context/CartContext";
+import { useAuth }                           from "@/features/auth/context/AuthContext";
+import { CheckoutStepper }                   from "./CheckoutStepper";
+import { StepContacto }                      from "./StepContacto";
+import { StepEnvio }                         from "./StepEnvio";
+import { StepPago }                          from "./StepPago";
+import { StepConfirmacion }                  from "./StepConfirmacion";
+import { OrderSummary }                      from "./OrderSummary";
 import type { CheckoutFormData, CheckoutStep, DatosPago } from "../types";
-import type { PaymentConfirmData }                         from "./StepPago";
-import type { CotizacionEnvio }                            from "@/shared/types/commerce";
+import type { ResultadoPago }                             from "./StepPago";
 
-/* ── Helpers ─────────────────────────────────────────────── */
-function genOrderNumber() { return "CQ" + Date.now().toString(36).toUpperCase(); }
+/* ── Resumen calculado en servidor ───────────────────────── */
+export interface ResumenCheckout {
+  subtotal:    number;
+  descuento:   number;
+  costo_envio: number;
+  impuestos:   number;
+  total:       number;
+  moneda:      string;
+}
 
 function FontAwesomeLink() {
   return (
@@ -57,61 +63,8 @@ const emptyForm: CheckoutFormData = {
     municipio: "", estado: "", codigoPostal: "", pais: "México",
     referencias: "", empresa: "", guardarDireccion: false,
   },
-  pago: { metodo: "tarjeta", numeroTarjeta: "", nombreTarjeta: "", expiracion: "", cvv: "", notas: "" },
+  pago: { metodo: "tarjeta", nombreTarjeta: "", notas: "" },
 };
-
-/* ── Guardar pedido en la base de datos ──────────────────── */
-async function guardarPedidoDB(params: {
-  formData:     CheckoutFormData;
-  items:        { variante_id: number; cantidad: number; precio_unitario: number; precio_original: number }[];
-  total:        number;
-  costoEnvio:   number;
-  stripeId:     string | null;
-  usuarioId?:   number;
-}) {
-  const { formData, items, costoEnvio, stripeId, usuarioId } = params;
-  const { contacto, envio, pago } = formData;
-
-  try {
-    const res = await fetch("/api/pedidos", {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        usuario_id:  usuarioId ?? undefined,
-        email:       contacto.email,
-        telefono:    contacto.telefono || undefined,
-        direccion_envio: {
-          nombre:       contacto.nombre,
-          apellido:     contacto.apellido,
-          empresa:      envio.empresa || undefined,
-          telefono:     contacto.telefono || undefined,
-          calle:        envio.calle,
-          numero_ext:   envio.numeroExt,
-          numero_int:   envio.numeroInt || undefined,
-          colonia:      envio.colonia,
-          ciudad:       envio.ciudad,
-          municipio:    envio.municipio || undefined,
-          estado:       envio.estado,
-          codigo_postal: envio.codigoPostal,
-          pais:         envio.pais,
-          referencias:  envio.referencias || undefined,
-        },
-        items,
-        metodo_pago:   pago.metodo,
-        costo_envio:   costoEnvio,
-        notas_cliente: pago.notas || undefined,
-        referencia_pago: stripeId ?? undefined,
-      }),
-    });
-
-    const json = await res.json();
-    if (!res.ok) console.error("[checkout] Error guardando pedido:", json.error);
-    else console.log("[checkout] ✓ Pedido guardado:", json.data?.numero);
-  } catch (err) {
-    console.error("[checkout] Error al guardar pedido:", err);
-  }
-}
 
 /* ── Guardar teléfono del usuario autenticado ────────────── */
 async function guardarTelefonoUsuario(telefono: string) {
@@ -122,7 +75,6 @@ async function guardarTelefonoUsuario(telefono: string) {
       credentials: "include",
       body: JSON.stringify({ telefono }),
     });
-    console.log("[checkout] ✓ Teléfono guardado en perfil");
   } catch (err) {
     console.error("[checkout] Error al guardar teléfono:", err);
   }
@@ -158,7 +110,6 @@ async function guardarDireccionUsuario(
         tipo:             "envio",
       }),
     });
-    console.log("[checkout] ✓ Dirección guardada en cuenta");
   } catch (err) {
     console.error("[checkout] Error al guardar dirección:", err);
   }
@@ -166,77 +117,75 @@ async function guardarDireccionUsuario(
 
 /* ══════════════════════════════════════════════════════════ */
 export function CheckoutClient() {
-  const { items, totalPrecio, clearCart } = useCart();
+  const { items, clearCart } = useCart();
   const { usuario, autenticado, refreshUser } = useAuth();
 
-  const [step,        setStep]      = useState<CheckoutStep>("contacto");
-  const [formData,    setFormData]  = useState<CheckoutFormData>(emptyForm);
-  const [orderNumber]               = useState<string>(genOrderNumber);
-  const [pedidoId,    setPedidoId]  = useState<string | null>(null);
-  const [paymentData, setPaymentData] = useState<PaymentConfirmData | null>(null);
-  const [envioCot,    setEnvioCot]  = useState<CotizacionEnvio | null>(null);
+  const [step,     setStep]     = useState<CheckoutStep>("contacto");
+  const [formData, setFormData] = useState<CheckoutFormData>(emptyForm);
+  const [cupon]                 = useState<string | null>(null);
 
-  const totalSnapshot = useRef<number>(0);
+  /** Importes autoritativos del servidor; null mientras se calculan. */
+  const [resumen,       setResumen]       = useState<ResumenCheckout | null>(null);
+  const [errorResumen,  setErrorResumen]  = useState<string | null>(null);
 
-  const costoEnvio = envioCot?.costo_total ?? 0;
+  /** Datos del pedido ya pagado, para la pantalla de confirmación. */
+  const [resultado, setResultado] = useState<ResultadoPago | null>(null);
 
-  /* ── Cotizar envío con el estado + ítems del carrito ── */
-  const cotizarEnvio = useCallback(async (estado: string) => {
-    if (!estado.trim() || items.length === 0) { setEnvioCot(null); return; }
+  /**
+   * Pide al servidor el desglose real (precios de BD, envío cotizado,
+   * cupón). Es la MISMA función que después calcula lo que se cobra,
+   * así que lo mostrado y lo cobrado no pueden diferir.
+   */
+  const cargarResumen = useCallback(async (estado: string) => {
+    if (!estado.trim() || items.length === 0) { setResumen(null); return; }
+    setErrorResumen(null);
     try {
-      const res = await fetch("/api/envio/cotizar", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({
+      const res = await fetch("/api/checkout/resumen", {
+        method:      "POST",
+        headers:     { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
           estado,
           items: items.map((i) => ({ variante_id: i.varianteId, cantidad: i.cantidad })),
+          cupon_codigo: cupon || undefined,
         }),
       });
       const json = await res.json();
-      setEnvioCot(json.success ? (json.data as CotizacionEnvio) : null);
+      if (!res.ok || !json.success) {
+        setResumen(null);
+        setErrorResumen(json.error ?? "No pudimos calcular el total.");
+        return;
+      }
+      setResumen(json.data as ResumenCheckout);
     } catch {
-      setEnvioCot(null);
+      setResumen(null);
+      setErrorResumen("No pudimos calcular el total. Revisa tu conexión.");
     }
-  }, [items]);
+  }, [items, cupon]);
 
-  /* ── handlePago: DEBE estar antes de cualquier early return (Rules of Hooks) ── */
-  const handlePago = useCallback(async (
-    stripePaymentIntentId?: string,
-    pd?: PaymentConfirmData
-  ) => {
-    totalSnapshot.current = totalPrecio + costoEnvio;
-    setPedidoId(stripePaymentIntentId ?? null);
-    setPaymentData(pd ?? null);
+  /* Recalcular si cambia el carrito estando ya en el paso de pago. */
+  useEffect(() => {
+    if (step === "pago") void cargarResumen(formData.envio.estado);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, items]);
+
+  /* ── Pago aceptado: sólo tareas de cuenta; el pedido ya existe ── */
+  const handlePagoConfirmado = useCallback(async (res: ResultadoPago) => {
+    setResultado(res);
     setStep("confirmacion");
+    clearCart();
 
-    const pedidoItems = items.map((item) => ({
-      variante_id:     item.varianteId,
-      cantidad:        item.cantidad,
-      precio_unitario: item.precio,
-      precio_original: item.precio,
-    }));
-
-    // 1️⃣ Guardar pedido en la BD (non-blocking)
-    guardarPedidoDB({
-      formData,
-      items:      pedidoItems,
-      total:      totalPrecio + costoEnvio,
-      costoEnvio,
-      stripeId:   stripePaymentIntentId ?? null,
-      usuarioId:  usuario?.id,
-    });
-
-    // 2️⃣ Guardar teléfono si el usuario autenticado no tenía uno
+    // Guardar teléfono si el usuario autenticado no tenía uno
     if (autenticado && usuario && !usuario.telefono && formData.contacto.telefono?.trim()) {
       await guardarTelefonoUsuario(formData.contacto.telefono.trim());
       refreshUser?.();
     }
 
-    // 3️⃣ Guardar dirección si el usuario lo marcó
+    // Guardar dirección si el usuario lo marcó
     if (autenticado && formData.envio.guardarDireccion) {
-      guardarDireccionUsuario(formData, true);
+      void guardarDireccionUsuario(formData, true);
     }
-  }, [formData, items, totalPrecio, costoEnvio, autenticado, usuario, refreshUser]);
+  }, [formData, autenticado, usuario, refreshUser, clearCart]);
 
   /* ── Carrito vacío — early return DESPUÉS de todos los hooks ── */
   if (items.length === 0 && step !== "confirmacion") {
@@ -303,32 +252,40 @@ export function CheckoutClient() {
                     <StepEnvio key="envio"
                       data={formData.envio}
                       onChange={(envio) => setFormData((p) => ({ ...p, envio }))}
-                      onNext={() => { cotizarEnvio(formData.envio.estado); setStep("pago"); }}
+                      onNext={() => { void cargarResumen(formData.envio.estado); setStep("pago"); }}
                       onBack={() => setStep("contacto")}
                       contactoNombre={formData.contacto.nombre}
                       contactoApellido={formData.contacto.apellido} />
                   )}
                   {step === "pago" && (
-                    <StepPago key="pago"
-                      data={formData.pago}
-                      onChange={(pago: DatosPago) => setFormData((p) => ({ ...p, pago }))}
-                      onNext={(stripeId, pd) => handlePago(stripeId, pd)}
-                      onBack={() => setStep("envio")}
-                      contactoEmail={formData.contacto.email}
-                      contactoNombre={`${formData.contacto.nombre} ${formData.contacto.apellido}`.trim()}
-                      orderNumber={orderNumber}
-                      envioData={formData.envio}
-                      costoEnvio={costoEnvio}
-                    />
+                    <>
+                      {errorResumen && (
+                        <div className="flex items-start gap-3 rounded-xl px-4 py-3 mb-5"
+                          style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.18)" }}>
+                          <i className="fa-solid fa-circle-exclamation"
+                            style={{ color: "#ef4444", fontSize: "0.9rem", marginTop: 2, flexShrink: 0 }} />
+                          <span style={{ fontFamily: "var(--font-body)", fontSize: "0.85rem", color: "#dc2626", lineHeight: 1.55 }}>
+                            {errorResumen}
+                          </span>
+                        </div>
+                      )}
+                      <StepPago key="pago"
+                        data={formData.pago}
+                        onChange={(pago: DatosPago) => setFormData((p) => ({ ...p, pago }))}
+                        onNext={handlePagoConfirmado}
+                        onBack={() => setStep("envio")}
+                        contacto={formData.contacto}
+                        envioData={formData.envio}
+                        totalServidor={resumen?.total ?? null}
+                        moneda={resumen?.moneda ?? "MXN"}
+                        cuponCodigo={cupon}
+                      />
+                    </>
                   )}
-                  {step === "confirmacion" && (
+                  {step === "confirmacion" && resultado && (
                     <StepConfirmacion key="confirmacion"
                       formData={formData}
-                      orderNumber={orderNumber}
-                      totalFinal={totalSnapshot.current}
-                      pedidoId={pedidoId}
-                      paymentData={paymentData}
-                      onClearCart={clearCart} />
+                      resultado={resultado} />
                   )}
                 </AnimatePresence>
               </div>
@@ -339,7 +296,7 @@ export function CheckoutClient() {
             {step !== "confirmacion" && (
               <div className="hidden lg:block shrink-0" style={{ width: 312 }}>
                 <div style={{ position: "sticky", top: 80 }}>
-                  <OrderSummary costoEnvio={step === "pago" ? costoEnvio : null} />
+                  <OrderSummary resumen={step === "pago" ? resumen : null} />
                 </div>
               </div>
             )}

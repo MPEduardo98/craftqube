@@ -1,35 +1,30 @@
-// app/global/lib/db/createPedido.ts
+// features/orders/lib/createPedido.ts
 // ─────────────────────────────────────────────────────────────
-// Función de servidor: crea un pedido completo en la DB
-// Genera número de pedido, items, historial inicial
+// Crea un pedido completo en la BD dentro de una transacción:
+// totales calculados en servidor, ítems, stock, cupón e historial.
+//
+// El pedido nace SIEMPRE en `pendiente_pago`. Es el webhook de
+// Stripe —y sólo él— quien lo mueve a `pago_recibido`.
 // ─────────────────────────────────────────────────────────────
-import mysql from "mysql2/promise";
+import type { PoolConnection, RowDataPacket, ResultSetHeader } from "mysql2/promise";
+import { pool }                          from "@/shared/lib/db/pool";
+import { calcularTotales, ErrorCalculo } from "./calcularTotales";
 import type { CrearPedidoPayload, Pedido } from "@/features/orders/types/order";
 
-function dbConfig() {
-  return {
-    host:     process.env.DB_HOST,
-    user:     process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    port:     Number(process.env.DB_PORT) || 3306,
-    ssl:      { rejectUnauthorized: false },
-  };
-}
+export { ErrorCalculo };
 
 /** Genera número de pedido: CQ-2026-000042 */
-async function generarNumeroPedido(conn: mysql.Connection): Promise<string> {
+async function generarNumeroPedido(conn: PoolConnection): Promise<string> {
   // Upsert atómico: crea la fila 'pedidos' si no existe e incrementa en una
   // sola operación. LAST_INSERT_ID(expr) fija el valor asignado a ESTA conexión,
   // que el SELECT siguiente recupera sin condiciones de carrera entre pedidos
-  // concurrentes. (El UPDATE anterior fallaba silenciosamente si la fila no
-  // existía, devolviendo siempre 1 → colisiones en uq_numero.)
+  // concurrentes.
   await conn.execute(
     `INSERT INTO \`secuencias\` (\`nombre\`, \`valor\`)
        VALUES ('pedidos', LAST_INSERT_ID(1))
      ON DUPLICATE KEY UPDATE \`valor\` = LAST_INSERT_ID(\`valor\` + 1)`
   );
-  const [rows] = await conn.execute<mysql.RowDataPacket[]>(
+  const [rows] = await conn.execute<RowDataPacket[]>(
     "SELECT LAST_INSERT_ID() AS `valor`"
   );
   const seq    = Number(rows[0]?.valor ?? 1);
@@ -38,59 +33,49 @@ async function generarNumeroPedido(conn: mysql.Connection): Promise<string> {
   return `CQ-${year}-${padded}`;
 }
 
+/**
+ * Bloquea las filas de variante implicadas para el resto de la
+ * transacción. Sin esto, dos pedidos simultáneos por la última pieza
+ * pasan ambos la validación de stock y se vende inventario que no hay.
+ */
+async function bloquearVariantes(
+  conn: PoolConnection,
+  varianteIds: number[]
+): Promise<void> {
+  if (varianteIds.length === 0) return;
+  const placeholders = varianteIds.map(() => "?").join(",");
+  await conn.execute(
+    `SELECT id FROM producto_variantes WHERE id IN (${placeholders}) FOR UPDATE`,
+    varianteIds
+  );
+}
+
 export async function createPedido(payload: CrearPedidoPayload): Promise<Pedido | null> {
-  const conn = await mysql.createConnection(dbConfig());
+  const conn = await pool.getConnection();
 
   try {
     await conn.beginTransaction();
 
-    // 1. Validar cupón (si viene)
-    let cuponId:       number | null  = null;
-    let cuponCodigo:   string | null  = null;
-    let cuponDescuento: number        = 0;
+    // 1. Bloquear variantes ANTES de leer precios y stock
+    const varianteIds = [...new Set(
+      (payload.items ?? [])
+        .map((i) => Number(i.variante_id))
+        .filter((id) => Number.isInteger(id) && id > 0)
+    )];
+    await bloquearVariantes(conn, varianteIds);
 
-    if (payload.cupon_codigo) {
-      const [cupRows] = await conn.execute<mysql.RowDataPacket[]>(
-        `SELECT * FROM cupones
-         WHERE codigo = ?
-           AND activo = 1
-           AND (valido_desde IS NULL OR valido_desde <= NOW())
-           AND (valido_hasta IS NULL OR valido_hasta >= NOW())
-           AND (uso_maximo_total IS NULL OR usos_actuales < uso_maximo_total)
-         LIMIT 1`,
-        [payload.cupon_codigo]
-      );
-      const cupon = cupRows[0];
-      if (cupon) {
-        cuponId      = cupon.id;
-        cuponCodigo  = cupon.codigo;
-        const subtotal = payload.items.reduce(
-          (s, i) => s + i.precio_unitario * i.cantidad, 0
-        );
-        if (cupon.tipo === "porcentaje") {
-          cuponDescuento = subtotal * (cupon.valor / 100);
-          if (cupon.maximo_descuento) {
-            cuponDescuento = Math.min(cuponDescuento, cupon.maximo_descuento);
-          }
-        } else if (cupon.tipo === "monto_fijo") {
-          cuponDescuento = Math.min(cupon.valor, subtotal);
-        } else if (cupon.tipo === "envio_gratis") {
-          cuponDescuento = payload.costo_envio;
-        }
-      }
-    }
-
-    // 2. Calcular montos
-    const subtotal    = payload.items.reduce(
-      (s, i) => s + i.precio_unitario * i.cantidad, 0
-    );
-    const descuento   = cuponDescuento;
-    const costoEnvio  = cuponCodigo && cuponDescuento === payload.costo_envio
-      ? 0
-      : payload.costo_envio;
-    const baseImpuesto = subtotal - descuento;
-    const impuestos   = 0; // Ajustar según IVA incluido o no
-    const total       = baseImpuesto + costoEnvio + impuestos;
+    // 2. Totales autoritativos (precios, envío, cupón y moneda de BD).
+    //    Lo que mandó el cliente sólo aporta variante_id y cantidad.
+    const totales = await calcularTotales({
+      items:        payload.items.map((i) => ({
+        variante_id: Number(i.variante_id),
+        cantidad:    Number(i.cantidad),
+      })),
+      estado:       payload.direccion_envio.estado,
+      cupon_codigo: payload.cupon_codigo ?? null,
+      usuario_id:   payload.usuario_id ?? null,
+      db:           conn,
+    });
 
     // 3. Número de pedido
     const numero = await generarNumeroPedido(conn);
@@ -100,7 +85,7 @@ export async function createPedido(payload: CrearPedidoPayload): Promise<Pedido 
     const envioNombre = `${dir.nombre} ${dir.apellido}`.trim();
 
     // 5. Insertar pedido
-    const [pedidoResult] = await conn.execute<mysql.ResultSetHeader>(
+    const [pedidoResult] = await conn.execute<ResultSetHeader>(
       `INSERT INTO pedidos (
         numero, usuario_id, estado,
         envio_nombre, envio_empresa, envio_telefono,
@@ -110,7 +95,7 @@ export async function createPedido(payload: CrearPedidoPayload): Promise<Pedido 
         email, telefono,
         subtotal, descuento, costo_envio, impuestos, total, moneda,
         cupon_id, cupon_codigo, cupon_descuento,
-        metodo_pago, notas_cliente, ip_origen, fuente, carrito_id
+        metodo_pago, referencia_pago, notas_cliente, ip_origen, fuente, carrito_id
       ) VALUES (
         ?,?,?,
         ?,?,?,
@@ -120,7 +105,7 @@ export async function createPedido(payload: CrearPedidoPayload): Promise<Pedido 
         ?,?,
         ?,?,?,?,?,?,
         ?,?,?,
-        ?,?,?,?,?
+        ?,?,?,?,?,?
       )`,
       [
         numero,
@@ -141,16 +126,17 @@ export async function createPedido(payload: CrearPedidoPayload): Promise<Pedido 
         dir.referencias ?? null,
         payload.email,
         payload.telefono ?? null,
-        subtotal,
-        descuento,
-        costoEnvio,
-        impuestos,
-        total,
-        "MXN",
-        cuponId,
-        cuponCodigo,
-        cuponDescuento > 0 ? cuponDescuento : null,
+        totales.subtotal,
+        totales.descuento,
+        totales.costo_envio,
+        totales.impuestos,
+        totales.total,
+        totales.moneda,
+        totales.cupon_id,
+        totales.cupon_codigo,
+        totales.descuento > 0 ? totales.descuento : null,
         payload.metodo_pago,
+        payload.referencia_pago ?? null,
         payload.notas_cliente ?? null,
         payload.ip_origen ?? null,
         "web",
@@ -160,30 +146,8 @@ export async function createPedido(payload: CrearPedidoPayload): Promise<Pedido 
 
     const pedidoId = pedidoResult.insertId;
 
-    // 6. Insertar ítems
-    for (const item of payload.items) {
-      // Obtener snapshot del producto
-      const [varRows] = await conn.execute<mysql.RowDataPacket[]>(
-        `SELECT
-           pv.sku,
-           p.titulo,
-           pi.url AS imagen_url
-         FROM producto_variantes pv
-         INNER JOIN productos p ON p.id = pv.producto_id
-         LEFT JOIN producto_imagenes pi
-           ON pi.producto_id = p.id
-           AND pi.variante_id IS NULL
-           AND pi.id = (
-             SELECT MIN(id) FROM producto_imagenes
-             WHERE producto_id = p.id AND variante_id IS NULL
-           )
-         WHERE pv.id = ?`,
-        [item.variante_id]
-      );
-      const varData = varRows[0];
-      const totalLinea =
-        (item.precio_unitario * item.cantidad);
-
+    // 6. Ítems (precios y snapshot ya resueltos por calcularTotales)
+    for (const linea of totales.lineas) {
       await conn.execute(
         `INSERT INTO pedido_items (
            pedido_id, variante_id,
@@ -193,25 +157,40 @@ export async function createPedido(payload: CrearPedidoPayload): Promise<Pedido 
          ) VALUES (?,?,?,?,?,?,?,?,?,?)`,
         [
           pedidoId,
-          item.variante_id,
-          varData?.titulo ?? "Producto",
-          varData?.sku    ?? item.variante_id.toString(),
-          varData?.imagen_url ?? null,
-          item.precio_unitario,
-          item.precio_original,
-          item.cantidad,
+          linea.variante_id,
+          linea.titulo,
+          linea.sku,
+          linea.imagen_url,
+          linea.precio_unitario,
+          linea.precio_original,
+          linea.cantidad,
           0,
-          totalLinea,
+          linea.total_linea,
         ]
       );
 
-      // Descontar stock
-      await conn.execute(
+      // Descontar stock con guarda: si otro pedido se adelantó y ya no
+      // alcanza, `affectedRows` es 0 y se aborta toda la transacción.
+      const [res] = await conn.execute<ResultSetHeader>(
         `UPDATE producto_variantes
-         SET stock = GREATEST(0, stock - ?)
-         WHERE id = ? AND vender_sin_existencia = 0`,
-        [item.cantidad, item.variante_id]
+            SET stock = stock - ?
+          WHERE id = ?
+            AND vender_sin_existencia = 0
+            AND stock >= ?`,
+        [linea.cantidad, linea.variante_id, linea.cantidad]
       );
+
+      if (res.affectedRows === 0) {
+        // Puede ser stock insuficiente o una variante que se vende sin
+        // existencias (donde no se descuenta nada). Se distingue leyendo.
+        const [[variante]] = await conn.execute<RowDataPacket[]>(
+          "SELECT vender_sin_existencia FROM producto_variantes WHERE id = ?",
+          [linea.variante_id]
+        );
+        if (!variante?.vender_sin_existencia) {
+          throw new ErrorCalculo(`Ya no hay existencias suficientes de "${linea.titulo}".`);
+        }
+      }
     }
 
     // 7. Historial inicial
@@ -222,41 +201,74 @@ export async function createPedido(payload: CrearPedidoPayload): Promise<Pedido 
     );
 
     // 8. Registrar uso de cupón
-    if (cuponId && cuponDescuento > 0) {
+    if (totales.cupon_id) {
       await conn.execute(
-        `UPDATE cupones SET usos_actuales = usos_actuales + 1 WHERE id = ?`,
-        [cuponId]
+        "UPDATE cupones SET usos_actuales = usos_actuales + 1 WHERE id = ?",
+        [totales.cupon_id]
       );
       await conn.execute(
         `INSERT INTO cupon_usos (cupon_id, pedido_id, usuario_id, email, descuento)
          VALUES (?,?,?,?,?)`,
-        [cuponId, pedidoId, payload.usuario_id ?? null, payload.email, cuponDescuento]
+        [totales.cupon_id, pedidoId, payload.usuario_id ?? null, payload.email, totales.descuento]
       );
     }
 
     // 9. Marcar carrito como convertido
     if (payload.carrito_id) {
       await conn.execute(
-        `UPDATE carritos SET estado = 'convertido' WHERE id = ?`,
+        "UPDATE carritos SET estado = 'convertido' WHERE id = ?",
         [payload.carrito_id]
       );
     }
 
-    await conn.commit();
-
-    // 10. Retornar pedido creado
-    const [pedRows] = await conn.execute<mysql.RowDataPacket[]>(
-      `SELECT * FROM pedidos WHERE id = ?`,
+    // 10. Leer el pedido creado ANTES de cerrar la transacción
+    const [pedRows] = await conn.execute<RowDataPacket[]>(
+      "SELECT * FROM pedidos WHERE id = ?",
       [pedidoId]
     );
 
-    return pedRows[0] as Pedido ?? null;
+    await conn.commit();
+
+    return (pedRows[0] as Pedido) ?? null;
 
   } catch (error) {
     await conn.rollback();
+    // Los errores de negocio (sin stock, cupón inválido, precio cero)
+    // suben tal cual para que la ruta los devuelva como 400 legible.
+    if (error instanceof ErrorCalculo) throw error;
     console.error("[createPedido] Error:", error);
     return null;
   } finally {
-    await conn.end();
+    conn.release();
   }
+}
+
+/**
+ * Enlaza el PaymentIntent con el pedido. Es la referencia que usa el
+ * webhook para acreditar el pago; sin ella, un cobro confirmado nunca
+ * se refleja en el pedido.
+ *
+ * El UPDATE es condicional (`referencia_pago IS NULL`) y hace las
+ * veces de cerrojo: si dos peticiones simultáneas crearan dos
+ * PaymentIntents, sólo una consigue enlazarse y la otra sabe que
+ * perdió y debe anular el suyo. Devuelve si ganó el enlace.
+ */
+export async function enlazarPaymentIntent(
+  pedidoId: number,
+  paymentIntentId: string
+): Promise<boolean> {
+  const [res] = await pool.execute<ResultSetHeader>(
+    "UPDATE pedidos SET referencia_pago = ? WHERE id = ? AND referencia_pago IS NULL",
+    [paymentIntentId, pedidoId]
+  );
+  return res.affectedRows > 0;
+}
+
+/** Referencia de pago actualmente enlazada al pedido. */
+export async function getReferenciaPago(pedidoId: number): Promise<string | null> {
+  const [[fila]] = await pool.execute<RowDataPacket[]>(
+    "SELECT referencia_pago FROM pedidos WHERE id = ? LIMIT 1",
+    [pedidoId]
+  );
+  return (fila?.referencia_pago as string | null) ?? null;
 }

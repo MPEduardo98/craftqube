@@ -2,20 +2,17 @@
 "use client";
 
 import Link                      from "next/link";
-import { useState, useEffect }   from "react";
+import { useState }              from "react";
 import { motion }                from "framer-motion";
 import { useAuth }               from "@/features/auth/context/AuthContext";
-import { formatPrice }           from "@/shared/lib/format";
+import { formatMoneda }          from "@/shared/lib/format";
 import type { CheckoutFormData } from "../types";
-import type { PaymentConfirmData, SpeiConfirmData, OxxoConfirmData } from "./StepPago";
+import type { ResultadoPago, SpeiConfirmData, OxxoConfirmData } from "./StepPago";
 
 interface Props {
-  formData:     CheckoutFormData;
-  orderNumber:  string;
-  totalFinal:   number;
-  pedidoId:     string | null;
-  paymentData:  PaymentConfirmData | null;
-  onClearCart:  () => void;
+  formData: CheckoutFormData;
+  /** Pedido realmente creado en la BD: folio, importe y datos de pago. */
+  resultado: ResultadoPago;
 }
 
 function formatFecha(unix: number) {
@@ -121,7 +118,7 @@ function BloqueSpei({ spei }: { spei: SpeiConfirmData }) {
               Monto exacto a transferir
             </span>
             <span style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", fontWeight: 800, color: "var(--color-cq-accent)" }}>
-              {formatPrice(spei.monto)}
+              {formatMoneda(spei.monto, "MXN")}
             </span>
           </div>
         )}
@@ -149,7 +146,7 @@ function BloqueSpei({ spei }: { spei: SpeiConfirmData }) {
 }
 
 /* ── Bloque OXXO ─────────────────────────────────────────── */
-function BloqueOxxo({ oxxo, totalFinal }: { oxxo: OxxoConfirmData; totalFinal: number }) {
+function BloqueOxxo({ oxxo, totalFinal, moneda }: { oxxo: OxxoConfirmData; totalFinal: number; moneda: string }) {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
       className="w-full rounded-2xl overflow-hidden"
@@ -176,7 +173,7 @@ function BloqueOxxo({ oxxo, totalFinal }: { oxxo: OxxoConfirmData; totalFinal: n
             {oxxo.numero}
           </code>
           <span style={{ fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 700, color: "#EA580C" }}>
-            {formatPrice(totalFinal)}
+            {formatMoneda(totalFinal, moneda)}
           </span>
         </div>
         {oxxo.expira && (
@@ -191,18 +188,17 @@ function BloqueOxxo({ oxxo, totalFinal }: { oxxo: OxxoConfirmData; totalFinal: n
 }
 
 /* ── Componente principal ────────────────────────────────── */
-export function StepConfirmacion({ formData, orderNumber, totalFinal, pedidoId, paymentData, onClearCart }: Props) {
-  const { usuario, autenticado } = useAuth();
+export function StepConfirmacion({ formData, resultado }: Props) {
+  const { autenticado } = useAuth();
   const { contacto, envio, pago } = formData;
   const metodoLabel =
     pago.metodo === "tarjeta"       ? "Tarjeta de crédito / débito" :
     pago.metodo === "transferencia" ? "Transferencia SPEI" :
     pago.metodo === "oxxo"          ? "OXXO en efectivo" : pago.metodo;
 
-  useEffect(() => {
-    onClearCart();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Folio, importe y moneda salen del pedido guardado, no de un valor
+  // generado en el navegador: es el mismo número que ve el admin.
+  const { numero: orderNumber, total: totalFinal, moneda, paymentData } = resultado;
 
   return (
     <motion.div
@@ -247,7 +243,7 @@ export function StepConfirmacion({ formData, orderNumber, totalFinal, pedidoId, 
           {orderNumber}
         </span>
         <span style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", fontWeight: 700, color: "var(--color-cq-accent)" }}>
-          {formatPrice(totalFinal)}
+          {formatMoneda(totalFinal, moneda)}
         </span>
       </motion.div>
 
@@ -256,7 +252,7 @@ export function StepConfirmacion({ formData, orderNumber, totalFinal, pedidoId, 
         <BloqueSpei spei={paymentData.spei} />
       )}
       {paymentData?.oxxo && (
-        <BloqueOxxo oxxo={paymentData.oxxo} totalFinal={totalFinal} />
+        <BloqueOxxo oxxo={paymentData.oxxo} totalFinal={totalFinal} moneda={moneda} />
       )}
 
       {/* Resumen del pedido */}

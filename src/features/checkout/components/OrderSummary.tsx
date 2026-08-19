@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/features/cart/context/CartContext";
-import { formatPrice } from "@/shared/lib/format";
+import { formatPrice, formatMoneda } from "@/shared/lib/format";
 import { resolveImageUrl } from "@/features/media/lib/resolveImageUrl";
 
 function esAtributoVisible(a: string, v: string): boolean {
@@ -16,19 +16,15 @@ function esAtributoVisible(a: string, v: string): boolean {
   return true;
 }
 
-interface Props {
-  compact?:    boolean;
-  /** Costo de envío ya cotizado; null = aún por cotizar */
-  costoEnvio?: number | null;
-}
-
-export function OrderSummary({ compact = false, costoEnvio = null }: Props) {
-  const { items, totalPrecio } = useCart();
-  const [open, setOpen] = useState(!compact);
-  const envio = costoEnvio ?? 0;
-  const envioPorCotizar = costoEnvio === null;
-
-  const CardWrapper = ({ children }: { children: React.ReactNode }) => (
+/**
+ * Contenedor de la tarjeta. Vive fuera del componente: declarado
+ * dentro, React lo trataba como un tipo nuevo en cada render y
+ * remontaba todo el subárbol.
+ */
+function CardWrapper({ children, compact, open }: {
+  children: React.ReactNode; compact: boolean; open: boolean;
+}) {
+  return (
     <div style={{
       background: "var(--color-cq-surface)",
       border: "1px solid var(--color-cq-border)",
@@ -38,6 +34,41 @@ export function OrderSummary({ compact = false, costoEnvio = null }: Props) {
       {children}
     </div>
   );
+}
+
+/** Desglose calculado por el servidor (misma fuente que el cobro). */
+export interface ResumenImportes {
+  subtotal:    number;
+  descuento:   number;
+  costo_envio: number;
+  impuestos:   number;
+  total:       number;
+  moneda:      string;
+}
+
+interface Props {
+  compact?: boolean;
+  /**
+   * Importes del servidor. null = aún sin calcular (falta el estado de
+   * envío o la petición está en vuelo); en ese caso se muestra el
+   * subtotal local del carrito y el envío queda "por cotizar".
+   */
+  resumen?: ResumenImportes | null;
+}
+
+export function OrderSummary({ compact = false, resumen = null }: Props) {
+  const { items, totalPrecio } = useCart();
+  const [open, setOpen] = useState(!compact);
+
+  const moneda    = resumen?.moneda ?? "MXN";
+  const subtotal  = resumen?.subtotal ?? totalPrecio;
+  const descuento = resumen?.descuento ?? 0;
+  const envio     = resumen?.costo_envio ?? 0;
+  const total     = resumen?.total ?? totalPrecio;
+  const envioPorCotizar = resumen === null;
+
+  /** Con resumen se formatea sin convertir; sin él, el precio local. */
+  const fmt = (n: number) => (resumen ? formatMoneda(n, moneda) : formatPrice(n));
 
   return (
     <div className="flex flex-col">
@@ -81,7 +112,7 @@ export function OrderSummary({ compact = false, costoEnvio = null }: Props) {
             transition={{ duration: 0.25, ease: "easeInOut" }}
             style={{ overflow: "hidden" }}
           >
-            <CardWrapper>
+            <CardWrapper compact={compact} open={open}>
               {/* Header */}
               {!compact && (
                 <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--color-cq-border)", background: "var(--color-cq-surface-2)" }}>
@@ -139,16 +170,27 @@ export function OrderSummary({ compact = false, costoEnvio = null }: Props) {
                 <div className="flex justify-between items-center">
                   <span style={{ fontFamily: "var(--font-body)", fontSize: "0.82rem", color: "var(--color-cq-muted)" }}>Subtotal</span>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.82rem", color: "var(--color-cq-text)" }}>
-                    {formatPrice(totalPrecio)}
+                    {fmt(subtotal)}
                   </span>
                 </div>
+                {descuento > 0 && (
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-1.5">
+                      <i className="fa-solid fa-tag" style={{ fontSize: "0.7rem", color: "#22c55e" }} />
+                      <span style={{ fontFamily: "var(--font-body)", fontSize: "0.82rem", color: "var(--color-cq-muted)" }}>Descuento</span>
+                    </div>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.82rem", color: "#22c55e" }}>
+                      −{fmt(descuento)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-1.5">
                     <i className="fa-solid fa-truck" style={{ fontSize: "0.7rem", color: "var(--color-cq-muted-2)" }} />
                     <span style={{ fontFamily: "var(--font-body)", fontSize: "0.82rem", color: "var(--color-cq-muted)" }}>Envío</span>
                   </div>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "var(--color-cq-muted-2)" }}>
-                    {envioPorCotizar ? "Por cotizar" : envio === 0 ? "Gratis" : formatPrice(envio)}
+                    {envioPorCotizar ? "Por cotizar" : envio === 0 ? "Gratis" : fmt(envio)}
                   </span>
                 </div>
                 <div style={{ height: 1, background: "var(--color-cq-border)", margin: "2px 0" }} />
@@ -157,7 +199,7 @@ export function OrderSummary({ compact = false, costoEnvio = null }: Props) {
                     Total
                   </span>
                   <span style={{ fontFamily: "var(--font-display)", fontSize: "1.2rem", fontWeight: 700, color: "var(--color-cq-accent)" }}>
-                    {formatPrice(totalPrecio + envio)}
+                    {fmt(total)}
                   </span>
                 </div>
               </div>

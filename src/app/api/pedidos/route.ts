@@ -4,24 +4,17 @@
 // GET  /api/pedidos  — Listar pedidos del usuario autenticado
 // ─────────────────────────────────────────────────────────────
 import { NextRequest, NextResponse } from "next/server";
-import mysql                          from "mysql2/promise";
+import { pool }                       from "@/shared/lib/db/pool";
 import type { RowDataPacket }         from "mysql2";
 import { createPedido }               from "@/features/orders/lib/createPedido";
+import { ErrorCalculo }               from "@/features/orders/lib/calcularTotales";
 import { getSessionUser }             from "@/features/auth/lib/getSessionUser";
 import type { CrearPedidoPayload }    from "@/features/orders/types/order";
 
-function dbConfig(): mysql.ConnectionOptions {
-  return {
-    host:     process.env.DB_HOST,
-    user:     process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    port:     Number(process.env.DB_PORT) || 3306,
-    ssl:      { rejectUnauthorized: false },
-  };
-}
-
 /* ── POST ─────────────────────────────────────────────────── */
+// Nota: el checkout usa /api/checkout/pagar, que crea el pedido y el
+// cobro en una sola operación. Esta ruta se mantiene para altas sin
+// pago asociado y comparte el mismo cálculo de totales en servidor.
 export async function POST(req: NextRequest) {
   try {
     const body: CrearPedidoPayload = await req.json();
@@ -57,6 +50,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: pedido }, { status: 201 });
   } catch (error) {
+    // Sin stock, cupón inválido o producto retirado: el comprador
+    // necesita leer el motivo, no un 500 genérico.
+    if (error instanceof ErrorCalculo) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    }
     console.error("[POST /api/pedidos]", error);
     return NextResponse.json({ success: false, error: "Error interno del servidor" }, { status: 500 });
   }
@@ -75,11 +73,8 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(20, Number(searchParams.get("limit") ?? 10));
   const offset = (page - 1) * limit;
 
-  let conn: mysql.Connection | undefined;
   try {
-    conn = await mysql.createConnection(dbConfig());
-
-    const [rows] = await conn.execute<RowDataPacket[]>(
+    const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT
          p.id, p.numero, p.estado, p.total, p.moneda,
          p.metodo_pago, p.created_at,
@@ -93,7 +88,7 @@ export async function GET(req: NextRequest) {
       [userId, limit, offset]
     );
 
-    const [[{ total }]] = await conn.execute<RowDataPacket[]>(
+    const [[{ total }]] = await pool.execute<RowDataPacket[]>(
       `SELECT COUNT(*) AS total FROM pedidos WHERE usuario_id = ?`,
       [userId]
     ) as [RowDataPacket[], unknown];
@@ -106,7 +101,5 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error("[GET /api/pedidos]", error);
     return NextResponse.json({ success: false, error: "Error interno" }, { status: 500 });
-  } finally {
-    await conn?.end();
   }
 }
