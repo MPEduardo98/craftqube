@@ -44,6 +44,8 @@ export interface ResumenImportes {
   impuestos:   number;
   total:       number;
   moneda:      string;
+  /** Importe mínimo que la pasarela acepta cobrar en esta moneda. */
+  monto_minimo?: number;
   /** Cupón aplicado por el servidor, para nombrarlo en el desglose. */
   cupon_codigo?: string | null;
   cupon_tipo?:   string | null;
@@ -78,6 +80,11 @@ export function OrderSummary({ compact = false, resumen = null }: Props) {
   const cuponCodigo     = resumen?.cupon_codigo ?? null;
   const envioGratisCupon = resumen?.cupon_tipo === "envio_gratis";
   const descuentoConEnvio = Boolean(resumen?.cupon_aplica_envio) && descuento > 0;
+
+  /* Por debajo del mínimo de la pasarela el cobro no es posible. Se dice
+     aquí, junto al total, en vez de dejar que el botón de pagar falle. */
+  const minimo    = resumen?.monto_minimo ?? null;
+  const bajoMinimo = minimo !== null && total < minimo;
 
   /** Con resumen se formatea sin convertir; sin él, el precio local. */
   const fmt = (n: number) => (resumen ? formatMoneda(n, moneda) : formatPrice(n));
@@ -231,6 +238,17 @@ export function OrderSummary({ compact = false, resumen = null }: Props) {
                     {fmt(total)}
                   </span>
                 </div>
+
+                {bajoMinimo && (
+                  <div className="flex items-start gap-2 rounded-lg px-3 py-2.5"
+                    style={{ background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.22)", marginTop: 4 }}>
+                    <i className="fa-solid fa-circle-exclamation"
+                      style={{ color: "#d97706", fontSize: "0.75rem", marginTop: 3, flexShrink: 0 }} />
+                    <span style={{ fontFamily: "var(--font-body)", fontSize: "0.75rem", color: "#b45309", lineHeight: 1.5 }}>
+                      El pago mínimo en línea es {fmt(minimo!)}. Agrega algo más a tu carrito para continuar.
+                    </span>
+                  </div>
+                )}
               </div>
             </CardWrapper>
           </motion.div>

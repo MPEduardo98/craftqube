@@ -33,6 +33,8 @@ export interface ResumenCheckout {
   impuestos:   number;
   total:       number;
   moneda:      string;
+  /** Importe mínimo que la pasarela acepta cobrar en esta moneda. */
+  monto_minimo?: number;
   /** Código realmente aplicado por el servidor; null si ninguno. */
   cupon_codigo?: string | null;
   cupon_tipo?:   string | null;

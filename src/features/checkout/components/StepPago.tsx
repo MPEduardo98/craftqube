@@ -119,6 +119,11 @@ interface Props {
   totalServidor: number | null;
   moneda:        string;
   /**
+   * Importe mínimo que la pasarela acepta cobrar. Por debajo de él no
+   * se ofrece ningún método: Stripe devolvería `amount_too_small`.
+   */
+  montoMinimo?:  number | null;
+  /**
    * Cupón aplicado y confirmado por el servidor. El campo para
    * escribirlo vive en la columna del resumen (`CuponCard`); aquí
    * sólo se reenvía al cobro.
@@ -343,7 +348,7 @@ function PanelInstruccion({ icono, titulo, cuerpo, boton, iconoBoton, onClick, l
 /* ══════════════════════════════════════════════════════════ */
 export function StepPago({
   data, onChange, onNext, onBack,
-  contacto, envioData, totalServidor, moneda, cuponCodigo,
+  contacto, envioData, totalServidor, moneda, montoMinimo = null, cuponCodigo,
 }: Props) {
   const { items } = useCart();
   const [error,    setError]    = useState<string | null>(null);
@@ -464,7 +469,11 @@ export function StepPago({
     }
   }, [iniciarPago, finalizar]);
 
-  const totalListo = totalServidor !== null && totalServidor > 0;
+  /* Stripe no cobra por debajo del mínimo de la moneda. Se bloquean los
+     métodos y se explica por qué, en vez de dejar que el botón dispare
+     una petición que el servidor va a rechazar. */
+  const bajoMinimo = totalServidor !== null && montoMinimo !== null && totalServidor < montoMinimo;
+  const totalListo = totalServidor !== null && totalServidor > 0 && !bajoMinimo;
 
   return (
     <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }}
@@ -496,6 +505,18 @@ export function StepPago({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {bajoMinimo && (
+        <div className="flex items-start gap-3 rounded-xl px-4 py-3"
+          style={{ background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.22)" }}>
+          <i className="fa-solid fa-circle-exclamation"
+            style={{ color: "#d97706", fontSize: "0.9rem", marginTop: 2, flexShrink: 0 }} />
+          <span style={{ fontFamily: "var(--font-body)", fontSize: "0.85rem", color: "#b45309", lineHeight: 1.55 }}>
+            El importe mínimo para pagar en línea es {formatMoneda(montoMinimo!, moneda)}, y tu pedido
+            suma {formatMoneda(totalServidor!, moneda)}. Agrega algo más a tu carrito para completar la compra.
+          </span>
+        </div>
+      )}
 
       {/* Selector de método */}
       <div className="flex flex-col gap-2.5">

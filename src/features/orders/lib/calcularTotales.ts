@@ -11,6 +11,7 @@ import type { Pool, PoolConnection, RowDataPacket } from "mysql2/promise";
 import { pool }                                     from "@/shared/lib/db/pool";
 import { getStorePricing, toStoreCurrency }         from "@/shared/lib/currency/store-currency";
 import { cotizarEnvioServer }                       from "@/features/checkout/lib/cotizarEnvioServer";
+import { montoMinimoStripe }                        from "@/shared/lib/stripe/montos";
 import { resolverCupon }                            from "./resolverCupon";
 import type { Moneda }                              from "@/shared/lib/config/store-config";
 import type { CuponTipo }                           from "@/shared/types/commerce";
@@ -46,6 +47,13 @@ export interface TotalesCalculados {
   impuestos:    number;
   total:        number;
   moneda:       Moneda;
+  /**
+   * Importe mínimo que la pasarela acepta cobrar en esta moneda. Se
+   * devuelve —en vez de reventar aquí— para que la vista previa pueda
+   * seguir mostrando el desglose y avisar de que falta llegar al mínimo.
+   * Quien cobra sí lo exige (ver `createPedido`).
+   */
+  monto_minimo: number;
   cupon_id:     number | null;
   cupon_codigo: string | null;
   cupon_tipo:   CuponTipo | null;
@@ -269,6 +277,7 @@ export async function calcularTotales(params: ParamsCalculo): Promise<TotalesCal
     impuestos,
     total,
     moneda:       pricing.monedaTienda,
+    monto_minimo: montoMinimoStripe(pricing.monedaTienda),
     cupon_id:     cuponId,
     cupon_codigo: cuponCodigo,
     cupon_tipo:   cuponTipo,

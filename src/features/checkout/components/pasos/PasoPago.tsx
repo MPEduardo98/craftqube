@@ -56,6 +56,7 @@ export function PasoPago() {
         envioData={formData.envio}
         totalServidor={resumen?.total ?? null}
         moneda={resumen?.moneda ?? "MXN"}
+        montoMinimo={resumen?.monto_minimo ?? null}
         cuponCodigo={cupon}
       />
     </>

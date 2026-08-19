@@ -25,6 +25,8 @@ import {
   OXXO_MONTO_MAXIMO_MXN,
   OXXO_DIAS_VIGENCIA,
 } from "@/shared/lib/stripe/client";
+import { montoMinimoStripe }         from "@/shared/lib/stripe/montos";
+import { formatMoneda }              from "@/shared/lib/format";
 import {
   createPedido,
   enlazarPaymentIntent,
@@ -234,6 +236,18 @@ export async function POST(req: NextRequest) {
 
     const total  = Number(pedido.total);
     const moneda = String(pedido.moneda ?? "MXN").toUpperCase();
+
+    // Stripe rechaza importes por debajo del mínimo de la moneda
+    // (`amount_too_small`). `createPedido` ya lo impide al crear, pero
+    // un pedido reutilizado —creado antes, o con un cupón que desde
+    // entonces come casi todo el total— puede llegar aquí por debajo.
+    const minimo = montoMinimoStripe(moneda);
+    if (total < minimo) {
+      return errorNegocio(
+        `El importe mínimo para pagar en línea es ${formatMoneda(minimo, moneda)}. ` +
+        `Agrega algo más a tu carrito para continuar.`
+      );
+    }
 
     // OXXO y SPEI no existen fuera de MXN: mejor decirlo que fallar feo.
     if (SOLO_MXN.includes(metodo) && moneda !== "MXN") {

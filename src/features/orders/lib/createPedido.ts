@@ -8,6 +8,7 @@
 // ─────────────────────────────────────────────────────────────
 import type { PoolConnection, RowDataPacket, ResultSetHeader } from "mysql2/promise";
 import { pool }                          from "@/shared/lib/db/pool";
+import { formatMoneda }                  from "@/shared/lib/format";
 import { calcularTotales, ErrorCalculo } from "./calcularTotales";
 import type { CrearPedidoPayload, Pedido } from "@/features/orders/types/order";
 
@@ -84,6 +85,16 @@ export async function createPedido(payload: CrearPedidoPayload): Promise<Pedido 
       bloquear_cupon: true,
       db:             conn,
     });
+
+    // 2b. Mínimo cobrable. Se comprueba ANTES de insertar nada: un
+    //     pedido por debajo del mínimo de Stripe no se puede cobrar, y
+    //     dejarlo en `pendiente_pago` sólo serviría para retener stock.
+    if (totales.total < totales.monto_minimo) {
+      throw new ErrorCalculo(
+        `El importe mínimo para pagar en línea es ${formatMoneda(totales.monto_minimo, totales.moneda)}. ` +
+        `Agrega algo más a tu carrito para continuar.`
+      );
+    }
 
     // 3. Número de pedido
     const numero = await generarNumeroPedido(conn);

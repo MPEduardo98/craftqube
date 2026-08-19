@@ -58,7 +58,7 @@ function TrustBar() {
 function Cargando() {
   return (
     <div className="min-h-screen" style={{ background: "var(--color-cq-bg)" }}>
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="rounded-2xl animate-pulse"
           style={{ height: 56, background: "var(--color-cq-surface-2)", marginBottom: 32 }} />
         <div className="flex gap-8 items-start">
@@ -66,7 +66,7 @@ function Cargando() {
             style={{ height: 420, background: "var(--color-cq-surface-2)",
               border: "1px solid var(--color-cq-border)" }} />
           <div className="hidden lg:block shrink-0 rounded-2xl animate-pulse"
-            style={{ width: 312, height: 280, background: "var(--color-cq-surface-2)",
+            style={{ width: 384, height: 280, background: "var(--color-cq-surface-2)",
               border: "1px solid var(--color-cq-border)" }} />
         </div>
       </div>
@@ -163,7 +163,7 @@ function Marco({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen" style={{ background: "var(--color-cq-bg)" }}>
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
 
         {!enConfirmacion && (
           <div className="mb-8">
@@ -188,7 +188,7 @@ function Marco({ children }: { children: ReactNode }) {
           </div>
 
           {!enConfirmacion && (
-            <div className="hidden lg:block shrink-0" style={{ width: 312 }}>
+            <div className="hidden lg:block shrink-0" style={{ width: 384 }}>
               <div className="flex flex-col gap-4" style={{ position: "sticky", top: 80 }}>
                 <OrderSummary resumen={paso === "pago" ? resumen : null} />
 

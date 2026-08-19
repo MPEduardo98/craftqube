@@ -58,6 +58,9 @@ export async function POST(req: NextRequest) {
         impuestos:    totales.impuestos,
         total:        totales.total,
         moneda:       totales.moneda,
+        // Mínimo cobrable: la pantalla avisa antes de que el comprador
+        // llegue al botón de pagar y se lleve un error del servidor.
+        monto_minimo: totales.monto_minimo,
         cupon_codigo: totales.cupon_codigo,
         cupon_tipo:   totales.cupon_tipo,
         cupon_aplica_envio: totales.cupon_aplica_envio,
