@@ -30,6 +30,7 @@ import { formatMoneda }              from "@/shared/lib/format";
 import {
   createPedido,
   enlazarPaymentIntent,
+  desenlazarPaymentIntent,
   getReferenciaPago,
 } from "@/features/orders/lib/createPedido";
 import { ErrorCalculo }                    from "@/features/orders/lib/calcularTotales";
@@ -64,6 +65,16 @@ function errorNegocio(mensaje: string, status = 400) {
 }
 
 /**
+ * Identificador corto de incidencia. En producción no hay terminal que
+ * mirar: el comprador ve este código en pantalla y con él se localiza
+ * la entrada exacta en los logs de la plataforma, sin exponerle
+ * detalles internos del fallo.
+ */
+function nuevoCodigoIncidencia(): string {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+/**
  * Recupera el PaymentIntent de un pedido si sigue siendo utilizable.
  * Evita crear un PaymentIntent nuevo cada vez que el cliente reintenta.
  */
@@ -82,6 +93,24 @@ async function paymentIntentReutilizable(
     ];
     return reutilizables.includes(pi.status) ? pi : null;
   } catch {
+    return null;
+  }
+}
+
+/**
+ * Recupera un PaymentIntent por referencia, devolviendo null si Stripe
+ * no lo conoce. Una referencia puede haber sido creada con las claves
+ * de otra cuenta (migración de entorno): recuperarla lanza
+ * `No such payment_intent`, y eso no debe tumbar el cobro entero.
+ */
+async function recuperarPaymentIntent(
+  stripe: Stripe,
+  referencia: string
+): Promise<Stripe.PaymentIntent | null> {
+  try {
+    return await stripe.paymentIntents.retrieve(referencia);
+  } catch (err) {
+    console.warn(`[checkout] PaymentIntent ${referencia} no recuperable:`, err);
     return null;
   }
 }
@@ -291,7 +320,22 @@ export async function POST(req: NextRequest) {
         await cancelarPaymentIntent(stripe, nuevo.id);
         const ganador = await getReferenciaPago(Number(pedido.id));
         if (!ganador) return errorNegocio("No pudimos iniciar el pago. Inténtalo de nuevo.", 500);
-        pi = await stripe.paymentIntents.retrieve(ganador);
+
+        // El ganador puede no existir en ESTA cuenta de Stripe: pedidos
+        // creados con claves de otra cuenta guardaron un `pi_…` que aquí
+        // devuelve `No such payment_intent`. Antes reventaba y el
+        // comprador sólo veía el error genérico del catch de abajo.
+        pi = await recuperarPaymentIntent(stripe, ganador);
+        if (!pi) {
+          // La referencia enlazada es inservible. Se descarta para que
+          // el siguiente intento arranque limpio en vez de repetir el
+          // fallo indefinidamente sobre la misma referencia muerta.
+          await desenlazarPaymentIntent(Number(pedido.id), ganador);
+          return errorNegocio(
+            "Tuvimos un problema al reanudar este pago. Vuelve a intentarlo.",
+            409
+          );
+        }
       }
     }
 
@@ -329,8 +373,24 @@ export async function POST(req: NextRequest) {
     if (err instanceof Stripe.errors.StripeCardError) {
       return errorNegocio(err.message ?? "La tarjeta fue rechazada.");
     }
-    console.error("[POST /api/checkout/pagar]", err);
-    return errorNegocio("No pudimos procesar el pago. Inténtalo de nuevo.", 500);
+    // Los errores de Stripe que describen una condición del cobro (importe
+    // fuera de rango, método no habilitado en la cuenta…) son accionables
+    // para quien compra: se dicen tal cual en vez de esconderlos.
+    if (err instanceof Stripe.errors.StripeInvalidRequestError && err.message) {
+      console.error("[POST /api/checkout/pagar] Stripe rechazó la petición:", err);
+      return errorNegocio(err.message, 400);
+    }
+
+    // Todo lo demás es un fallo nuestro. Se registra completo del lado del
+    // servidor y al comprador se le da sólo el código con el que podemos
+    // encontrar esa misma línea en los logs.
+    const codigo = nuevoCodigoIncidencia();
+    console.error(`[POST /api/checkout/pagar] incidencia ${codigo}`, err);
+    return errorNegocio(
+      `No pudimos procesar el pago. Inténtalo de nuevo. ` +
+      `Si vuelve a fallar, repórtanos el código ${codigo}.`,
+      500
+    );
   }
 }
 

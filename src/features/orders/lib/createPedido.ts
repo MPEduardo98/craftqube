@@ -283,6 +283,27 @@ export async function enlazarPaymentIntent(
   return res.affectedRows > 0;
 }
 
+/**
+ * Suelta la referencia de pago de un pedido, pero sólo si sigue siendo
+ * la que se creía. La condición evita pisar el enlace de una petición
+ * posterior que ya puso una referencia válida en su lugar.
+ *
+ * Se usa cuando la referencia enlazada resulta inservible (por ejemplo,
+ * un PaymentIntent de otra cuenta de Stripe): sin esto, el pedido
+ * quedaba atascado reintentando siempre contra la misma referencia
+ * muerta, porque `enlazarPaymentIntent` exige `referencia_pago IS NULL`.
+ */
+export async function desenlazarPaymentIntent(
+  pedidoId: number,
+  paymentIntentId: string
+): Promise<boolean> {
+  const [res] = await pool.execute<ResultSetHeader>(
+    "UPDATE pedidos SET referencia_pago = NULL WHERE id = ? AND referencia_pago = ?",
+    [pedidoId, paymentIntentId]
+  );
+  return res.affectedRows > 0;
+}
+
 /** Referencia de pago actualmente enlazada al pedido. */
 export async function getReferenciaPago(pedidoId: number): Promise<string | null> {
   const [[fila]] = await pool.execute<RowDataPacket[]>(
