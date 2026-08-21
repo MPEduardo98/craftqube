@@ -11,6 +11,7 @@
 
 import { motion }                    from "framer-motion";
 import { useAuth }                   from "@/features/auth/context/AuthContext";
+import { useAlert }                  from "@/shared/context/AlertContext";
 import { useRouter, usePathname }    from "next/navigation";
 import { useState }                  from "react";
 
@@ -56,6 +57,7 @@ function UserAvatar({ nombre, size = 40 }: { nombre?: string; size?: number }) {
 
 export function AccountLayout({ children }: { children: React.ReactNode }) {
   const { cargando, usuario, logout } = useAuth();
+  const alert    = useAlert();
   const router   = useRouter();
   const pathname = usePathname();
   const active   = getActiveFromPath(pathname);
@@ -86,12 +88,18 @@ export function AccountLayout({ children }: { children: React.ReactNode }) {
   }
 
   const handleLogout = async () => {
+    if (loggingOut) return;
     setLoggingOut(true);
-    try {
-      await logout?.();
-    } finally {
-      router.push("/");
+    const result = await logout();
+    setLoggingOut(false);
+
+    if (result.ok) {
+      alert.success("Cerraste sesión correctamente", "¡Hasta pronto!");
+    } else {
+      alert.error(result.error ?? "No pudimos cerrar tu sesión", "Sesión cerrada localmente");
     }
+    router.push("/");
+    router.refresh();
   };
 
   return (
@@ -235,7 +243,12 @@ export function AccountLayout({ children }: { children: React.ReactNode }) {
                 alignItems:     "center",
                 justifyContent: "center",
               }}>
-                <i className="fa-solid fa-arrow-right-from-bracket" style={{ fontSize: "0.75rem", color: "var(--color-cq-muted)" }} />
+                <i
+                  className={loggingOut
+                    ? "fa-solid fa-circle-notch fa-spin"
+                    : "fa-solid fa-arrow-right-from-bracket"}
+                  style={{ fontSize: "0.75rem", color: "var(--color-cq-muted)" }}
+                />
               </div>
               <p style={{
                 fontFamily: "var(--font-display)",
@@ -244,7 +257,7 @@ export function AccountLayout({ children }: { children: React.ReactNode }) {
                 color:      "var(--color-cq-muted)",
                 margin:     0,
               }}>
-                {loggingOut ? "Cerrando..." : "Cerrar sesión"}
+                {loggingOut ? "Cerrando sesión…" : "Cerrar sesión"}
               </p>
             </motion.button>
 

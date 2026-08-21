@@ -21,14 +21,17 @@ function esAtributoVisible(a: string, v: string): boolean {
  * dentro, React lo trataba como un tipo nuevo en cada render y
  * remontaba todo el subárbol.
  */
-function CardWrapper({ children, compact, open }: {
-  children: React.ReactNode; compact: boolean; open: boolean;
+function CardWrapper({ children, compact }: {
+  children: React.ReactNode; compact: boolean;
 }) {
   return (
     <div style={{
       background: "var(--color-cq-surface)",
       border: "1px solid var(--color-cq-border)",
-      borderRadius: compact ? (open ? "12px 12px 0 0" : 12) : 16,
+      /* En compact el cuerpo cuelga del toggle: sin esquinas arriba
+         (las pone el botón) y redondeado sólo abajo. */
+      borderRadius: compact ? "0 0 12px 12px" : 16,
+      borderTop:    compact ? "none" : "1px solid var(--color-cq-border)",
       boxShadow: compact ? "none" : "0 2px 16px rgba(0,0,0,0.05)",
     }}>
       {children}
@@ -131,7 +134,7 @@ export function OrderSummary({ compact = false, resumen = null }: Props) {
             transition={{ duration: 0.25, ease: "easeInOut" }}
             style={{ overflow: "hidden" }}
           >
-            <CardWrapper compact={compact} open={open}>
+            <CardWrapper compact={compact}>
               {/* Header */}
               {!compact && (
                 <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--color-cq-border)", background: "var(--color-cq-surface-2)" }}>

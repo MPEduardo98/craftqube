@@ -27,7 +27,7 @@ interface AuthState {
 interface AuthContextValue extends AuthState {
   login:       (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   register:    (payload: RegisterInput) => Promise<{ ok: boolean; error?: string }>;
-  logout:      () => Promise<void>;
+  logout:      () => Promise<{ ok: boolean; error?: string }>;
   refreshUser: () => Promise<void>;
 }
 
@@ -80,7 +80,7 @@ const AuthContext = createContext<AuthContextValue>({
   autenticado: false,
   login:       async () => ({ ok: false }),
   register:    async () => ({ ok: false }),
-  logout:      async () => {},
+  logout:      async () => ({ ok: false }),
   refreshUser: async () => {},
 });
 
@@ -129,8 +129,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      await authClient.signOut();
+      const { error } = await authClient.signOut();
+      if (error) {
+        return { ok: false, error: error.message ?? "No pudimos cerrar tu sesión" };
+      }
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "No pudimos cerrar tu sesión" };
     } finally {
+      // La sesión local se limpia pase lo que pase: el usuario pidió salir
+      // y no debe quedarse con la UI en estado autenticado.
       setUsuario(null);
     }
   }, []);

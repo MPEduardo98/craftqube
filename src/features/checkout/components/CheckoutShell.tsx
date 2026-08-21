@@ -62,9 +62,14 @@ function Cargando() {
         <div className="rounded-2xl animate-pulse"
           style={{ height: 56, background: "var(--color-cq-surface-2)", marginBottom: 32 }} />
         <div className="flex gap-8 items-start">
-          <div className="flex-1 min-w-0 rounded-2xl animate-pulse"
-            style={{ height: 420, background: "var(--color-cq-surface-2)",
-              border: "1px solid var(--color-cq-border)" }} />
+          <div className="flex-1 min-w-0">
+            <div className="rounded-2xl animate-pulse"
+              style={{ height: 420, background: "var(--color-cq-surface-2)",
+                border: "1px solid var(--color-cq-border)" }} />
+            <div className="lg:hidden rounded-xl animate-pulse"
+              style={{ height: 52, marginTop: 24, background: "var(--color-cq-surface-2)",
+                border: "1px solid var(--color-cq-border)" }} />
+          </div>
           <div className="hidden lg:block shrink-0 rounded-2xl animate-pulse"
             style={{ width: 384, height: 280, background: "var(--color-cq-surface-2)",
               border: "1px solid var(--color-cq-border)" }} />
@@ -183,6 +188,24 @@ function Marco({ children }: { children: ReactNode }) {
                   animación de salida, que con una URL por paso sobra. */}
               {children}
             </div>
+
+            {/* Resumen en mobile: la columna lateral no cabe a este ancho,
+                así que la misma tarjeta va aquí abajo en versión colapsable. */}
+            {!enConfirmacion && (
+              <div className="lg:hidden flex flex-col gap-4" style={{ marginTop: 24 }}>
+                <OrderSummary compact resumen={paso === "pago" ? resumen : null} />
+
+                {paso === "pago" && (
+                  <CuponCard
+                    aplicado={cupon}
+                    cargando={cuponCargando}
+                    etiqueta={cuponEtiqueta}
+                    onAplicar={aplicarCupon}
+                    onQuitar={quitarCupon}
+                  />
+                )}
+              </div>
+            )}
 
             {!enConfirmacion && <TrustBar />}
           </div>

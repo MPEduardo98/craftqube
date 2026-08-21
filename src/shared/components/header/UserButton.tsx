@@ -4,14 +4,19 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence }      from "framer-motion";
 import Link                             from "next/link";
+import { useRouter }                    from "next/navigation";
 import { useAuth }                      from "@/features/auth/context/AuthContext";
 import { useTheme }                     from "@/shared/context/ThemeContext";
+import { useAlert }                     from "@/shared/context/AlertContext";
 
 export function UserButton() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [loggingOut,   setLoggingOut]   = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { usuario, autenticado, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+  const router = useRouter();
+  const alert  = useAlert();
 
   const esAdmin =
     usuario?.rol === "admin" || usuario?.rol === "superadmin";
@@ -27,8 +32,19 @@ export function UserButton() {
   }, []);
 
   const handleLogout = async () => {
-    await logout();
+    if (loggingOut) return;
+    setLoggingOut(true);
+    const result = await logout();
+    setLoggingOut(false);
     setDropdownOpen(false);
+
+    if (result.ok) {
+      alert.success("Cerraste sesión correctamente", "¡Hasta pronto!");
+    } else {
+      alert.error(result.error ?? "No pudimos cerrar tu sesión", "Sesión cerrada localmente");
+    }
+    router.push("/");
+    router.refresh();
   };
 
   const close = () => setDropdownOpen(false);
@@ -122,18 +138,26 @@ export function UserButton() {
                 <div style={{ padding: "8px" }}>
                   <button
                     onClick={handleLogout}
+                    disabled={loggingOut}
                     style={{
                       width: "100%", display: "flex", alignItems: "center", gap: "10px",
                       padding: "9px 12px", fontSize: "13px", fontWeight: 500,
                       color: "#dc2626", background: "none", border: "none",
-                      borderRadius: "8px", cursor: "pointer", transition: "background 0.12s",
+                      borderRadius: "8px", cursor: loggingOut ? "wait" : "pointer",
+                      opacity: loggingOut ? 0.6 : 1,
+                      transition: "background 0.12s",
                       fontFamily: "inherit", textAlign: "left",
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
+                    onMouseEnter={(e) => { if (!loggingOut) e.currentTarget.style.background = "#fef2f2"; }}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
                   >
-                    <i className="fa-solid fa-arrow-right-from-bracket" style={{ fontSize: "13px", width: "16px", textAlign: "center" }} />
-                    Cerrar Sesión
+                    <i
+                      className={loggingOut
+                        ? "fa-solid fa-circle-notch fa-spin"
+                        : "fa-solid fa-arrow-right-from-bracket"}
+                      style={{ fontSize: "13px", width: "16px", textAlign: "center" }}
+                    />
+                    {loggingOut ? "Cerrando sesión…" : "Cerrar Sesión"}
                   </button>
                 </div>
               </>
