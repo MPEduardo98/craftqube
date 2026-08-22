@@ -10,6 +10,7 @@ import {
   type StripeCardNumberElement,
 } from "@stripe/stripe-js";
 import { useCart }        from "@/features/cart/context/CartContext";
+import { useAlert }       from "@/shared/context/AlertContext";
 import type { DatosPago, DatosEnvio, DatosContacto } from "../types";
 import { formatMoneda }   from "@/shared/lib/format";
 
@@ -351,7 +352,7 @@ export function StepPago({
   contacto, envioData, totalServidor, moneda, montoMinimo = null, cuponCodigo,
 }: Props) {
   const { items } = useCart();
-  const [error,    setError]    = useState<string | null>(null);
+  const { error: alertaError } = useAlert();
   const [cardName, setCardName] = useState(data.nombreTarjeta ?? "");
   const [cargando, setCargando] = useState(false);
 
@@ -364,7 +365,6 @@ export function StepPago({
 
   const setMetodo = (metodo: Metodo) => {
     onChange({ ...data, metodo });
-    setError(null);
     // El pedido se conserva a propósito: el servidor lo reaprovecha y
     // sustituye su PaymentIntent, en vez de dejar pedidos huérfanos
     // reteniendo stock cada vez que el comprador cambia de opinión.
@@ -441,7 +441,6 @@ export function StepPago({
 
   /* ── Tarjeta ── */
   const iniciarPagoTarjeta = useCallback(() => {
-    setError(null);
     return iniciarPago("tarjeta");
   }, [iniciarPago]);
 
@@ -451,7 +450,6 @@ export function StepPago({
 
   /* ── OXXO / SPEI ── */
   const pagarAsincrono = useCallback(async (metodo: "oxxo" | "transferencia") => {
-    setError(null);
     setCargando(true);
     try {
       const respuesta = await iniciarPago(metodo);
@@ -463,11 +461,14 @@ export function StepPago({
 
       finalizar(respuesta, null, paymentData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error inesperado.");
+      alertaError(
+        err instanceof Error ? err.message : "Error inesperado.",
+        metodo === "oxxo" ? "No se pudo generar el voucher" : "No se pudo generar la transferencia"
+      );
     } finally {
       setCargando(false);
     }
-  }, [iniciarPago, finalizar]);
+  }, [iniciarPago, finalizar, alertaError]);
 
   /* Stripe no cobra por debajo del mínimo de la moneda. Se bloquean los
      métodos y se explica por qué, en vez de dejar que el botón dispare
@@ -494,17 +495,6 @@ export function StepPago({
           </p>
         </div>
       </div>
-
-      <AnimatePresence>
-        {error && (
-          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            className="flex items-start gap-3 rounded-xl px-4 py-3"
-            style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.18)" }}>
-            <i className="fa-solid fa-circle-exclamation" style={{ color: "#ef4444", fontSize: "0.9rem", marginTop: 2, flexShrink: 0 }} />
-            <span style={{ fontFamily: "var(--font-body)", fontSize: "0.85rem", color: "#dc2626", lineHeight: 1.55 }}>{error}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {bajoMinimo && (
         <div className="flex items-start gap-3 rounded-xl px-4 py-3"
@@ -560,7 +550,7 @@ export function StepPago({
               onCardNameChange={(v) => { setCardName(v); onChange({ ...data, nombreTarjeta: v }); }}
               onIniciarPago={iniciarPagoTarjeta}
               onCompletado={tarjetaCompletada}
-              onError={(msg) => setError(msg)}
+              onError={(msg) => alertaError(msg, "Pago no completado")}
               total={totalServidor}
               moneda={moneda}
               deshabilitado={!totalListo}

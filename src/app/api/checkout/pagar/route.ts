@@ -373,12 +373,21 @@ export async function POST(req: NextRequest) {
     if (err instanceof Stripe.errors.StripeCardError) {
       return errorNegocio(err.message ?? "La tarjeta fue rechazada.");
     }
-    // Los errores de Stripe que describen una condición del cobro (importe
-    // fuera de rango, método no habilitado en la cuenta…) son accionables
-    // para quien compra: se dicen tal cual en vez de esconderlos.
-    if (err instanceof Stripe.errors.StripeInvalidRequestError && err.message) {
-      console.error("[POST /api/checkout/pagar] Stripe rechazó la petición:", err);
-      return errorNegocio(err.message, 400);
+    // Un InvalidRequestError es un problema de configuración NUESTRA (método
+    // sin activar en el dashboard, parámetro mal armado), no algo que el
+    // comprador pueda resolver. Su `message` habla de la cuenta de Stripe y
+    // enlaza al dashboard, así que se queda en los logs y nunca se reenvía.
+    if (err instanceof Stripe.errors.StripeInvalidRequestError) {
+      const codigo = nuevoCodigoIncidencia();
+      console.error(
+        `[POST /api/checkout/pagar] incidencia ${codigo} · Stripe rechazó la petición:`,
+        err
+      );
+      return errorNegocio(
+        `Ese método de pago no está disponible en este momento. ` +
+        `Elige otro para continuar. Si el problema sigue, repórtanos el código ${codigo}.`,
+        400
+      );
     }
 
     // Todo lo demás es un fallo nuestro. Se registra completo del lado del

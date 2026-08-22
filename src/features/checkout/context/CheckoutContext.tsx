@@ -129,7 +129,6 @@ interface CheckoutContextValue {
   quitarCupon:   () => Promise<void>;
 
   resumen:       ResumenCheckout | null;
-  errorResumen:  string | null;
   cargarResumen: (estado: string, codigoCupon: string | null) => Promise<ResumenCheckout | null>;
 
   resultado:     ResultadoPago | null;
@@ -154,8 +153,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   const [cuponCargando, setCuponCargando] = useState(false);
 
   /** Importes autoritativos del servidor; null mientras se calculan. */
-  const [resumen,      setResumen]      = useState<ResumenCheckout | null>(null);
-  const [errorResumen, setErrorResumen] = useState<string | null>(null);
+  const [resumen, setResumen] = useState<ResumenCheckout | null>(null);
 
   /** Datos del pedido ya pagado, para la pantalla de confirmación. */
   const [resultado, setResultado] = useState<ResultadoPago | null>(null);
@@ -206,7 +204,6 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     codigoCupon: string | null
   ): Promise<ResumenCheckout | null> => {
     if (!estado.trim() || items.length === 0) { setResumen(null); return null; }
-    setErrorResumen(null);
     try {
       const res = await fetch("/api/checkout/resumen", {
         method:      "POST",
@@ -224,7 +221,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       const json = await res.json();
       if (!res.ok || !json.success) {
         setResumen(null);
-        setErrorResumen(json.error ?? "No pudimos calcular el total.");
+        alertaError(json.error ?? "No pudimos calcular el total.", "Error en el resumen");
         return null;
       }
 
@@ -244,7 +241,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       return data;
     } catch {
       setResumen(null);
-      setErrorResumen("No pudimos calcular el total. Revisa tu conexión.");
+      alertaError("No pudimos calcular el total. Revisa tu conexión.", "Error en el resumen");
       return null;
     }
   }, [items, formData.contacto.email, alertaError]);
@@ -303,7 +300,6 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     setResultado(null);
     setResumen(null);
     setCupon(null);
-    setErrorResumen(null);
   }, []);
 
   /** Efecto del cupón, para mostrarlo junto al código aplicado. */
@@ -318,7 +314,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       hidratado,
       formData, setContacto, setEnvio, setPago,
       cupon, cuponCargando, cuponEtiqueta, aplicarCupon, quitarCupon,
-      resumen, errorResumen, cargarResumen,
+      resumen, cargarResumen,
       resultado, registrarPago, limpiarPedido,
     }}>
       {children}

@@ -2,8 +2,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { formatPrice } from "@/shared/lib/format";
+import { formatMoneda } from "@/shared/lib/format";
 
 interface PedidoItem {
   id: number;
@@ -94,7 +95,11 @@ export function PedidosSection() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="rounded-xl overflow-hidden"
+              whileHover={{ y: -2 }}
+            >
+            <Link
+              href={`/cuenta/pedidos/${p.id}`}
+              className="block rounded-xl overflow-hidden"
               style={{ background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)" }}
             >
               {/* Header */}
@@ -127,27 +132,35 @@ export function PedidosSection() {
                   </span>
                 </div>
                 <p style={{ fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 700, color: "var(--color-cq-text)" }}>
-                  {formatPrice(Number(p.total), p.moneda ?? "MXN")}
+                  {formatMoneda(Number(p.total), p.moneda ?? "MXN")}
                 </p>
               </div>
 
               {/* Meta */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 px-5 py-4">
-                {[
-                  { label: "Artículos",      value: Number(p.total_items) ? `${Number(p.total_items)}` : "—" },
-                  { label: "Método de pago", value: metodoPago(p.metodo_pago) },
-                  { label: "Moneda",         value: p.moneda ?? "MXN" },
-                ].map((item) => (
-                  <div key={item.label}>
-                    <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--color-cq-muted-2)", marginBottom: 4 }}>
-                      {item.label}
-                    </p>
-                    <p style={{ fontFamily: "var(--font-body)", fontSize: "0.83rem", color: "var(--color-cq-text)" }}>
-                      {item.value}
-                    </p>
-                  </div>
-                ))}
+              <div className="flex items-center justify-between gap-4 px-5 py-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 flex-1 min-w-0">
+                  {[
+                    { label: "Artículos",      value: Number(p.total_items) ? `${Number(p.total_items)}` : "—" },
+                    { label: "Método de pago", value: metodoPago(p.metodo_pago) },
+                    { label: "Moneda",         value: p.moneda ?? "MXN" },
+                  ].map((item) => (
+                    <div key={item.label}>
+                      <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--color-cq-muted-2)", marginBottom: 4 }}>
+                        {item.label}
+                      </p>
+                      <p style={{ fontFamily: "var(--font-body)", fontSize: "0.83rem", color: "var(--color-cq-text)" }}>
+                        {item.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <span className="flex items-center gap-2 shrink-0"
+                  style={{ fontFamily: "var(--font-display)", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-cq-primary)" }}>
+                  <span className="hidden sm:inline">Ver detalle</span>
+                  <i className="fa-solid fa-chevron-right" style={{ fontSize: "0.65rem" }} />
+                </span>
               </div>
+            </Link>
             </motion.div>
           );
         })}
