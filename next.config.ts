@@ -2,6 +2,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // El nucleo compartido se publica en TypeScript sin compilar, para
+  // que cada tienda lo transpile con su propia version de Next.
+  transpilePackages: ["@mpeduardo98/commerce-core"],
+
   // ── Redirecciones 301 desde URLs de Shopify ───────────────
   // Preservan el "link equity" (autoridad SEO) acumulado.
   // :slug captura cualquier segmento y lo pasa al destino.
