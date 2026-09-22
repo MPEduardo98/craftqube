@@ -16,6 +16,7 @@ import { auth }           from "@/features/auth/lib/auth";
 import { getStoreConfig } from "@/shared/lib/config/store-config";
 import { AdminSidebar }   from "@/features/admin/components/AdminSidebar";
 import { AdminTopbar }    from "@/features/admin/components/AdminTopbar";
+import { UserButton }     from "@/shared/components/header/UserButton";
 
 const ADMIN_ROLES = new Set(["admin", "superadmin"]);
 
@@ -60,7 +61,9 @@ export default async function AdminLayout({
       <AdminSidebar nombre={nombre} logoUrl={logoUrl} />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <AdminTopbar />
+        {/* El botón de cuenta depende de la sesión y el tema de esta
+            tienda, así que lo pone el proyecto y no el núcleo. */}
+        <AdminTopbar userButton={<UserButton />} />
         <main className="admin-shell flex-1 overflow-y-auto">
           {children}
         </main>
