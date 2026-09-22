@@ -19,6 +19,12 @@ interface Props {
   descripcionFallback: string;
   onMetaTitulo:        (v: string) => void;
   onMetaDescripcion:   (v: string) => void;
+  /** Nombre de la tienda en la vista previa de búsqueda */
+  tiendaNombre?:       string;
+  /** Dominio público, sin protocolo, para la línea de la URL */
+  tiendaDominio?:      string;
+  /** Moneda en la que se muestra el precio de la vista previa */
+  moneda?:             string;
 }
 
 export function SeccionSEO({
@@ -30,6 +36,9 @@ export function SeccionSEO({
   descripcionFallback,
   onMetaTitulo,
   onMetaDescripcion,
+  tiendaNombre  = "Mi Tienda",
+  tiendaDominio = "",
+  moneda        = "MXN",
 }: Props) {
 
   // ── Auto-duplicado título/descripción → meta ──────────────────
@@ -140,9 +149,9 @@ export function SeccionSEO({
         <div className="rounded-lg border border-slate-200 bg-white p-4">
           <p className="text-xs font-semibold text-slate-600 mb-3">Publicación en motores de búsqueda</p>
           <div className="space-y-0.5">
-            <p className="text-sm text-slate-700">CraftQube México</p>
+            <p className="text-sm text-slate-700">{tiendaNombre}</p>
             <p className="text-xs text-[#006621] truncate">
-              https://craftqube.mx › productos › {slug || "tu-slug-aqui"}
+              {tiendaDominio ? `https://${tiendaDominio} › ` : ""}productos › {slug || "tu-slug-aqui"}
             </p>
             <p className="text-xl text-[#1a0dab] leading-snug line-clamp-1 pt-0.5">
               {tituloDisplay || <span className="text-slate-300">Meta título del producto</span>}
@@ -152,7 +161,9 @@ export function SeccionSEO({
             </p>
             {precio && Number(precio) > 0 && (
               <p className="text-sm text-[#545454] pt-0.5">
-                {Number(precio).toLocaleString("es-MX", { style: "currency", currency: "MXN" })} MXN
+                {Number(precio).toLocaleString(moneda === "USD" ? "en-US" : "es-MX", {
+                  style: "currency", currency: moneda,
+                })} {moneda}
               </p>
             )}
           </div>

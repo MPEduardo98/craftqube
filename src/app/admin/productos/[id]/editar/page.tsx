@@ -4,6 +4,7 @@ import { pool }         from "@/shared/lib/db/pool";
 import type { RowDataPacket } from "mysql2";
 import { ProductoForm } from "@/features/admin/productos/components/ProductoForm";
 import { getStorePricing } from "@/shared/lib/currency/store-currency";
+import { getStoreIdentity } from "@/shared/lib/config/store-config";
 import type {
   ProductoFormData,
   VarianteForm,
@@ -186,17 +187,18 @@ export default async function EditarProductoPage({ params }: PageProps) {
   const productoId = Number(id);
   if (!productoId || isNaN(productoId)) notFound();
 
-  const [producto, { categorias, marcas }, pricing] = await Promise.all([
+  const [producto, { categorias, marcas }, pricing, tienda] = await Promise.all([
     fetchProducto(productoId),
     fetchCatalogData(),
     getStorePricing(),
+    getStoreIdentity(),
   ]);
 
   if (!producto) notFound();
 
   return (
     <div className="px-6 py-6 max-w-[1200px] mx-auto">
-      <ProductoForm mode="editar" initialData={producto} categorias={categorias} marcas={marcas} pricing={pricing} />
+      <ProductoForm mode="editar" initialData={producto} categorias={categorias} marcas={marcas} pricing={pricing} tienda={tienda} />
     </div>
   );
 }

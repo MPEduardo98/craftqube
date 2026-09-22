@@ -32,12 +32,20 @@ import { useUnsavedChanges }   from "@/shared/hooks/useUnsavedChanges";
 
 export type { ProductoFormData, VarianteForm, ImagenForm, MetacampoForm, EnvioForm, Categoria, Marca };
 
+/** Identidad de la tienda para las vistas previas del formulario. */
+export interface TiendaHint {
+  nombre:  string;
+  /** Dominio público sin protocolo, p. ej. "mitienda.mx" */
+  dominio: string;
+}
+
 interface Props {
   initialData?: Partial<ProductoFormData>;
   categorias:   Categoria[];
   marcas:       Marca[];
   mode:         "crear" | "editar";
   pricing?:     PricingHint;
+  tienda?:      TiendaHint;
 }
 
 function buildInitialForm(initialData: Partial<ProductoFormData> | undefined, mode: "crear" | "editar"): ProductoFormData {
@@ -60,7 +68,7 @@ function buildInitialForm(initialData: Partial<ProductoFormData> | undefined, mo
   };
 }
 
-export function ProductoForm({ initialData, categorias, marcas, mode, pricing }: Props) {
+export function ProductoForm({ initialData, categorias, marcas, mode, pricing, tienda }: Props) {
   const router    = useRouter();
   const alert     = useAlert();
   const [saving,        setSaving]        = useState(false);
@@ -468,6 +476,9 @@ export function ProductoForm({ initialData, categorias, marcas, mode, pricing }:
             descripcionFallback={form.descripcion}
             onMetaTitulo={(v) => set("meta_titulo", v)}
             onMetaDescripcion={(v) => set("meta_descripcion", v)}
+            tiendaNombre={tienda?.nombre}
+            tiendaDominio={tienda?.dominio}
+            moneda={pricing?.monedaTienda}
           />
         </div>
 

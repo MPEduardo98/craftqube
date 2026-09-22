@@ -10,6 +10,13 @@ export default async function GeneralSettingsPage() {
 
   return (
     <GeneralSettings
+      nombre={config.nombre}
+      descripcion={config.descripcion}
+      logoUrl={config.logoUrl}
+      email={config.email}
+      telefono={config.telefono}
+      colorPrimario={config.colorPrimario}
+      colorAcento={config.colorAcento}
       monedaCaptura={config.monedaCaptura}
       monedaTienda={config.monedaTienda}
       usdMxn={usdMxn}

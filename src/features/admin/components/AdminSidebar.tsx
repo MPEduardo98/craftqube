@@ -12,6 +12,13 @@ interface NavItem {
   children?: { label: string; href: string }[];
 }
 
+interface AdminSidebarProps {
+  /** Nombre de la tienda: alt del logo y respaldo cuando no hay imagen */
+  nombre:  string;
+  /** Logo del panel. Vacío = se rotula con el nombre en texto */
+  logoUrl: string;
+}
+
 function Icon({ d, d2 }: { d: string; d2?: string }) {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
@@ -44,7 +51,7 @@ const NAV: NavItem[] = [
     icon: <Icon d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" /> },
 ];
 
-export function AdminSidebar() {
+export function AdminSidebar({ nombre, logoUrl }: AdminSidebarProps) {
   const pathname    = usePathname();
   const defaultOpen = NAV.find(n => n.children?.some(c => pathname.startsWith(c.href)))?.href ?? null;
   const [open, setOpen] = useState<string | null>(defaultOpen);
@@ -96,8 +103,17 @@ export function AdminSidebar() {
         {/* Logo */}
         <div className="relative z-10 h-14 flex items-center gap-2.5 px-5 shrink-0"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <Image src="/Logo.png" alt="CraftQube" width={120} height={28} priority
-            style={{ height: "auto", filter: "brightness(10)" }} />
+          {logoUrl ? (
+            <Image src={logoUrl} alt={nombre} width={120} height={28} priority
+              unoptimized={/^https?:\/\//.test(logoUrl)}
+              style={{ height: "auto", filter: "brightness(10)" }} />
+          ) : (
+            /* Sin logo cargado: el nombre hace de marca */
+            <span className="text-[15px] font-bold tracking-tight truncate"
+              style={{ color: "#fff", fontFamily: "var(--font-barlow, sans-serif)" }}>
+              {nombre}
+            </span>
+          )}
           <span className="ml-auto text-[9px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded"
             style={{ fontFamily: "var(--font-mono, monospace)", background: "rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}>
             Admin

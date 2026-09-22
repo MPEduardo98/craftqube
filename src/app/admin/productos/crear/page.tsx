@@ -8,6 +8,7 @@ import { pool }         from "@/shared/lib/db/pool";
 import type { RowDataPacket } from "mysql2";
 import { ProductoForm } from "@/features/admin/productos/components/ProductoForm";
 import { getStorePricing } from "@/shared/lib/currency/store-currency";
+import { getStoreIdentity } from "@/shared/lib/config/store-config";
 
 export const metadata = { title: "Nuevo producto" };
 
@@ -27,9 +28,10 @@ async function fetchCatalogData() {
 }
 
 export default async function CrearProductoPage() {
-  const [{ categorias, marcas }, pricing] = await Promise.all([
+  const [{ categorias, marcas }, pricing, tienda] = await Promise.all([
     fetchCatalogData(),
     getStorePricing(),
+    getStoreIdentity(),
   ]);
 
   return (
@@ -39,6 +41,7 @@ export default async function CrearProductoPage() {
         categorias={categorias}
         marcas={marcas}
         pricing={pricing}
+        tienda={tienda}
       />
     </div>
   );
