@@ -1,33 +1,15 @@
 // proxy.ts (antes middleware.ts — Next.js 16 renombró la convención)
 // ─────────────────────────────────────────────────────────────
-// Edge Runtime — corre ANTES de cualquier render.
+// Proxy propio de craftqube: la protección de /cuenta y /admin
+// viene del núcleo (`protegerRutas`); aquí sólo se agrega lo que
+// es de esta tienda.
 //
-// Capa 1 (optimista): solo PROTEGE rutas privadas comprobando la
-// PRESENCIA de la cookie de sesión de Better Auth (sin validar firma
-// ni consultar la BD; eso lo hace la Capa 2 en los layouts).
-//
-//   PROTEGIDAS (/cuenta, /admin)
-//     → sin cookie de sesión → redirect /login
-//
-// El redirect de "invitado" (sacar a usuarios YA logueados de
-// /login, /registro, …) NO se hace aquí: una cookie vieja/inválida
-// pasaría el chequeo optimista y entraría en loop con la Capa 2.
-// En su lugar, esas páginas usan `redirectIfAuthenticated()`, que
-// valida la sesión REAL contra la BD.
+// No lleva la marca de "generado", así que `commerce-core instalar`
+// lo respeta y no lo pisa.
 // ─────────────────────────────────────────────────────────────
 import type { NextRequest } from "next/server";
 import { NextResponse }     from "next/server";
-import { getSessionCookie } from "better-auth/cookies";
-
-/** Rutas que requieren estar autenticado */
-const PROTECTED: string[] = ["/cuenta", "/admin"];
-
-function redirectToLogin(req: NextRequest): NextResponse {
-  const url = req.nextUrl.clone();
-  url.pathname = "/login";
-  url.searchParams.set("redirect", req.nextUrl.pathname);
-  return NextResponse.redirect(url);
-}
+import { protegerRutas }    from "@mpeduardo98/commerce-core/rutas/proxy";
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -44,15 +26,7 @@ export function proxy(req: NextRequest) {
     return NextResponse.redirect(url, 301);
   }
 
-  const isProtected = PROTECTED.some(
-    (p) => pathname === p || pathname.startsWith(p + "/")
-  );
-  if (!isProtected) return NextResponse.next();
-
-  // Sin cookie de sesión → login. La Capa 2 valida firma + rol.
-  if (!getSessionCookie(req)) return redirectToLogin(req);
-
-  return NextResponse.next();
+  return protegerRutas(req) ?? NextResponse.next();
 }
 
 export const config = {

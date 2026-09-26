@@ -1,6 +1,2 @@
-// app/admin/ajustes/page.tsx
-import { redirect } from "next/navigation";
-
-export default function AjustesIndex() {
-  redirect("/admin/ajustes/general");
-}
+// @generado por commerce-core — no editar: npx commerce-core instalar
+export { default } from "@mpeduardo98/commerce-core/rutas/admin/ajustes/page";

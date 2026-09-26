@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:init": "node scripts/init-store-db.mjs",
-    "db:dump-schema": "node scripts/dump-schema.mjs"
+    "db:init": "commerce-core db"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1010.0",

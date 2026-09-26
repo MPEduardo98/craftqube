@@ -1,23 +1,2 @@
-// app/api/productos/[slug]/route.ts
-import { NextResponse }      from "next/server";
-import { getProductoBySlug } from "@/features/products/lib/getProductoBySlug";
-
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ slug: string }> }
-) {
-  const { slug } = await params;
-  const data = await getProductoBySlug(slug);
-
-  if (!data) {
-    return NextResponse.json(
-      { success: false, error: "Producto no encontrado" },
-      { status: 404 }
-    );
-  }
-
-  return NextResponse.json(
-    { success: true, data },
-    { headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600" } }
-  );
-}
+// @generado por commerce-core — no editar: npx commerce-core instalar
+export { GET } from "@mpeduardo98/commerce-core/rutas/api/productos/[slug]/route";
