@@ -23,8 +23,8 @@ const contactMethods = [
       </svg>
     ),
     title: "Teléfono",
-    value: "+52 (222) 123-4567",
-    href: "tel:+522221234567",
+    value: "+52 (221) 570-5339",
+    href: "tel:+522215705339",
     description: "Lun - Vie, 9:00 - 18:00",
   },
   {
