@@ -1,7 +1,8 @@
-// next.config.ts
-import type { NextConfig } from "next";
+// @ts-check
+// JavaScript nativo para cargar la configuracion sin compilar TypeScript con SWC.
 
-const nextConfig: NextConfig = {
+/** @type {import("next").NextConfig} */
+const nextConfig = {
   // El nucleo compartido se publica en TypeScript sin compilar, para
   // que cada tienda lo transpile con su propia version de Next.
   transpilePackages: ["@mpeduardo98/commerce-core"],
