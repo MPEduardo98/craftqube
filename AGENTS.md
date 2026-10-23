@@ -15,6 +15,7 @@ Este bloque lo escribe `npx commerce-core instalar`. No lo edites: se reescribe 
 - **No edites los archivos que empiezan con** `// @generado por commerce-core` (los "enchufes" de `src/app/api`, `src/app/admin` y `proxy.ts`). Los reescribe `npx commerce-core instalar`.
 - **No copies el diseño de otra tienda del núcleo** (p. ej. craftqube). Cada tienda tiene identidad propia.
 - Nombre, logo, colores y moneda de la tienda se configuran en `/admin/ajustes`; léelos con `getStoreConfig()` de `@mpeduardo98/commerce-core/config` en vez de escribirlos a mano.
+- **No generes imágenes ni gráficos**: nada de SVG ilustrativos, ilustraciones, íconos dibujados a mano, patrones decorativos ni imágenes generadas. Gastan muchos tokens y siempre se reemplazan por fotos reales. Sí **deja el espacio** para cada imagen: un contenedor con su proporción fija (`aspect-ratio`) y un fondo neutro mientras no haya foto, con `next/image` y un `alt` descriptivo, para que al poner la foto real no se mueva el diseño. Para íconos usa Font Awesome, que ya viene con el núcleo.
 
 ## Estructura de archivos: screaming architecture (obligatorio)
 
@@ -57,12 +58,24 @@ src/shared/                ← lo que usan VARIAS features: ui/ (botones, inputs
 - Carrito: `CartProvider` / `useCart()` (`@mpeduardo98/commerce-core/cart`) → `items`, `addItem`, `updateQty`, `removeItem`, `clearCart`, `totalItems`, `totalPrecio`, `isOpen`, `openDrawer`, `closeDrawer`. El núcleo **no trae pantallas** de carrito: el botón, el panel lateral y la página se diseñan aquí.
 - Checkout: `CheckoutProvider` / `useCheckout()` (`@mpeduardo98/commerce-core/checkout`) tienen el estado y las acciones del flujo (contacto → envío → pago → confirmación), más `validaciones` y `cotizarEnvio`. Las pantallas de cada paso se diseñan aquí.
 - Envío en el checkout: tras `cargarResumen(estado, cupon)`, `resumen.opciones_envio` trae lo que el cliente puede elegir (`nombre`, `logo_url`, `dias_min`/`dias_max`, `precio`, `precio_original`, `gratis`). Si `resumen.envio_modo === "fijo"` hay que mostrar las paqueterías para que elija una con `elegirPaqueteria(id)` (recalcula el total) y mandar `paqueteria_id: paqueteriaId` en el cuerpo de `POST /api/checkout/pagar`; en modo `"dinamico"` hay una sola opción y no se manda nada. `resumen.envio_gratis_desde` sirve para avisar cuánto falta para el envío gratis.
+- Reseñas (se activan en `/admin/ajustes/resenas`; apagadas, no se muestra nada): `getProductoBySlug` trae `resenas` (`promedio`, `total`, `distribucion` por estrella, `con_fotos`) o `null` si están apagadas; el catálogo trae `calificacion` y `total_resenas` por producto y acepta `sort: "calificacion"`. La lista se pide a `GET /api/resenas?producto_id=&page=&orden=recientes|mejores|peores&estrellas=&con_fotos=1`. Sólo reseña quien **compró** el producto: `GET /api/resenas/elegibilidad?producto_id=` dice si mostrar el formulario (`puede`) o por qué no (`motivo`: `sin_sesion`, `sin_compra`, `ya_reseno`, `desactivadas`). Para enviar usa `enviarResena({ productoId, calificacion, titulo, comentario, imagenes })` de `@mpeduardo98/commerce-core/resenas/cliente` (1-5 estrellas, comentario de 10 a 2000 caracteres, 0 a 3 fotos que comprime antes de subir); `LIMITES_RESENA` está en `@mpeduardo98/commerce-core/resenas/limites` y los tipos en `@mpeduardo98/commerce-core/resenas/types`. Si responde `estado: "pendiente"`, avisa que la tienda la revisará. `GET /api/resenas/pendientes` lista lo que el cliente compró y aún no reseña (para su cuenta).
+- Modal de bienvenida (se activa en `/admin/ajustes/bienvenida`, donde el admin elige el cupón que se regala): `useBienvenida({ retrasoMs, diasOcultar, habilitado })` de `@mpeduardo98/commerce-core/bienvenida/useBienvenida` → `oferta` (`texto` listo para mostrar, p. ej. "10% de descuento", `tipo`, `valor`, `minimo_compra`), `visible`, `estado` (`idle | enviando | enviado | error`), `error`, `codigo`, `enviar({ nombre, email, acepta_marketing })`, `cerrar()`, `abrir()`. El hook decide cuándo aparece (promoción activa, tras el retraso, no a quien ya se suscribió ni a quien lo cerró hace poco); aquí sólo se diseña el modal. Si `oferta` es `null`, no se muestra nada. Con `estado === "enviado"` muestra `codigo` en el modal con un botón para copiarlo (también le llega por correo). `codigo` sigue disponible en visitas posteriores, por si quieres recordárselo en el carrito. El cupón sólo funciona al pagar con el correo suscrito: avísalo junto al código. Pásale `habilitado: false` en checkout y cuenta. Enlaza el aviso de privacidad en el formulario.
+- **Modo de venta** (se elige en `/admin/ajustes/venta`): la tienda puede vender en línea o funcionar **sólo como catálogo**. Todo el frontend tiene que funcionar en ambos modos. Léelo en el `layout.tsx` raíz con `getVentaPublica()` de `@mpeduardo98/commerce-core/venta` y pásalo por props o un contexto propio (en cliente también está `GET /api/venta`). Devuelve `ventaEnLinea`, `mostrarPrecios`, `whatsapp` y `mensajeWhatsapp`. Con `ventaEnLinea === false`: no pintes botón ni panel de carrito, "Agregar al carrito", "Comprar ahora" ni enlaces al checkout; las páginas `/carrito` y `/checkout` hacen `redirect("/")`; en su lugar pon "Pedir informes" con `enlaceWhatsApp(venta, { producto: producto.titulo, url })` de `@mpeduardo98/commerce-core/venta/whatsapp` (devuelve `null` si no hay número: entonces usa el teléfono o correo de `getStoreConfig()`). No muestres existencias como "Agotado"/"Últimas piezas" si no aportan. Con `mostrarPrecios === false` no pintes ningún precio (tarjetas, detalle, variantes, filtros y orden por precio) y muestra "Precio a consultar". Las APIs de checkout, envío y cupones responden 403 con `codigo: "modo_catalogo"` en catálogo, y el modal de bienvenida no aparece solo (`oferta` es `null`).
 - Avisos: `AlertProvider` / `useAlert()` (`@mpeduardo98/commerce-core/context`).
 - Formato e imágenes: `formatPrice` (`@mpeduardo98/commerce-core/lib`), `resolveImageUrl` (`@mpeduardo98/commerce-core/media/resolveImageUrl`).
 - Los providers (`AlertProvider`, `AuthProvider`, `CartProvider`) van en el `layout.tsx` raíz de la tienda.
 
+**SEO** (`@mpeduardo98/commerce-core/seo`): lo que sale de la base (productos, categorías, sitemap) lo arma el núcleo; aquí sólo se conecta. Las páginas propias de la tienda (inicio, nosotros, landings) escriben su propio `metadata`.
+- Layout raíz: `export const generateMetadata = () => metadataTienda()` → nombre, descripción y favicon de `/admin/ajustes`, y el formato `"Página | Tienda"` para todos los títulos (`plantilla` lo cambia).
+- Producto: `generateMetadata` devuelve `metadataProducto(producto)`, y la página incluye `<JsonLd datos={await jsonLdProducto(producto)} />` (precio, disponibilidad y estrellas para Google).
+- Categoría: `generateMetadata` devuelve `metadataCategoria(categoria)`.
+- `app/sitemap.ts`: `export default () => sitemapTienda({ paginas: ["/", …] })`. `app/robots.ts`: `export default () => robotsTienda()`.
+- Las URLs por defecto son `/productos/[slug]` y `/categoria/[slug]`. Si la tienda usa otras, pásalas en `rutas: { producto, categoria }` a cada función.
+- La dirección pública sale de `NEXT_PUBLIC_SITE_URL`: sin ella las URLs canónicas apuntan a localhost.
+
 **APIs públicas del núcleo** (ya existen en esta tienda):
 - `POST, GET /api/auth/[...all]`
+- `GET, POST /api/bienvenida`
 - `POST /api/cart/validar`
 - `GET /api/catalogo`
 - `GET /api/categorias`
@@ -79,13 +92,17 @@ src/shared/                ← lo que usan VARIAS features: ui/ (botones, inputs
 - `GET /api/productos`
 - `GET /api/productos/[slug]`
 - `GET /api/productos/relacionados`
+- `GET, POST /api/resenas`
+- `GET /api/resenas/elegibilidad`
+- `GET /api/resenas/pendientes`
 - `POST /api/stripe/webhook`
 - `GET, POST /api/users/addresses`
 - `PATCH /api/users/profile`
+- `GET /api/venta`
 
 ## Datos de arranque
 
+- Al actualizar el núcleo: `npx commerce-core instalar` (rutas nuevas) y `npx commerce-core migrar` (cambios de base de datos). **Nunca** `npx commerce-core db` en una tienda con datos: la deja vacía.
 - Admin por defecto de una base recién instalada: `admin@tienda.com` / `admin123` (cambiar antes de publicar). Se entra por el `/login` de la tienda.
-- El checkout y los métodos de pago están en revisión en el núcleo: antes de diseñar el checkout, pregúntale al usuario.
 
 <!-- END:commerce-core -->
