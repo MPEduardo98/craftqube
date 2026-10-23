@@ -10,9 +10,9 @@
     "db:init": "commerce-core db"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1010.0",
+    "@aws-sdk/client-s3": "^3.1138.0",
     "@fortawesome/fontawesome-free": "^7.2.0",
-    "@mpeduardo98/commerce-core": "github:MPEduardo98/commerce-core#a45ab205c3e3e4187a709a1ca81e0b5ec985709f",
+    "@mpeduardo98/commerce-core": "github:MPEduardo98/commerce-core#v0.9.1",
     "@react-email/components": "^1.0.8",
     "@react-email/render": "^2.0.4",
     "@stripe/stripe-js": "^8.9.0",
@@ -23,12 +23,12 @@
     "better-auth": "^1.6.22",
     "country-flag-icons": "^1.6.19",
     "framer-motion": "^12.35.0",
-    "mysql2": "^3.18.2",
-    "next": "16.1.6",
+    "mysql2": "^3.24.6",
+    "next": "16.4.3",
     "react": "^19.2.3",
     "react-dom": "19.2.3",
-    "resend": "^6.9.3",
-    "sharp": "^0.34.5",
+    "resend": "^6.34.1",
+    "sharp": "^0.35.5",
     "stripe": "^20.4.1"
   },
   "devDependencies": {
@@ -38,7 +38,7 @@
     "@types/react-dom": "^19",
     "@types/sharp": "^0.31.1",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "16.4.3",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5"
