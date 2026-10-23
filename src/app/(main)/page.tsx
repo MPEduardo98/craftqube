@@ -1,15 +1,15 @@
 import { HeroSection } from "@/features/marketing/components/home/HeroSection";
-import { CategoriesSection } from "@/features/marketing/components/home/CategoriesSection";
-import { FeaturedProductsSection } from "@/features/marketing/components/home/FeaturedProductsSection";
+import { CatalogoInicio } from "@/features/marketing/components/home/CatalogoInicio";
 import { WhyCraftqubeSection } from "@/features/marketing/components/home/WhyCraftqubeSection";
 import { NewsletterSection } from "@/features/marketing/components/home/NewsletterSection";
+
+export const revalidate = 300;
 
 export default function HomePage() {
   return (
     <>
       <HeroSection />
-      <CategoriesSection />
-      <FeaturedProductsSection />
+      <CatalogoInicio />
       <WhyCraftqubeSection />
       <NewsletterSection />
     </>

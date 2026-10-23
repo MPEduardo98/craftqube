@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion, type Variants } from "framer-motion";
 
 interface CategoriaDB {
@@ -64,25 +64,6 @@ function FallbackIcon({ slug, accent }: { slug: string; accent: string }) {
 
 const ACCENTS   = ["#1D4ED8", "#2563EB", "#1E40AF", "#3B82F6", "#0EA5E9"];
 const getAccent = (i: number) => ACCENTS[i % ACCENTS.length];
-
-function SkeletonCard() {
-  return (
-    <div
-      className="rounded-2xl overflow-hidden animate-pulse"
-      style={{ background: "var(--color-cq-surface)" }}
-    >
-      <div style={{ aspectRatio: "1 / 1", background: "var(--color-cq-surface-2)" }} />
-      <div className="p-5 space-y-3">
-        <div className="h-2.5 rounded" style={{ background: "var(--color-cq-border)", width: "25%" }} />
-        <div className="h-6 rounded"   style={{ background: "var(--color-cq-border)", width: "65%" }} />
-        <div className="flex justify-between items-center pt-2">
-          <div className="h-5 w-24 rounded-full" style={{ background: "var(--color-cq-accent-glow)" }} />
-          <div className="h-5 w-16 rounded"      style={{ background: "var(--color-cq-border)" }} />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function CategoryCard({ cat, index }: { cat: CategoriaDB; index: number }) {
   const [hovered,  setHovered]  = useState(false);
@@ -229,21 +210,7 @@ const cardVariants: Variants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
 };
 
-export function CategoriesSection() {
-  const [categorias, setCategorias] = useState<CategoriaDB[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch("/api/categorias")
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.success) setCategorias(json.data);
-        else setError("No se pudieron cargar las categorías.");
-      })
-      .catch(() => setError("Error de conexión con el servidor."))
-      .finally(() => setLoading(false));
-  }, []);
+export function CategoriesSection({ categorias }: { categorias: CategoriaDB[] }) {
 
   return (
     <section className="py-24 relative" style={{ background: "var(--color-cq-bg)" }}>
@@ -260,24 +227,7 @@ export function CategoriesSection() {
           </h2>
         </div>
 
-        {error && (
-          <div className="flex items-center gap-2 text-red-400 mb-6">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8"  x2="12"    y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <span className="text-sm font-medium">{error}</span>
-          </div>
-        )}
-
-        {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
-          </div>
-        )}
-
-        {!loading && categorias.length > 0 && (
+        {categorias.length > 0 && (
           <motion.div
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
             variants={containerVariants}

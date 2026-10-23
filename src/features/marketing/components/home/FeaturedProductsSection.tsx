@@ -2,11 +2,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { motion, type Variants } from "framer-motion";
 import { ProductCard }        from "@/features/products/components/ProductCard";
-import { ProductCardSkeleton } from "@/features/products/components/ProductCardSkeleton";
-import type { Producto } from "@/features/products/types/product";
+import type { Producto } from "@mpeduardo98/commerce-core/catalogo";
 
 const containerVariants: Variants = {
   hidden:  {},
@@ -18,21 +16,7 @@ const cardVariants: Variants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" } },
 };
 
-export function FeaturedProductsSection() {
-  const [products, setProducts] = useState<Producto[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch("/api/productos")
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.success) setProducts(json.data);
-        else setError("No se pudieron cargar los productos.");
-      })
-      .catch(() => setError("Error de conexión con el servidor."))
-      .finally(() => setLoading(false));
-  }, []);
+export function FeaturedProductsSection({ productos: products }: { productos: Producto[] }) {
 
   return (
     <section
@@ -68,36 +52,8 @@ export function FeaturedProductsSection() {
           </Link>
         </div>
 
-        {/* ── Error ── */}
-        {error && !loading && (
-          <div
-            className="flex items-center gap-3 p-4 rounded-xl mb-8"
-            style={{
-              background: "rgba(220,38,38,0.08)",
-              border:     "1px solid rgba(220,38,38,0.2)",
-              color:      "#DC2626",
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8"  x2="12"    y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <span className="text-sm font-medium">{error}</span>
-          </div>
-        )}
-
-        {/* ── Skeletons — 4 columnas ── */}
-        {loading && (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <ProductCardSkeleton key={i} />
-            ))}
-          </div>
-        )}
-
         {/* ── Grid productos — 4 columnas ── */}
-        {!loading && products.length > 0 && (
+        {products.length > 0 && (
           <motion.div
             className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6"
             variants={containerVariants}
@@ -117,7 +73,7 @@ export function FeaturedProductsSection() {
         )}
 
         {/* ── Empty ── */}
-        {!loading && !error && products.length === 0 && (
+        {products.length === 0 && (
           <p
             className="text-center py-16 text-sm"
             style={{ color: "var(--color-cq-muted-2)" }}

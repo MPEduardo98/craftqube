@@ -3,7 +3,6 @@
 
 import Link             from "next/link";
 import { motion }       from "framer-motion";
-import { useState, useEffect } from "react";
 import { CraftqubeLogo }    from "../header/CraftqubeLogo";
 import { CurrencySwitcher } from "./CurrencySwitcher";
 
@@ -73,16 +72,7 @@ function FooterNavLink({
   );
 }
 
-export function Footer() {
-  const [categorias, setCategorias] = useState<CategoriaDB[]>([]);
-  const [loading,    setLoading]    = useState(true);
-
-  useEffect(() => {
-    fetch("/api/categorias")
-      .then((r) => r.json())
-      .then((d) => { setCategorias(d.categorias ?? []); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, []);
+export function Footer({ categorias }: { categorias: CategoriaDB[] }) {
 
   return (
     <footer role="contentinfo" style={{ background: "#0A0F1E", color: "rgba(255,255,255,0.7)" }}>
@@ -105,25 +95,17 @@ export function Footer() {
               Productos
             </h4>
             <ul className="flex flex-col gap-3">
-              {loading ? (
-                Array.from({ length: 4 }).map((_, i) => (
-                  <li key={i}>
-                    <span className="block h-4 w-28 rounded"
-                      style={{ background: "rgba(255,255,255,0.07)", animation: "pulse 1.5s infinite" }} />
-                  </li>
-                ))
-              ) : categorias.length > 0 ? (
+              {categorias.length > 0 ? (
                 <>
                   {categorias.map((cat) => (
                     <li key={cat.id}>
-                      <FooterNavLink href={`/productos?categoria=${cat.slug}`}>{cat.nombre}</FooterNavLink>
+                      <FooterNavLink href={`/categoria/${cat.slug}`}>{cat.nombre}</FooterNavLink>
                     </li>
                   ))}
-                  <li><FooterNavLink href="/productos">Ver catálogo completo →</FooterNavLink></li>
+                  <li><FooterNavLink href="/catalogo">Ver catálogo completo →</FooterNavLink></li>
                 </>
               ) : (
                 <>
-                  <li><FooterNavLink href="/productos">Ver Productos</FooterNavLink></li>
                   <li><FooterNavLink href="/catalogo">Catálogo Completo</FooterNavLink></li>
                 </>
               )}

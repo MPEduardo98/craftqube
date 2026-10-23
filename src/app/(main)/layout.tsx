@@ -7,7 +7,7 @@
 import { Header }    from "@/shared/components/header/Header";
 import { Footer }    from "@/shared/components/footer/Footer";
 import { CartDrawer } from "@/features/cart/components/CartDrawer";
-import { getCategorias } from "@/features/categories/lib/getCategorias";
+import { getCategorias } from "@mpeduardo98/commerce-core/catalogo";
 
 export default async function MainLayout({
   children,
@@ -25,7 +25,7 @@ export default async function MainLayout({
           un instante de la hidratación) deja subir el footer hasta
           chocar con el header. */}
       <main style={{ minHeight: "100vh" }}>{children}</main>
-      <Footer />
+      <Footer categorias={categorias} />
     </>
   );
 }
