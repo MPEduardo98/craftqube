@@ -1,10 +1,14 @@
 // app/global/components/footer/CurrencySwitcher.tsx
 "use client";
 
+import { useVenta } from "@/shared/context/ContextoVenta";
 import { useCurrency } from "@/shared/context/CurrencyContext";
 
 export function CurrencySwitcher() {
   const { currency, setCurrency } = useCurrency();
+
+  const { mostrarPrecios } = useVenta();
+  if (!mostrarPrecios) return null;
 
   return (
     <div className="flex items-center gap-1" style={{ background: "rgba(255,255,255,0.06)", borderRadius: "8px", padding: "3px" }}>

@@ -4,6 +4,8 @@
 // Next lo conserva entre /checkout/contacto, /envio, /pago y
 // /confirmacion: el estado del pedido no se pierde al navegar.
 // ─────────────────────────────────────────────────────────────
+import { redirect } from "next/navigation";
+import { getVentaPublica } from "@mpeduardo98/commerce-core/venta";
 import type { Metadata } from "next";
 import { CheckoutShell } from "@/features/checkout/components/CheckoutShell";
 
@@ -12,6 +14,7 @@ export const metadata: Metadata = {
   description: "Finaliza tu compra de manera segura.",
 };
 
-export default function CheckoutLayout({ children }: { children: React.ReactNode }) {
+export default async function CheckoutLayout({ children }: { children: React.ReactNode }) {
+  if (!(await getVentaPublica()).ventaEnLinea) redirect("/");
   return <CheckoutShell>{children}</CheckoutShell>;
 }

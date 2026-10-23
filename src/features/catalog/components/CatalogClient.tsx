@@ -1,6 +1,7 @@
 // app/(main)/catalogo/components/CatalogClient.tsx
 "use client";
 
+import { useVenta } from "@/shared/context/ContextoVenta";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -51,6 +52,7 @@ export function CatalogClient({
   descripcion = null,
   breadcrumb  = null,
 }: Props) {
+  const { ventaEnLinea, mostrarPrecios } = useVenta();
   const router       = useRouter();
   const searchParams = useSearchParams();
 
@@ -59,8 +61,8 @@ export function CatalogClient({
   // La categoría de la ruta manda sobre cualquier ?cat= heredado.
   const [cat,         setCat]         = useState(categoriaSlug ?? searchParams.get("cat") ?? "");
   const [marca,       setMarca]       = useState(searchParams.get("marca") ?? "");
-  const [soloStock,   setSoloStock]   = useState(searchParams.get("stock") === "1");
-  const [sort,        setSort]        = useState(searchParams.get("sort")  ?? "reciente");
+  const [soloStock,   setSoloStock]   = useState(ventaEnLinea && searchParams.get("stock") === "1");
+  const [sort,        setSort]        = useState(!mostrarPrecios && searchParams.get("sort")?.startsWith("precio") ? "reciente" : searchParams.get("sort") ?? "reciente");
   const [page,        setPage]        = useState(parseInt(searchParams.get("page") ?? "1", 10));
   const [view,        setView]        = useState<"grid" | "list">("grid");
   const [sidebarOpen, setSidebarOpen] = useState(false);

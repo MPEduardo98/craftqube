@@ -1,3 +1,4 @@
+import { getVentaPublica } from "@mpeduardo98/commerce-core/venta";
 // app/(main)/categoria/[slug]/page.tsx
 // ─────────────────────────────────────────────────────────────
 // URL canónica de una categoría: /categoria/<slug>
@@ -98,6 +99,7 @@ function Breadcrumb({ nombre }: { nombre: string }) {
 // ── Página principal ──────────────────────────────────────────
 export default async function CategoriaPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  const venta = await getVentaPublica();
   const sp       = await searchParams;
   const page     = Math.max(1, parseInt(sp.page ?? "1", 10));
 
@@ -110,9 +112,9 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
       page,
       limit:     PAGE_SIZE,
       marca:     sp.marca ?? "",
-      sort:      sp.sort  ?? "reciente",
+      sort:      !venta.mostrarPrecios && sp.sort?.startsWith("precio") ? "reciente" : sp.sort ?? "reciente",
       q:         sp.q     ?? "",
-      soloStock: sp.stock === "1",
+      soloStock: venta.ventaEnLinea && sp.stock === "1",
     }),
     getCategorias().catch(() => []),
   ]);

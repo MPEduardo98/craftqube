@@ -1,6 +1,7 @@
 // app/(main)/producto/[slug]/components/ProductVariantSelector.tsx
 "use client";
 
+import { useVenta } from "@/shared/context/ContextoVenta";
 import { motion } from "framer-motion";
 import type { ProductoVariante } from "@/features/products/types/product-detail";
 
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function ProductVariantSelector({ variantes, selectedId, onSelect }: Props) {
+  const { ventaEnLinea } = useVenta();
   if (variantes.length <= 1) return null;
 
   // Group unique atributos across all variantes
@@ -40,7 +42,7 @@ export function ProductVariantSelector({ variantes, selectedId, onSelect }: Prop
         <div className="flex flex-wrap gap-2">
           {variantes.map((v) => {
             const isSelected = v.id === selectedId;
-            const sinStock   = v.stock === 0 && !v.vender_sin_existencia;
+            const sinStock   = ventaEnLinea && v.stock === 0 && !v.vender_sin_existencia;
             return (
               <motion.button
                 key={v.id}
@@ -111,7 +113,7 @@ export function ProductVariantSelector({ variantes, selectedId, onSelect }: Prop
                   v.atributos.some((a) => a.atributo === atributo && a.valor === valor)
                 );
                 const isSelected = matchVariante?.id === selectedId;
-                const sinStock   = matchVariante ? matchVariante.stock === 0 && !matchVariante.vender_sin_existencia : false;
+                const sinStock   = ventaEnLinea && matchVariante ? matchVariante.stock === 0 && !matchVariante.vender_sin_existencia : false;
 
                 return (
                   <motion.button

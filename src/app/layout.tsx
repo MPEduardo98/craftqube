@@ -1,4 +1,7 @@
 // app/layout.tsx
+import { getVentaPublica } from "@mpeduardo98/commerce-core/venta";
+import { getStoreConfig } from "@mpeduardo98/commerce-core/config";
+import { ProveedorVenta } from "@/shared/context/ContextoVenta";
 import type { Metadata }  from "next";
 import { Barlow_Condensed, DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
@@ -82,7 +85,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const [venta, tienda] = await Promise.all([getVentaPublica(), getStoreConfig()]);
   const organizationLd = buildOrganizationJsonLd();
 
   return (
@@ -98,6 +102,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationLd) }}
         />
 
+        <ProveedorVenta venta={{ ...venta, telefono: tienda.telefono, email: tienda.email, sitioUrl: SITE_URL }}>
         <AlertProvider>
           <AuthProvider>
             <ThemeProvider>
@@ -112,6 +117,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             </ThemeProvider>
           </AuthProvider>
         </AlertProvider>
+        </ProveedorVenta>
       </body>
     </html>
   );

@@ -44,7 +44,7 @@ const legalLinks = [
   { label: "Nosotros",   href: "/about/nosotros" },
 ];
 
-const MotionLink = motion(Link);
+const MotionLink = motion.create(Link);
 
 function FooterNavLink({
   href,

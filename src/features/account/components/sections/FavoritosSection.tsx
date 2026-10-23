@@ -1,6 +1,8 @@
 // app/(main)/cuenta/components/sections/FavoritosSection.tsx
 "use client";
 
+import { useVenta } from "@/shared/context/ContextoVenta";
+import { BotonCotizacion } from "@/shared/ui/BotonCotizacion";
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
@@ -33,12 +35,14 @@ async function resolverVariante(
 }
 
 export function FavoritosSection() {
+  const { ventaEnLinea, mostrarPrecios } = useVenta();
   const { items, removeItem } = useWishlist();
   const { addItem } = useCart();
   const { error: alertaError } = useAlert();
   const [agregando, setAgregando] = useState<number | null>(null);
 
   const agregarAlCarrito = async (item: WishlistItem) => {
+    if (!ventaEnLinea) return;
     setAgregando(item.productoId);
     try {
       const variante = await resolverVariante(item);
@@ -136,12 +140,12 @@ export function FavoritosSection() {
                     {item.titulo}
                   </Link>
                   <span style={{ fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 800, color: "var(--color-cq-text)" }}>
-                    {formatPrice(item.precio)}
+                    {mostrarPrecios ? formatPrice(item.precio) : "Precio a consultar"}
                   </span>
 
                   {/* Acciones */}
                   <div className="flex gap-2 mt-auto pt-2">
-                    <button
+                    {!ventaEnLinea ? <BotonCotizacion producto={item.titulo} slug={item.slug} /> : <button
                       onClick={() => void agregarAlCarrito(item)}
                       disabled={agregando === item.productoId}
                       className="flex-1 flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold"
@@ -150,7 +154,7 @@ export function FavoritosSection() {
                         <path d="M0 24C0 10.7 10.7 0 24 0H69.5c22 0 41.5 12.8 50.6 32h411c26.3 0 45.5 25 38.6 50.4l-41 152.3c-8.5 31.4-37 53.3-69.5 53.3H170.7l5.4 28.5c2.2 11.3 12.1 19.5 23.6 19.5H488c13.3 0 24 10.7 24 24s-10.7 24-24 24H199.7c-34.6 0-64.3-24.6-70.7-58.5L77.4 54.5c-.7-3.8-4-6.5-7.9-6.5H24C10.7 48 0 37.3 0 24zM128 464a48 48 0 1 1 96 0 48 48 0 1 1 -96 0zm336-48a48 48 0 1 1 0 96 48 48 0 1 1 0-96z"/>
                       </svg>
                       {agregando === item.productoId ? "Agregando…" : "Agregar"}
-                    </button>
+                    </button>}
                     <button
                       onClick={() => removeItem(item.productoId)}
                       className="flex items-center justify-center rounded-lg transition-colors hover:bg-red-500/10"

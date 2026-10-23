@@ -1,3 +1,4 @@
+import { getVentaPublica } from "@mpeduardo98/commerce-core/venta";
 // app/(main)/catalogo/page.tsx
 // ─────────────────────────────────────────────────────────────
 // MEJORA SEO CRÍTICA:
@@ -39,6 +40,7 @@ interface PageProps {
 }
 
 export default async function CatalogoPage({ searchParams }: PageProps) {
+  const venta = await getVentaPublica();
   const sp = await searchParams;
 
   // Nota: /catalogo?cat=X → 301 /categoria/X se resuelve en
@@ -53,10 +55,10 @@ export default async function CatalogoPage({ searchParams }: PageProps) {
   const [{ productos: initialProductos, total: initialTotal, pages: initialPages }, categorias] =
     await Promise.all([
       getProductosCatalogo({
-        sort:      sp.sort  ?? "reciente",
+        sort:      !venta.mostrarPrecios && sp.sort?.startsWith("precio") ? "reciente" : sp.sort ?? "reciente",
         marca:     sp.marca ?? "",
         q:         sp.q     ?? "",
-        soloStock: sp.stock === "1",
+        soloStock: venta.ventaEnLinea && sp.stock === "1",
         page,
         limit:     24,
       }),

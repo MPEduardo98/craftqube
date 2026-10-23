@@ -1,6 +1,8 @@
 // app/(main)/catalogo/components/CatalogGrid.tsx
 "use client";
 
+import { useVenta } from "@/shared/context/ContextoVenta";
+import { BotonCotizacion } from "@/shared/ui/BotonCotizacion";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,6 +35,7 @@ function ListSkeleton() {
 
 /* ── Lista row ── */
 function ListRow({ producto }: { producto: Producto }) {
+  const { ventaEnLinea, mostrarPrecios } = useVenta();
   const imageSrc = resolveImageUrl(producto.imagen_nombre, producto.id);
   const tieneStock = (producto.stock ?? 0) > 0;
   const descripcionPlana = richTextToPlain(producto.descripcion);
@@ -105,7 +108,7 @@ function ListRow({ producto }: { producto: Producto }) {
 
       <div className="shrink-0 flex flex-col items-end gap-2 ml-2">
         <div>
-          {producto.precio !== null && precio > 0 ? (
+          {mostrarPrecios && producto.precio !== null && precio > 0 ? (
             <div className="flex flex-col items-end">
               <span style={{ fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 700, color: "var(--color-cq-text)" }}>
                 ${precio.toLocaleString("es-MX")}
@@ -118,10 +121,10 @@ function ListRow({ producto }: { producto: Producto }) {
               )}
             </div>
           ) : (
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", color: "var(--color-cq-muted-2)" }}>Consultar</span>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", color: "var(--color-cq-muted-2)" }}>Precio a consultar</span>
           )}
         </div>
-        <Link
+        {!ventaEnLinea ? <BotonCotizacion producto={producto.titulo} slug={producto.slug} /> : <Link
           href={`/producto/${producto.slug}`}
           className="flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold"
           style={{
@@ -135,7 +138,7 @@ function ListRow({ producto }: { producto: Producto }) {
           }}
         >
           Ver producto
-        </Link>
+        </Link>}
       </div>
     </div>
   );

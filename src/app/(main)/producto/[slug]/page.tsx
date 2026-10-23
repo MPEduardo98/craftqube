@@ -1,11 +1,13 @@
 // app/(main)/producto/[slug]/page.tsx
+import { getVentaPublica } from "@mpeduardo98/commerce-core/venta";
+import { jsonLdProducto } from "@mpeduardo98/commerce-core/seo";
 import type { Metadata }           from "next";
 import { notFound }                from "next/navigation";
 import { ProductDetailClient }     from "@/features/products/components/detail/ProductDetailClient";
 import { RelatedProducts }         from "@/features/products/components/RelatedProducts";
 import { getProductoBySlug }       from "@/features/products/lib/getProductoBySlug";
 import { getAllProductoSlugs }      from "@/features/products/lib/getAllSlugs";
-import { buildProductJsonLd, buildBreadcrumbJsonLd } from "@/shared/lib/seo/jsonld";
+import { buildBreadcrumbJsonLd } from "@/shared/lib/seo/jsonld";
 import { richTextToPlain }         from "@/shared/lib/rich-text";
 import { resolveImageUrl }         from "@/features/media/lib/resolveImageUrl";
 
@@ -39,6 +41,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const varianteDefault = producto.variantes.find((v) => v.es_default) ?? producto.variantes[0];
   const precio          = varianteDefault?.precio_final;
+  const venta = await getVentaPublica();
 
   return {
     title: { absolute: title },
@@ -69,7 +72,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       images:      [ogImageUrl],
     },
     other: {
-      ...(precio && {
+      ...(venta.mostrarPrecios && precio && {
         "product:price:amount":   Number(precio).toFixed(2),
         "product:price:currency": "MXN",
       }),
@@ -85,7 +88,7 @@ export default async function ProductoPage({ params }: PageProps) {
 
   const categoriaSlug = producto.categorias[0]?.slug ?? "";
 
-  const productJsonLd    = buildProductJsonLd(producto);
+  const productJsonLd    = await jsonLdProducto(producto, { rutas: { producto: slug => `/producto/${slug}` } });
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: "Inicio",   url: SITE_URL },
     { name: "Catálogo", url: `${SITE_URL}/catalogo` },

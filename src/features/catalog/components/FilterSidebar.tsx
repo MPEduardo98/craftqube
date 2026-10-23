@@ -1,5 +1,7 @@
 // app/(main)/catalogo/components/FilterSidebar.tsx
 "use client";
+import { useVenta } from "@/shared/context/ContextoVenta";
+
 
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -118,6 +120,7 @@ export function FilterSidebar({
   onClearAll,
   totalActivos,
 }: FilterSidebarProps) {
+  const { ventaEnLinea } = useVenta();
   return (
     <aside className="flex flex-col gap-5" style={{ width: "100%" }}>
 
@@ -158,7 +161,7 @@ export function FilterSidebar({
       </div>
 
       {/* Stock toggle */}
-      <FilterSection title="Disponibilidad">
+      {ventaEnLinea && <FilterSection title="Disponibilidad">
         <button
           onClick={() => onStockChange(!soloStock)}
           className="flex items-center gap-2.5"
@@ -197,7 +200,7 @@ export function FilterSidebar({
             Solo en stock
           </span>
         </button>
-      </FilterSection>
+      </FilterSection>}
 
       {/* Categorías */}
       {categorias.length > 0 && (

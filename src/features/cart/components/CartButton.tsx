@@ -1,11 +1,15 @@
 // app/global/components/header/CartButton.tsx
 "use client";
 
+import { useVenta } from "@/shared/context/ContextoVenta";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@mpeduardo98/commerce-core/cart/context/CartContext";
 
 export function CartButton() {
   const { totalItems, openDrawer } = useCart();
+
+  const { ventaEnLinea } = useVenta();
+  if (!ventaEnLinea) return null;
 
   return (
     <motion.button

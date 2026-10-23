@@ -1,6 +1,8 @@
 // app/global/components/products/ProductCard.tsx
 "use client";
 
+import { useVenta } from "@/shared/context/ContextoVenta";
+import { BotonCotizacion } from "@/shared/ui/BotonCotizacion";
 import { useState }    from "react";
 import Link            from "next/link";
 import Image           from "next/image";
@@ -11,46 +13,13 @@ import { useCurrency } from "@/shared/context/CurrencyContext";
 import type { Producto } from "@/features/products/types/product";
 import { resolveImageUrl } from "@/features/media/lib/resolveImageUrl";
 
-function FallbackIllustration({ categoria }: { categoria?: string | null }) {
-  const cat    = (categoria ?? "").toLowerCase();
-  const gradId = `grad-${cat.replace(/\s+/g, "-")}-${Math.random().toString(36).substring(7)}`;
-
-  return (
-    <svg viewBox="0 0 160 160" width="100%" height="100%" style={{ maxWidth: 120, maxHeight: 120 }}>
-      <defs>
-        <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%"   stopColor="#2563EB" stopOpacity="0.3" />
-          <stop offset="100%" stopColor="#2563EB" stopOpacity="0.08" />
-        </linearGradient>
-      </defs>
-      {cat.includes("perfil") || cat.includes("aluminio") ? (
-        <>
-          <path d="M80 130 L80 50 L130 50" stroke="#2563EB" strokeWidth="6" strokeLinecap="round" fill="none" opacity="0.55" />
-          <rect x="55" y="28" width="30" height="30" rx="3" fill={`url(#${gradId})`} opacity="0.5" />
-          <circle cx="80" cy="50"  r="5" fill="#2563EB" opacity="0.6" />
-          <circle cx="80" cy="130" r="5" fill="#2563EB" opacity="0.6" />
-          <circle cx="130" cy="50" r="5" fill="#2563EB" opacity="0.6" />
-        </>
-      ) : (
-        <>
-          <circle cx="80" cy="80" r="40" fill="none" stroke="#2563EB" strokeWidth="2" opacity="0.2" />
-          <polygon points="80,22 92,54 68,54"    fill="#2563EB" opacity="0.65" />
-          <polygon points="80,138 92,106 68,106" fill="#2563EB" opacity="0.65" />
-          <polygon points="22,80 54,68 54,92"    fill="#2563EB" opacity="0.65" />
-          <polygon points="138,80 106,68 106,92" fill="#2563EB" opacity="0.65" />
-          <circle cx="80" cy="80" r="16" fill={`url(#${gradId})`} opacity="0.85" />
-        </>
-      )}
-    </svg>
-  );
-}
-
 interface ProductCardProps {
   producto:    Producto;
   imageSizes?: string;
 }
 
 export function ProductCard({ producto, imageSizes }: ProductCardProps) {
+  const { ventaEnLinea, mostrarPrecios } = useVenta();
   const [imgError, setImgError] = useState(false);
   const [hovered,  setHovered]  = useState(false);
 
@@ -62,7 +31,7 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
 
   const precio         = Number(producto.precio ?? 0);
   const precioOriginal = Number(producto.precio_original ?? 0);
-  const tieneDescuento = precioOriginal > 0 && precioOriginal > precio;
+  const tieneDescuento = mostrarPrecios && precioOriginal > 0 && precioOriginal > precio;
 
   const imageSrc = !imgError ? resolveImageUrl(producto.imagen_nombre, producto.id) : null;
 
@@ -79,7 +48,7 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
     : items.find(item => item.varianteId === varianteId);
   /* Sin variante no hay nada que cotizar: el botón se comporta como
      si no hubiera stock en vez de envenenar el carrito. */
-  const puedeAgregar  = tieneStock && varianteId != null;
+  const puedeAgregar  = ventaEnLinea && tieneStock && varianteId != null;
 
   const handleWishlistToggle = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
@@ -147,7 +116,9 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-            <FallbackIllustration categoria={producto.categoria} />
+            <span className="text-sm" style={{ color: "var(--color-cq-muted)" }}>
+              Imagen no disponible
+            </span>
           </div>
         )}
 
@@ -201,7 +172,7 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
 
         <div className="flex flex-col gap-2 pt-2">
           <div>
-            {producto.precio !== null && producto.precio > 0 ? (
+            {mostrarPrecios && producto.precio !== null && producto.precio > 0 ? (
               <div className="flex items-baseline gap-1.5">
                 <span style={{ fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 700, color: "var(--color-cq-text)" }}>
                   {format(producto.precio)}
@@ -213,11 +184,13 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
                 )}
               </div>
             ) : (
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", color: "var(--color-cq-muted-2)" }}>Consultar precio</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", color: "var(--color-cq-muted-2)" }}>Precio a consultar</span>
             )}
           </div>
 
-          {!puedeAgregar ? (
+          {!ventaEnLinea ? (
+            <BotonCotizacion producto={producto.titulo} slug={producto.slug} />
+          ) : !puedeAgregar ? (
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", color: "var(--color-cq-muted-2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
               Agotado
             </span>

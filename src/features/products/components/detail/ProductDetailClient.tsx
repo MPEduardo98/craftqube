@@ -1,6 +1,8 @@
 // app/(main)/producto/[slug]/components/ProductDetailClient.tsx
 "use client";
 
+import { useVenta } from "@/shared/context/ContextoVenta";
+import { BotonCotizacion } from "@/shared/ui/BotonCotizacion";
 import { useState }               from "react";
 import Link                       from "next/link";
 import Image                      from "next/image";
@@ -68,6 +70,7 @@ interface Props {
 }
 
 export function ProductDetailClient({ producto }: Props) {
+  const { ventaEnLinea, mostrarPrecios } = useVenta();
   const { addItem }              = useCart();
   const { toggleItem, isWished } = useWishlist();
   const { format }               = useCurrency();
@@ -85,7 +88,7 @@ export function ProductDetailClient({ producto }: Props) {
   const precioOriginal = Number(selectedVariante?.precio_original ?? 0);
   const stock          = selectedVariante?.stock           ?? 0;
   const tieneStock     = stock > 0 || (selectedVariante?.vender_sin_existencia === 1);
-  const tieneDescuento = precioOriginal > precio && precioOriginal > 0;
+  const tieneDescuento = mostrarPrecios && precioOriginal > precio && precioOriginal > 0;
   const descuento      = tieneDescuento ? Math.round(((precioOriginal - precio) / precioOriginal) * 100) : 0;
   const wished         = isWished(producto.id);
 
@@ -93,11 +96,11 @@ export function ProductDetailClient({ producto }: Props) {
     ? (producto.imagenes.find((img) => img.variante_id === selectedVariante.id) ?? producto.imagenes[0])
     : producto.imagenes[0];
 
-  const incrementar = () => setCantidad((c) => (stock > 0 ? Math.min(c + 1, stock) : c + 1));
+  const incrementar = () => setCantidad((c) => (ventaEnLinea && stock > 0 ? Math.min(c + 1, stock) : c + 1));
   const decrementar = () => setCantidad((c) => Math.max(1, c - 1));
 
   const handleAgregarCarrito = () => {
-    if (!tieneStock || !selectedVariante) return;
+    if (!ventaEnLinea || !tieneStock || !selectedVariante) return;
     addItem({
       productoId:   producto.id,
       varianteId:   selectedVariante.id,
@@ -234,7 +237,7 @@ export function ProductDetailClient({ producto }: Props) {
             {/* Precio + stock */}
             <motion.div {...fadeUp(0.21)} className="flex flex-col gap-2">
               <div className="flex items-center gap-3 flex-wrap">
-                {precio > 0 ? (
+                {mostrarPrecios && precio > 0 ? (
                   <span className="text-display" style={{ fontSize: "clamp(2rem, 5vw, 2.75rem)", color: "var(--color-cq-text)" }}>
                     {format(precio)}
                   </span>
@@ -243,13 +246,13 @@ export function ProductDetailClient({ producto }: Props) {
                     Precio a consultar
                   </span>
                 )}
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                {ventaEnLinea && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
                   style={{ background: tieneStock ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)", border: `1px solid ${tieneStock ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)"}`, fontFamily: "var(--font-mono)", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", color: tieneStock ? "#22C55E" : "#EF4444", whiteSpace: "nowrap" }}>
                   <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: tieneStock ? "#22C55E" : "#EF4444" }} />
                   {tieneStock ? (stock > 10 ? "En stock" : `Últimas ${stock} unidades`) : "Agotado"}
-                </span>
+                </span>}
               </div>
-              {precio > 0 && tieneDescuento && (
+              {mostrarPrecios && precio > 0 && tieneDescuento && (
                 <div className="flex items-center gap-2">
                   <span className="text-base line-through" style={{ color: "var(--color-cq-muted-2)" }}>{format(precioOriginal)}</span>
                   <span className="px-2 py-0.5 rounded-md text-xs font-bold"
@@ -271,7 +274,7 @@ export function ProductDetailClient({ producto }: Props) {
             <motion.div {...fadeUp(0.35)} className="flex flex-col gap-1.5">
               <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-cq-muted)" }}>
                 Cantidad
-                {precio > 0 && cantidad > 1 && (
+                {mostrarPrecios && precio > 0 && cantidad > 1 && (
                   <span style={{ marginLeft: "0.75rem", color: "var(--color-cq-accent)", letterSpacing: "0.04em" }}>
                     = {format(precio * cantidad)}
                   </span>
@@ -296,7 +299,9 @@ export function ProductDetailClient({ producto }: Props) {
                   </button>
                 </div>
 
-                <motion.button
+                {!ventaEnLinea ? (
+                  <BotonCotizacion producto={producto.titulo} slug={producto.slug} detalle={[selectedVariante?.sku, selectedVariante?.atributos.map(a => `${a.atributo}: ${a.valor}`).join(", "), `Cantidad: ${cantidad}`].filter(Boolean).join(" ? ")} />
+                ) : <motion.button
                   onClick={handleAgregarCarrito}
                   disabled={!tieneStock}
                   whileHover={tieneStock ? { scale: 1.02 } : {}}
@@ -316,7 +321,7 @@ export function ProductDetailClient({ producto }: Props) {
                 >
                   {added ? Icons.check : Icons.cart}
                   {added ? "Agregado" : tieneStock ? "Agregar al carrito" : "Sin stock"}
-                </motion.button>
+                </motion.button>}
 
                 <motion.button
                   onClick={handleWishlist}

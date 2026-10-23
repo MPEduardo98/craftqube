@@ -64,6 +64,7 @@ src/shared/                ← lo que usan VARIAS features: ui/ (botones, inputs
 - Avisos: `AlertProvider` / `useAlert()` (`@mpeduardo98/commerce-core/context`).
 - Formato e imágenes: `formatPrice` (`@mpeduardo98/commerce-core/lib`), `resolveImageUrl` (`@mpeduardo98/commerce-core/media/resolveImageUrl`).
 - Los providers (`AlertProvider`, `AuthProvider`, `CartProvider`) van en el `layout.tsx` raíz de la tienda.
+- Analítica: el panel está en `/admin/analitica`. Monta `AnalyticsConsent` de `@mpeduardo98/commerce-core/analytics/Analytics` en el layout público con el enlace real de privacidad, y una sola `AnalyticsPage` por página (`page="home"`, o `page="product" productId={producto.id}`; en la entrada del checkout añade `checkout`). Los nombres son etiquetas constantes, nunca URLs ni datos personales. Marca botones con `data-analytics-click="nombre_estatico"`. Dentro del formulario de registro monta `AnalyticsRegistrationStart`; `AuthProvider.register` mide el éxito y `CartProvider.addItem` mide adiciones automáticamente. Si usas authClient directamente, llama `track("registration_complete")` tras éxito desde `@mpeduardo98/commerce-core/analytics/client`. Añade preferencias para revocar con `setAnalyticsConsent(false)`. `AnalyticsDemographics` es una encuesta opcional para adultos. Sin consentimiento no se mide navegación. Instala rutas y migra antes de activar.
 
 **SEO** (`@mpeduardo98/commerce-core/seo`): lo que sale de la base (productos, categorías, sitemap) lo arma el núcleo; aquí sólo se conecta. Las páginas propias de la tienda (inicio, nosotros, landings) escriben su propio `metadata`.
 - Layout raíz: `export const generateMetadata = () => metadataTienda()` → nombre, descripción y favicon de `/admin/ajustes`, y el formato `"Página | Tienda"` para todos los títulos (`plantilla` lo cambia).
@@ -74,6 +75,7 @@ src/shared/                ← lo que usan VARIAS features: ui/ (botones, inputs
 - La dirección pública sale de `NEXT_PUBLIC_SITE_URL`: sin ella las URLs canónicas apuntan a localhost.
 
 **APIs públicas del núcleo** (ya existen en esta tienda):
+- `POST /api/analytics`
 - `POST, GET /api/auth/[...all]`
 - `GET, POST /api/bienvenida`
 - `POST /api/cart/validar`
@@ -106,6 +108,7 @@ src/shared/                ← lo que usan VARIAS features: ui/ (botones, inputs
 - Admin por defecto de una base recién instalada: `admin@tienda.com` / `admin123` (cambiar antes de publicar). Se entra por el `/login` de la tienda.
 
 <!-- END:commerce-core -->
+
 
 <!-- BEGIN:nextjs-agent-rules -->
 

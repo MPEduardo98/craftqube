@@ -1,6 +1,7 @@
 // app/(main)/catalogo/components/CatalogToolbar.tsx
 "use client";
 
+import { useVenta } from "@/shared/context/ContextoVenta";
 import { motion } from "framer-motion";
 
 const SORT_OPTIONS = [
@@ -28,6 +29,7 @@ export function CatalogToolbar({
   onSortChange,
   onViewChange,
 }: CatalogToolbarProps) {
+  const { mostrarPrecios } = useVenta();
   return (
     <div className="flex items-center justify-between gap-3 flex-wrap">
       {/* Conteo */}
@@ -61,7 +63,7 @@ export function CatalogToolbar({
               outline:       "none",
             }}
           >
-            {SORT_OPTIONS.map((o) => (
+            {SORT_OPTIONS.filter(o => mostrarPrecios || !o.value.startsWith("precio")).map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>

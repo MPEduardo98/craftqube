@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import { motion, type Variants } from "framer-motion";
+import { resolveImageUrl } from "@mpeduardo98/commerce-core/media/resolveImageUrl";
 
 interface CategoriaDB {
   id:              number;
@@ -72,7 +73,10 @@ function CategoryCard({ cat, index }: { cat: CategoriaDB; index: number }) {
   const accent = getAccent(index);
   const label  = `CAT·${String(index + 1).padStart(2, "0")}`;
   const href   = `/catalogo?categoria=${cat.slug}`;
-  const src    = cat.imagen && !imgError ? `/categorias/${cat.imagen}` : null;
+  const src = cat.imagen && !imgError
+    ? resolveImageUrl(cat.imagen, undefined)
+      ?? (cat.imagen.startsWith("/") ? cat.imagen : `/categorias/${cat.imagen}`)
+    : null;
 
   return (
     <Link
