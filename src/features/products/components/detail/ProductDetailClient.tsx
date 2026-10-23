@@ -91,6 +91,8 @@ export function ProductDetailClient({ producto }: Props) {
   const tieneDescuento = mostrarPrecios && precioOriginal > precio && precioOriginal > 0;
   const descuento      = tieneDescuento ? Math.round(((precioOriginal - precio) / precioOriginal) * 100) : 0;
   const wished         = isWished(producto.id);
+  const tieneEspecificaciones = producto.metacampos.length > 0 || selectedVariante !== null ||
+    Boolean(producto.envio && (producto.envio.largo || producto.envio.ancho || producto.envio.alto || producto.envio.peso));
 
   const imagenActiva = selectedVariante
     ? (producto.imagenes.find((img) => img.variante_id === selectedVariante.id) ?? producto.imagenes[0])
@@ -132,11 +134,12 @@ export function ProductDetailClient({ producto }: Props) {
 
   return (
     <main>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-16 sm:pt-20 pb-10">
         <div className="flex flex-col lg:flex-row gap-10 lg:gap-16">
 
           {/* ── Galería ── */}
           <div className="w-full lg:w-1/2 flex flex-col gap-3">
+            <div className="relative">
             <motion.div
               {...fadeUp(0)}
               className="relative rounded-2xl overflow-hidden"
@@ -161,6 +164,23 @@ export function ProductDetailClient({ producto }: Props) {
                 </div>
               )}
             </motion.div>
+            <div className="absolute top-3 right-3 z-20 flex items-center gap-2 rounded-xl p-1 shadow-sm" style={{ background: "color-mix(in srgb, var(--color-cq-surface) 90%, transparent)", backdropFilter: "blur(8px)" }} role="group" aria-label="Acciones del producto">
+                <motion.button
+                  onClick={handleWishlist}
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.94 }}
+                  className="flex items-center justify-center rounded-xl shrink-0"
+                  style={{ width: "44px", height: "44px", border: "none", background: "transparent", color: "var(--color-cq-muted)", cursor: "pointer" }}
+                  aria-pressed={wished}
+                  aria-label={wished ? "Quitar de favoritos" : "Agregar a favoritos"}
+                  title={wished ? "Quitar de favoritos" : "Agregar a favoritos"}
+                >
+                  <HeartIcon filled={wished} />
+                </motion.button>
+
+                <ShareButton titulo={producto.titulo} slug={producto.slug} />
+            </div>
+            </div>
 
             {producto.imagenes.length > 1 && (
               <div className="flex gap-2 flex-wrap">
@@ -196,6 +216,7 @@ export function ProductDetailClient({ producto }: Props) {
                 })}
               </div>
             )}
+
           </div>
 
           {/* ── Info ── */}
@@ -227,7 +248,7 @@ export function ProductDetailClient({ producto }: Props) {
             {hasRichTextContent(producto.descripcion) && (
               <motion.div
                 {...fadeUp(0.14)}
-                className="cq-rich-text text-base"
+                className="cq-rich-text text-base text-justify [&_*]:text-justify!"
                 dangerouslySetInnerHTML={{ __html: sanitizeRichText(producto.descripcion) }}
               />
             )}
@@ -285,22 +306,22 @@ export function ProductDetailClient({ producto }: Props) {
                   style={{ border: "1.5px solid var(--color-cq-border)", background: "var(--color-cq-surface)", height: "52px" }}>
                   <button onClick={decrementar} disabled={cantidad <= 1}
                     className="flex items-center justify-center transition-all disabled:opacity-30"
-                    style={{ width: "44px", height: "52px", color: "var(--color-cq-text)", cursor: cantidad <= 1 ? "not-allowed" : "pointer", background: "none", border: "none" }}>
+                    style={{ width: "56px", height: "52px", color: "var(--color-cq-text)", cursor: cantidad <= 1 ? "not-allowed" : "pointer", background: "none", border: "none" }}>
                     {Icons.minus}
                   </button>
                   <span className="text-base font-bold tabular-nums"
-                    style={{ minWidth: "36px", textAlign: "center", fontFamily: "var(--font-display)", color: "var(--color-cq-text)" }}>
+                    style={{ minWidth: "48px", textAlign: "center", fontFamily: "var(--font-display)", color: "var(--color-cq-text)" }}>
                     {cantidad}
                   </span>
                   <button onClick={incrementar}
                     className="flex items-center justify-center transition-all"
-                    style={{ width: "44px", height: "52px", color: "var(--color-cq-text)", cursor: "pointer", background: "none", border: "none" }}>
+                    style={{ width: "56px", height: "52px", color: "var(--color-cq-text)", cursor: "pointer", background: "none", border: "none" }}>
                     {Icons.plus}
                   </button>
                 </div>
 
                 {!ventaEnLinea ? (
-                  <BotonCotizacion producto={producto.titulo} slug={producto.slug} detalle={[selectedVariante?.sku, selectedVariante?.atributos.map(a => `${a.atributo}: ${a.valor}`).join(", "), `Cantidad: ${cantidad}`].filter(Boolean).join(" ? ")} />
+                  <BotonCotizacion className="h-[52px] min-w-[160px] flex-1" producto={producto.titulo} slug={producto.slug} detalle={[selectedVariante?.sku, selectedVariante?.atributos.map(a => `${a.atributo}: ${a.valor}`).join(", "), `Cantidad: ${cantidad}`].filter(Boolean).join(" ? ")} />
                 ) : <motion.button
                   onClick={handleAgregarCarrito}
                   disabled={!tieneStock}
@@ -323,29 +344,48 @@ export function ProductDetailClient({ producto }: Props) {
                   {added ? "Agregado" : tieneStock ? "Agregar al carrito" : "Sin stock"}
                 </motion.button>}
 
-                <motion.button
-                  onClick={handleWishlist}
-                  whileHover={{ scale: 1.08 }}
-                  whileTap={{ scale: 0.94 }}
-                  className="flex items-center justify-center rounded-xl shrink-0"
-                  style={{ width: "52px", height: "52px", border: "1.5px solid var(--color-cq-border)", background: "var(--color-cq-surface)", color: "var(--color-cq-muted)", cursor: "pointer" }}
-                  title={wished ? "Quitar de favoritos" : "Agregar a favoritos"}
-                >
-                  <HeartIcon filled={wished} />
-                </motion.button>
 
-                <ShareButton titulo={producto.titulo} slug={producto.slug} />
               </div>
             </motion.div>
 
-            {/* Especificaciones */}
-            {(producto.metacampos.length > 0 || selectedVariante || producto.envio) && (
-              <motion.div {...fadeUp(0.42)}>
-                <ProductSpecs metacampos={producto.metacampos} varianteActiva={selectedVariante} envio={producto.envio} />
-              </motion.div>
+            {tieneEspecificaciones && (
+              <button
+                type="button"
+                onClick={() => {
+                  const seccion = document.getElementById("especificaciones");
+                  seccion?.focus({ preventScroll: true });
+                  seccion?.scrollIntoView({
+                    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+                    block: "start",
+                  });
+                }}
+                className="inline-flex items-center gap-2 self-start py-2 text-sm font-semibold hover:underline"
+                style={{ color: "var(--color-cq-accent)", cursor: "pointer" }}
+                aria-controls="especificaciones"
+              >
+                Ver especificaciones
+                <i className="fa-solid fa-arrow-down text-xs" aria-hidden="true" />
+              </button>
             )}
           </div>
         </div>
+        {tieneEspecificaciones && (
+          <section
+            id="especificaciones"
+            aria-labelledby="titulo-especificaciones"
+            tabIndex={-1}
+            className="mt-16 border-t pt-10 sm:mt-20 sm:pt-14"
+            style={{ borderColor: "var(--color-cq-border)", scrollMarginTop: "9rem" }}
+          >
+            <h2 id="titulo-especificaciones" className="text-display mb-6 text-2xl sm:text-3xl"
+              style={{ color: "var(--color-cq-text)" }}>
+              Especificaciones del producto
+            </h2>
+            <div className="w-full max-w-3xl">
+              <ProductSpecs metacampos={producto.metacampos} varianteActiva={selectedVariante} envio={producto.envio} />
+            </div>
+          </section>
+        )}
       </div>
     </main>
   );

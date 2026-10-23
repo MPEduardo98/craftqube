@@ -136,10 +136,10 @@ export function ShareButton({ titulo, slug }: Props) {
         whileTap={{ scale: 0.94 }}
         className="flex items-center justify-center rounded-xl"
         style={{
-          width:      "52px",
-          height:     "52px",
-          border:     "1.5px solid var(--color-cq-border)",
-          background: "var(--color-cq-surface)",
+          width:      "44px",
+          height:     "44px",
+          border:     "none",
+          background: "transparent",
           color:      "var(--color-cq-muted)",
           cursor:     "pointer",
         }}
@@ -161,7 +161,7 @@ export function ShareButton({ titulo, slug }: Props) {
             transition={{ duration: 0.16, ease: "easeOut" }}
             className="absolute right-0 z-50 rounded-xl overflow-hidden"
             style={{
-              bottom:     "calc(100% + 8px)",
+              top:        "calc(100% + 8px)",
               minWidth:   "196px",
               background: "var(--color-cq-surface)",
               border:     "1px solid var(--color-cq-border)",
