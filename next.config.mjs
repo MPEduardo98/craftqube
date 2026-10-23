@@ -13,6 +13,22 @@ const nextConfig = {
   // "permanent: true" emite HTTP 301 → Google transfiere el ranking.
   async redirects() {
     return [
+      // ── www → dominio sin www ──────────────────────────────
+      // Sin esto ambos hosts responden 200 con el mismo contenido
+      // y Google los trata como duplicados.
+      {
+        source:      "/:path*",
+        has:         [{ type: "host", value: "www.craftqube.mx" }],
+        destination: "https://craftqube.mx/:path*",
+        permanent:   true,
+      },
+      // /collections/all era el catálogo completo de Shopify; no
+      // existe una categoría "all". Va antes de la regla genérica.
+      {
+        source:      "/collections/all",
+        destination: "/catalogo",
+        permanent:   true,
+      },
       // /collections/perfiles-de-aluminio → /categoria/perfiles-de-aluminio
       {
         source:      "/collections/:slug",

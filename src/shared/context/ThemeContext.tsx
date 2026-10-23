@@ -26,17 +26,12 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>("light");
-  const [mounted, setMounted] = useState(false);
 
+  // ThemeScript ya puso data-theme en <html> antes de pintar; aquí
+  // sólo se sincroniza el estado de React con ese valor.
   useEffect(() => {
-    const stored = localStorage.getItem("cq-theme") as Theme | null;
-    const preferred = window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
-    const initial = stored ?? preferred;
-    setTheme(initial);
-    document.documentElement.setAttribute("data-theme", initial);
-    setMounted(true);
+    const actual = document.documentElement.getAttribute("data-theme");
+    setTheme(actual === "dark" ? "dark" : "light");
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -48,9 +43,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // Avoid flash on SSR
-  if (!mounted) return null;
-
+  // Nunca devolver null antes de montar: este provider envuelve todo
+  // el sitio y el HTML del servidor llegaría vacío a Google.
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme, isDark: theme === "dark" }}>
       {children}

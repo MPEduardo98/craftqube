@@ -7,6 +7,7 @@ import { getProductoBySlug }       from "@/features/products/lib/getProductoBySl
 import { getAllProductoSlugs }      from "@/features/products/lib/getAllSlugs";
 import { buildProductJsonLd, buildBreadcrumbJsonLd } from "@/shared/lib/seo/jsonld";
 import { richTextToPlain }         from "@/shared/lib/rich-text";
+import { resolveImageUrl }         from "@/features/media/lib/resolveImageUrl";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.mx";
 
@@ -25,22 +26,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!producto) return { title: "Producto no encontrado — Craftqube" };
 
-  const title        = producto.meta_titulo      ?? `${producto.titulo} — Craftqube`;
+  // `absolute`: el template del layout raíz añadiría otro " — CraftQube".
+  const title        = producto.meta_titulo      ?? `${producto.titulo} — CraftQube`;
   // La descripción es HTML del editor: en metadatos va siempre como texto plano.
   const description  = producto.meta_descripcion
     ?? (richTextToPlain(producto.descripcion, 160) || undefined);
   const canonicalUrl = `${SITE_URL}/producto/${slug}`;
 
   const imagenPrincipal = producto.imagenes[0];
-  const ogImageUrl = imagenPrincipal
-    ? `/uploads/productos/${producto.id}/${imagenPrincipal.url.split("/").pop()}`
-    : "/og-default.jpg";
+  const ogImageUrl =
+    resolveImageUrl(imagenPrincipal?.url, producto.id) ?? "/og-default.jpg";
 
   const varianteDefault = producto.variantes.find((v) => v.es_default) ?? producto.variantes[0];
   const precio          = varianteDefault?.precio_final;
 
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: {
       canonical: canonicalUrl,

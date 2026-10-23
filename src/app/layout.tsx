@@ -11,6 +11,7 @@ import { AuthProvider }     from "@/features/auth/context/AuthContext";
 import { AlertProvider }    from "@/shared/context/AlertContext";
 import { AlertContainer }   from "@/shared/components/alerts/AlertContainer";
 import { buildOrganizationJsonLd } from "@/shared/lib/seo/jsonld";
+import { ThemeScript }      from "@/shared/components/ThemeScript";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.mx";
@@ -85,7 +86,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   const organizationLd = buildOrganizationJsonLd();
 
   return (
-    <html lang="es">
+    // suppressHydrationWarning: ThemeScript agrega data-theme a <html>
+    // antes de hidratar, y eso no viene en el HTML del servidor.
+    <html lang="es" suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
       <body className={`${barlowCondensed.variable} ${dmSans.variable} ${jetbrainsMono.variable} antialiased`}>
         <script
           type="application/ld+json"

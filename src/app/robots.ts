@@ -26,12 +26,11 @@ export default function robots(): MetadataRoute.Robots {
           "/checkout/",
           "/cuenta/",
           "/admin/",
-          "/_next/",
           "/login",
           "/registro",
-          // La categoría vive en /categoria/<slug>. Esta variante
-          // sólo existe como redirect 301 hacia allá.
-          "/catalogo?cat=",
+          // Ni /_next/ (CSS, JS e imágenes optimizadas: sin ellos Google
+          // no puede renderizar) ni /catalogo?cat= (si se bloquea, Google
+          // no ve el 301 a /categoria/ y no transfiere el ranking).
         ],
       },
     ],
