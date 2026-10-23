@@ -33,7 +33,7 @@ function CheckoutOnlyHeader() {
     <header
       className="sticky top-0 left-0 right-0 z-50"
       style={{
-        backgroundColor: "#1224a0",
+        backgroundColor: "var(--color-cq-primary)",
         boxShadow: "0 4px 24px rgba(18,36,160,0.5)",
       }}
     >
@@ -107,7 +107,7 @@ function FullHeader({ initialCategorias }: Required<HeaderProps>) {
       ref={headerRef}
       className="sticky top-0 left-0 right-0 z-50"
       style={{
-        backgroundColor: "#1224a0",
+        backgroundColor: "var(--color-cq-primary)",
         boxShadow: "0 4px 24px rgba(18,36,160,0.5)",
       }}
     >
