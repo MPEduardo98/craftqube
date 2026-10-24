@@ -81,8 +81,8 @@ function CategoryCard({ cat, index }: { cat: CategoriaDB; index: number }) {
   return (
     <Link
       href={href}
+      className="flex h-full min-w-0 flex-col"
       style={{
-        display:        "block",
         borderRadius:   "1rem",
         overflow:       "hidden",
         background:     "var(--color-cq-surface)",
@@ -95,7 +95,7 @@ function CategoryCard({ cat, index }: { cat: CategoriaDB; index: number }) {
       onMouseLeave={() => setHovered(false)}
     >
       {/* ── Imagen 1:1 ── */}
-      <div className="relative overflow-hidden" style={{ aspectRatio: "1 / 1" }}>
+      <div className="relative w-full shrink-0 overflow-hidden" style={{ aspectRatio: "1 / 1" }}>
         {src ? (
           <motion.div
             className="absolute inset-0"
@@ -141,7 +141,7 @@ function CategoryCard({ cat, index }: { cat: CategoriaDB; index: number }) {
       </div>
 
       {/* ── Info ── */}
-      <div className="p-5">
+      <div className="flex h-[200px] flex-col p-5">
         <p style={{
           fontFamily:    "var(--font-mono)",
           fontSize:      "0.6rem",
@@ -159,6 +159,10 @@ function CategoryCard({ cat, index }: { cat: CategoriaDB; index: number }) {
           color:         "var(--color-cq-text)",
           letterSpacing: "-0.01em",
           marginBottom:  8,
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
         }}>
           {cat.nombre}
         </h3>
@@ -176,7 +180,7 @@ function CategoryCard({ cat, index }: { cat: CategoriaDB; index: number }) {
             {cat.descripcion}
           </p>
         )}
-        <div className="flex items-center justify-between mt-4">
+        <div className="mt-auto flex items-center justify-between pt-4">
           <span style={{
             display:       "inline-flex",
             alignItems:    "center",
@@ -240,7 +244,7 @@ export function CategoriesSection({ categorias }: { categorias: CategoriaDB[] })
             viewport={{ once: true, margin: "-60px" }}
           >
             {categorias.map((cat, index) => (
-              <motion.div key={cat.id} variants={cardVariants}>
+              <motion.div key={cat.id} variants={cardVariants} className="h-full min-w-0">
                 <CategoryCard cat={cat} index={index} />
               </motion.div>
             ))}
