@@ -16,12 +16,15 @@ import Link                        from "next/link";
 import { usePathname, useRouter }  from "next/navigation";
 import { motion }                 from "framer-motion";
 import { useCart }                 from "@mpeduardo98/commerce-core/cart/context/CartContext";
+import { useAuth }                 from "@mpeduardo98/commerce-core/auth/AuthContext";
 import { CheckoutProvider, useCheckout } from "@mpeduardo98/commerce-core/checkout/context/CheckoutContext";
 import { contactoCompleto, envioCompleto } from "@mpeduardo98/commerce-core/checkout/lib/validaciones";
 import { RUTA_PASO, pasoDesdeRuta, type CheckoutStep } from "@mpeduardo98/commerce-core/checkout/types";
 import { CheckoutStepper } from "./CheckoutStepper";
 import { OrderSummary }    from "./OrderSummary";
 import { CuponCard }       from "./CuponCard";
+import { obtenerStripe }   from "../lib/stripe";
+import { precargarDirecciones, olvidarDirecciones } from "../lib/direcciones";
 
 function FontAwesomeLink() {
   return (
@@ -125,7 +128,26 @@ function Marco({ children }: { children: ReactNode }) {
     resumen, cupon, cuponCargando, cuponEtiqueta, aplicarCupon, quitarCupon,
   } = useCheckout();
 
+  const { autenticado } = useAuth();
+
   const listo = hidratado && carritoHidratado;
+
+  /* ── Precarga: lo que necesita el paso siguiente se pide ya ──
+     Código de cada paso, Stripe.js y las direcciones guardadas se
+     descargan mientras el comprador llena el paso actual. Al pulsar
+     "Continuar" todo está en memoria y el paso aparece completo, sin
+     esqueletos que luego se reacomodan. */
+  useEffect(() => {
+    router.prefetch(RUTA_PASO.envio);
+    router.prefetch(RUTA_PASO.pago);
+    router.prefetch(RUTA_PASO.confirmacion);
+    void obtenerStripe();
+  }, [router]);
+
+  useEffect(() => {
+    if (autenticado) void precargarDirecciones(true);
+    else olvidarDirecciones();
+  }, [autenticado]);
 
   /* ── Volver al flujo tras un pedido terminado = compra nueva ──
      El pedido pagado sobrevive a la recarga (la confirmación con los
@@ -143,9 +165,9 @@ function Marco({ children }: { children: ReactNode }) {
 
   /* Hay pedido pagado pero no estamos en la confirmación: o el cobro
      acaba de aceptarse y la navegación va en camino, o se volvió atrás
-     y el efecto de arriba está a punto de cerrarlo. En ninguno de los
-     dos casos tiene sentido pintar el paso; se espera. */
-  const pedidoFueraDeSitio = listo && resultado !== null && paso !== "confirmacion";
+     y el efecto de arriba está a punto de cerrarlo. Se sigue pintando
+     el paso tal cual: cambiarlo por el esqueleto durante esos
+     milisegundos hacía parpadear toda la página. */
 
   /* ── Guard: ¿este paso es alcanzable con lo que hay? ────── */
   const destino: string | null =
@@ -160,9 +182,9 @@ function Marco({ children }: { children: ReactNode }) {
     if (destino) router.replace(destino);
   }, [destino, router]);
 
-  if (!listo || destino || pedidoFueraDeSitio) return <Cargando />;
+  if (!listo || destino) return <Cargando />;
 
-  if (paso !== "confirmacion" && items.length === 0) return <CarritoVacio />;
+  if (paso !== "confirmacion" && items.length === 0 && !resultado) return <CarritoVacio />;
 
   const enConfirmacion = paso === "confirmacion";
 

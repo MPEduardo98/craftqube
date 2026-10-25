@@ -2,21 +2,19 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { motion, AnimatePresence }                  from "framer-motion";
-import {
-  loadStripe,
-  type Stripe as StripeInstance,
-  type StripeElements,
-  type StripeCardNumberElement,
+import { motion }                                   from "framer-motion";
+import type {
+  Stripe as StripeInstance,
+  StripeElements,
+  StripeCardNumberElement,
 } from "@stripe/stripe-js";
+import { obtenerStripe }  from "../lib/stripe";
 import { useCart }        from "@mpeduardo98/commerce-core/cart/context/CartContext";
 import { useAlert }       from "@mpeduardo98/commerce-core/context/AlertContext";
 import type { DatosPago, DatosEnvio, DatosContacto } from "@mpeduardo98/commerce-core/checkout/types";
 import { formatMoneda }   from "@mpeduardo98/commerce-core/lib/format";
 import type { SpeiConfirmData, OxxoConfirmData, PaymentConfirmData, ResultadoPago } from "@mpeduardo98/commerce-core/checkout/types";
 export type { SpeiConfirmData, OxxoConfirmData, PaymentConfirmData, ResultadoPago };
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 function Spinner({ light = false }: { light?: boolean }) {
   return (
@@ -103,6 +101,11 @@ interface Props {
   cuponCodigo?:   string | null;
 }
 
+const PANEL: React.CSSProperties = {
+  background: "var(--color-cq-surface-2)", border: "1px solid var(--color-cq-border)",
+  animation: "fade-in .16s ease",
+};
+
 const METODOS: { id: Metodo; label: string; icon: string; desc: string }[] = [
   { id: "tarjeta",       label: "Tarjeta de crédito / débito", icon: "fa-solid fa-credit-card",     desc: "Visa, Mastercard, Amex · Procesado con Stripe" },
   { id: "transferencia", label: "Transferencia SPEI",          icon: "fa-solid fa-building-columns", desc: "Pago bancario · Confirmación en 1–2 hrs" },
@@ -148,7 +151,7 @@ function PanelTarjeta({ cardName, onCardNameChange, onIniciarPago, onCompletado,
       invalid: { color: "#ef4444" },
     };
 
-    stripePromise
+    obtenerStripe()
       .then((s) => {
         if (!s || !vivo) return;
         elements = s.elements();
@@ -169,9 +172,16 @@ function PanelTarjeta({ cardName, onCardNameChange, onIniciarPago, onCompletado,
         expiry.on("focus", () => setFocused("expiry")); expiry.on("blur", () => setFocused(""));
         cvc.on("focus",    () => setFocused("cvc"));    cvc.on("blur",    () => setFocused(""));
 
+        // El marcador de cada campo se retira cuando su iframe ya pintó,
+        // no antes: así nunca queda un hueco entre uno y otro.
+        let pendientes = 3;
+        const unoListo = () => { if (--pendientes === 0 && vivo) setMounting(false); };
+        number.on("ready", unoListo);
+        expiry.on("ready", unoListo);
+        cvc.on("ready",    unoListo);
+
         setStripe(s);
         setCardEl(number);
-        setMounting(false);
       })
       .catch((err) => {
         console.error("[stripe] No se pudo cargar el formulario:", err);
@@ -218,6 +228,7 @@ function PanelTarjeta({ cardName, onCardNameChange, onIniciarPago, onCompletado,
   }, [stripe, cardEl, cardName, onIniciarPago, onCompletado, onError]);
 
   const fieldBox = (id: string): React.CSSProperties => ({
+    position: "relative",
     display: "flex", alignItems: "center", height: 46, padding: "0 12px", borderRadius: 10,
     background: "var(--color-cq-surface-2)",
     border: `1.5px solid ${focused === id ? "var(--color-cq-accent)" : "var(--color-cq-border)"}`,
@@ -225,19 +236,23 @@ function PanelTarjeta({ cardName, onCardNameChange, onIniciarPago, onCompletado,
     transition: "border-color .2s, box-shadow .2s",
   });
 
+  /* Mientras Stripe monta su iframe, el campo ya está: mismo tamaño,
+     mismo borde y el mismo texto de ejemplo que pondrá Stripe. Cuando
+     el iframe pinta, se cruzan sin que nada se mueva. */
+  const marcador = (texto: string) => (
+    <span aria-hidden style={{ position: "absolute", left: 13, top: 0, bottom: 0, display: "flex", alignItems: "center",
+      fontFamily: "system-ui, -apple-system, sans-serif", fontSize: 14, color: "#9ca3af", pointerEvents: "none",
+      opacity: mounting ? 1 : 0, transition: "opacity .15s" }}>
+      {texto}
+    </span>
+  );
+  const iframe: React.CSSProperties = { width: "100%", opacity: mounting ? 0 : 1, transition: "opacity .15s" };
+
   const bloqueado = paying || mounting || deshabilitado;
 
   return (
     <div className="flex flex-col gap-4">
-      <AnimatePresence>
-        {mounting && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="flex items-center justify-center gap-3 py-8">
-            <Spinner /><span style={{ fontFamily: "var(--font-body)", fontSize: "0.85rem", color: "var(--color-cq-muted)" }}>Cargando formulario…</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <div style={{ opacity: mounting ? 0 : 1, transition: "opacity .3s", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div className="flex flex-col gap-1.5">
           <FieldLabel focused={focused === "name"}>Nombre del titular</FieldLabel>
           <input value={cardName} onChange={(e) => onCardNameChange(e.target.value)}
@@ -251,16 +266,16 @@ function PanelTarjeta({ cardName, onCardNameChange, onIniciarPago, onCompletado,
         </div>
         <div className="flex flex-col gap-1.5">
           <FieldLabel focused={focused === "number"}>Número de tarjeta</FieldLabel>
-          <div style={fieldBox("number")}><div id="stripe-number" style={{ width: "100%" }} /></div>
+          <div style={fieldBox("number")}>{marcador("1234  5678  9012  3456")}<div id="stripe-number" style={iframe} /></div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
             <FieldLabel focused={focused === "expiry"}>Vencimiento</FieldLabel>
-            <div style={fieldBox("expiry")}><div id="stripe-expiry" style={{ width: "100%" }} /></div>
+            <div style={fieldBox("expiry")}>{marcador("MM/AA")}<div id="stripe-expiry" style={iframe} /></div>
           </div>
           <div className="flex flex-col gap-1.5">
             <FieldLabel focused={focused === "cvc"}>CVC</FieldLabel>
-            <div style={fieldBox("cvc")}><div id="stripe-cvc" style={{ width: "100%" }} /></div>
+            <div style={fieldBox("cvc")}>{marcador("CVC")}<div id="stripe-cvc" style={iframe} /></div>
           </div>
         </div>
       </div>
@@ -448,8 +463,8 @@ export function StepPago({
   const totalListo = totalServidor !== null && totalServidor > 0 && !bajoMinimo;
 
   return (
-    <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.28, ease: "easeOut" }}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
       className="flex flex-col gap-6">
 
       <div className="flex items-start gap-3">
@@ -510,57 +525,49 @@ export function StepPago({
         })}
       </div>
 
-      {/* Panel activo */}
-      <AnimatePresence mode="wait">
-        {data.metodo === "tarjeta" && (
-          <motion.div key="tarjeta" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }}
-            className="rounded-xl p-5" style={{ background: "var(--color-cq-surface-2)", border: "1px solid var(--color-cq-border)" }}>
-            <PanelTarjeta
-              cardName={cardName}
-              onCardNameChange={(v) => { setCardName(v); onChange({ ...data, nombreTarjeta: v }); }}
-              onIniciarPago={iniciarPagoTarjeta}
-              onCompletado={tarjetaCompletada}
-              onError={(msg) => alertaError(msg, "Pago no completado")}
-              total={totalServidor}
-              moneda={moneda}
-              deshabilitado={!totalListo}
-            />
-          </motion.div>
-        )}
-        {data.metodo === "transferencia" && (
-          <motion.div key="transferencia" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }}
-            className="rounded-xl p-5" style={{ background: "var(--color-cq-surface-2)", border: "1px solid var(--color-cq-border)" }}>
-            <PanelInstruccion
-              icono="fa-solid fa-circle-info"
-              titulo={<>Generaremos una <strong style={{ color: "var(--color-cq-text)" }}>CLABE única</strong> para que realices tu transferencia SPEI desde cualquier banco.</>}
-              cuerpo={<>El pedido se confirmará <strong style={{ color: "var(--color-cq-text)" }}>automáticamente</strong> al recibir el pago.</>}
-              boton="Obtener datos de transferencia"
-              iconoBoton="fa-solid fa-building-columns"
-              onClick={() => pagarAsincrono("transferencia")}
-              loading={cargando}
-              deshabilitado={!totalListo}
-            />
-          </motion.div>
-        )}
-        {data.metodo === "oxxo" && (
-          <motion.div key="oxxo" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }}
-            className="rounded-xl p-5" style={{ background: "var(--color-cq-surface-2)", border: "1px solid var(--color-cq-border)" }}>
-            <PanelInstruccion
-              icono="fa-solid fa-circle-info"
-              titulo={<>Generaremos un <strong style={{ color: "var(--color-cq-text)" }}>código de barras único</strong> para pagar en cualquier tienda OXXO.</>}
-              cuerpo={<>El voucher es válido por <strong style={{ color: "var(--color-cq-text)" }}>72 horas</strong>. El pedido se confirmará automáticamente al recibir el pago.</>}
-              boton="Generar código OXXO"
-              iconoBoton="fa-solid fa-barcode"
-              onClick={() => pagarAsincrono("oxxo")}
-              loading={cargando}
-              deshabilitado={!totalListo}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Los tres paneles se montan desde el principio y sólo se muestra
+          el elegido. Cambiar de método es instantáneo, y los campos de
+          Stripe no se destruyen y recrean cada vez que se vuelve a tarjeta.
+          La animación CSS se reinicia sola al dejar de estar oculto. */}
+      <div hidden={data.metodo !== "tarjeta"}
+        className="rounded-xl p-5" style={PANEL}>
+        <PanelTarjeta
+          cardName={cardName}
+          onCardNameChange={(v) => { setCardName(v); onChange({ ...data, nombreTarjeta: v }); }}
+          onIniciarPago={iniciarPagoTarjeta}
+          onCompletado={tarjetaCompletada}
+          onError={(msg) => alertaError(msg, "Pago no completado")}
+          total={totalServidor}
+          moneda={moneda}
+          deshabilitado={!totalListo}
+        />
+      </div>
+      <div hidden={data.metodo !== "transferencia"}
+        className="rounded-xl p-5" style={PANEL}>
+        <PanelInstruccion
+          icono="fa-solid fa-circle-info"
+          titulo={<>Generaremos una <strong style={{ color: "var(--color-cq-text)" }}>CLABE única</strong> para que realices tu transferencia SPEI desde cualquier banco.</>}
+          cuerpo={<>El pedido se confirmará <strong style={{ color: "var(--color-cq-text)" }}>automáticamente</strong> al recibir el pago.</>}
+          boton="Obtener datos de transferencia"
+          iconoBoton="fa-solid fa-building-columns"
+          onClick={() => pagarAsincrono("transferencia")}
+          loading={cargando}
+          deshabilitado={!totalListo}
+        />
+      </div>
+      <div hidden={data.metodo !== "oxxo"}
+        className="rounded-xl p-5" style={PANEL}>
+        <PanelInstruccion
+          icono="fa-solid fa-circle-info"
+          titulo={<>Generaremos un <strong style={{ color: "var(--color-cq-text)" }}>código de barras único</strong> para pagar en cualquier tienda OXXO.</>}
+          cuerpo={<>El voucher es válido por <strong style={{ color: "var(--color-cq-text)" }}>72 horas</strong>. El pedido se confirmará automáticamente al recibir el pago.</>}
+          boton="Generar código OXXO"
+          iconoBoton="fa-solid fa-barcode"
+          onClick={() => pagarAsincrono("oxxo")}
+          loading={cargando}
+          deshabilitado={!totalListo}
+        />
+      </div>
 
       <motion.button type="button" onClick={volver} whileTap={{ scale: 0.98 }}
         className="flex items-center gap-2 self-start"

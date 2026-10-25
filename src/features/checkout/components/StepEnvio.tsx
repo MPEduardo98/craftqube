@@ -8,25 +8,9 @@ import { FormField }                  from "./FormField";
 import { validarEnvio }               from "@mpeduardo98/commerce-core/checkout/lib/validaciones";
 import type { DatosEnvio }            from "@mpeduardo98/commerce-core/checkout/types";
 import { ESTADOS_MX }                 from "@mpeduardo98/commerce-core/checkout/types";
-
-interface DireccionGuardada {
-  id:               number;
-  alias:            string | null;
-  nombre:           string;
-  apellido:         string;
-  calle:            string;
-  numero_ext:       string;
-  numero_int:       string | null;
-  colonia:          string;
-  ciudad:           string;
-  municipio:        string | null;
-  estado:           string;
-  codigo_postal:    string;
-  pais:             string;
-  referencias:      string | null;
-  empresa:          string | null;
-  es_predeterminada: boolean;
-}
+import {
+  precargarDirecciones, direccionesListas, type DireccionGuardada,
+} from "../lib/direcciones";
 
 interface Props {
   data:              DatosEnvio;
@@ -40,32 +24,17 @@ interface Props {
 export function StepEnvio({ data, onChange, onNext, onBack }: Props) {
   const { autenticado } = useAuth();
   const [errors, setErrors]           = useState<Partial<Record<keyof DatosEnvio, string>>>({});
-  const [direcciones, setDirecciones] = useState<DireccionGuardada[]>([]);
-  const [cargandoDir, setCargandoDir] = useState(false);
-  const [mostrarForm, setMostrarForm] = useState(false);
-  const [dirSeleccionada, setDirSel]  = useState<number | null>(null);
-
-  /* ── Cargar direcciones guardadas ── */
-  useEffect(() => {
-    if (!autenticado) { setMostrarForm(true); return; }
-    setCargandoDir(true);
-    fetch("/api/users/addresses", { credentials: "include" })
-      .then((r) => r.json())
-      .then((j) => {
-        if (j.success && j.data?.length > 0) {
-          setDirecciones(j.data);
-          const pred = j.data.find((d: DireccionGuardada) => d.es_predeterminada) ?? j.data[0];
-          aplicarDireccion(pred);
-          setDirSel(pred.id);
-          setMostrarForm(false);
-        } else {
-          setMostrarForm(true);
-        }
-      })
-      .catch(() => setMostrarForm(true))
-      .finally(() => setCargandoDir(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autenticado]);
+  /* Si el marco ya trajo las direcciones (lo normal: se piden mientras
+     se llena el contacto), el paso arranca con ellas y sin esqueleto. */
+  const [previas]                     = useState(() => (autenticado ? direccionesListas() : null));
+  const [direcciones, setDirecciones] = useState<DireccionGuardada[]>(previas ?? []);
+  const [recibidas, setRecibidas]     = useState(previas !== null);
+  const cargandoDir = autenticado && !recibidas;
+  const [mostrarForm, setMostrarForm] = useState(!autenticado || (previas !== null && previas.length === 0));
+  const [dirSeleccionada, setDirSel]  = useState<number | null>(() => {
+    if (!previas?.length) return null;
+    return (previas.find((d) => d.es_predeterminada) ?? previas[0]).id;
+  });
 
   const aplicarDireccion = (dir: DireccionGuardada) => {
     onChange({
@@ -84,6 +53,36 @@ export function StepEnvio({ data, onChange, onNext, onBack }: Props) {
       guardarDireccion: false,
     });
   };
+
+  const elegirPredeterminada = (lista: DireccionGuardada[]) => {
+    if (lista.length > 0) {
+      setDirecciones(lista);
+      const pred = lista.find((d) => d.es_predeterminada) ?? lista[0];
+      aplicarDireccion(pred);
+      setDirSel(pred.id);
+      setMostrarForm(false);
+    } else {
+      setDirecciones([]);
+      setMostrarForm(true);
+    }
+  };
+
+  /* ── Direcciones guardadas ── */
+  useEffect(() => {
+    // Sin sesión el formulario ya arranca abierto.
+    if (!autenticado) return;
+    // Con caché el estado local ya nació listo: sólo se vuelca la
+    // predeterminada a los datos de envío.
+    if (previas !== null) {
+      if (previas.length > 0) aplicarDireccion(previas.find((d) => d.es_predeterminada) ?? previas[0]);
+      return;
+    }
+    let vivo = true;
+    precargarDirecciones()
+      .then((lista) => { if (vivo) { elegirPredeterminada(lista); setRecibidas(true); } });
+    return () => { vivo = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autenticado]);
 
   /* Mismo criterio que el guard de /checkout/pago: si esto pasa,
      aquel deja entrar. Ver lib/validaciones. */
@@ -104,9 +103,9 @@ export function StepEnvio({ data, onChange, onNext, onBack }: Props) {
   /* ── Loader ── */
   if (cargandoDir) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-6">
         <div className="flex items-start gap-3">
-          <div className="flex items-center justify-center rounded-xl"
+          <div className="flex items-center justify-center rounded-xl mt-0.5"
             style={{ width: 36, height: 36, background: "rgba(37,99,235,0.08)", flexShrink: 0 }}>
             <i className="fa-solid fa-location-dot" style={{ fontSize: "0.9rem", color: "var(--color-cq-accent)" }} />
           </div>
@@ -115,6 +114,9 @@ export function StepEnvio({ data, onChange, onNext, onBack }: Props) {
               color: "var(--color-cq-text)", letterSpacing: "-0.01em" }}>
               Dirección de envío
             </h2>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: "0.85rem", color: "var(--color-cq-muted)", marginTop: 3 }}>
+              Elige una dirección o agrega una nueva
+            </p>
           </div>
         </div>
         <div className="flex flex-col gap-3">
@@ -124,16 +126,15 @@ export function StepEnvio({ data, onChange, onNext, onBack }: Props) {
                 border: "1px solid var(--color-cq-border)" }} />
           ))}
         </div>
-      </motion.div>
+      </div>
     );
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 24 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -24 }}
-      transition={{ duration: 0.28, ease: "easeOut" }}
+      initial={previas !== null || !autenticado ? { opacity: 0 } : false}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
       className="flex flex-col gap-6"
     >
       {/* Título */}
@@ -223,7 +224,7 @@ export function StepEnvio({ data, onChange, onNext, onBack }: Props) {
       )}
 
       {/* ── Formulario de dirección ── */}
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {(mostrarForm || !autenticado || direcciones.length === 0) && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}

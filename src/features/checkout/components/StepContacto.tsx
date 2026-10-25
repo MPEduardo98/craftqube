@@ -60,10 +60,9 @@ export function StepContacto({ data, onChange, onNext }: Props) {
   /* ── Render ── */
   return (
     <motion.div
-      initial={{ opacity: 0, x: 24 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -24 }}
-      transition={{ duration: 0.28, ease: "easeOut" }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
       className="flex flex-col gap-6"
     >
       {/* Título */}
