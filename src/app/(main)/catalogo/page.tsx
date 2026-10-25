@@ -1,3 +1,4 @@
+import { AnalyticsPage } from "@mpeduardo98/commerce-core/analytics/Analytics";
 import { getVentaPublica } from "@mpeduardo98/commerce-core/venta";
 // app/(main)/catalogo/page.tsx
 // ─────────────────────────────────────────────────────────────
@@ -67,6 +68,7 @@ export default async function CatalogoPage({ searchParams }: PageProps) {
 
   return (
     <>
+      <AnalyticsPage page="catalog" />
       {/* H1 semántico en el servidor: CatalogClient es "use client" y
           llega por streaming, así que su encabezado no estaría en el
           HTML inicial que rastrea Google. */}

@@ -1,3 +1,4 @@
+import { AnalyticsPage } from "@mpeduardo98/commerce-core/analytics/Analytics";
 import type { Metadata } from "next";
 import { HeroSection } from "@/features/marketing/components/home/HeroSection";
 import { CatalogoInicio } from "@/features/marketing/components/home/CatalogoInicio";
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
 export default function HomePage() {
   return (
     <>
+      <AnalyticsPage page="home" />
       <HeroSection />
       <CatalogoInicio />
       <WhyCraftqubeSection />

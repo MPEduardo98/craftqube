@@ -1,4 +1,5 @@
 // app/(auth)/login/page.tsx
+import { AnalyticsPage } from "@mpeduardo98/commerce-core/analytics/Analytics";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LoginForm } from "@/features/auth/components/LoginForm";
@@ -15,6 +16,7 @@ export default async function LoginPage() {
   // de lo contrario el build de producción falla al prerenderizar.
   return (
     <Suspense fallback={null}>
+      <AnalyticsPage page="login" />
       <LoginForm />
     </Suspense>
   );

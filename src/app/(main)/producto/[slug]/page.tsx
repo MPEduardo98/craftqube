@@ -1,4 +1,5 @@
 // app/(main)/producto/[slug]/page.tsx
+import { AnalyticsPage } from "@mpeduardo98/commerce-core/analytics/Analytics";
 import { getVentaPublica } from "@mpeduardo98/commerce-core/venta";
 import { jsonLdProducto } from "@mpeduardo98/commerce-core/seo";
 import type { Metadata }           from "next";
@@ -110,6 +111,7 @@ export default async function ProductoPage({ params }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
 
+      <AnalyticsPage page="product" productId={producto.id} />
       <ProductDetailClient producto={producto} />
 
       {categoriaSlug && (

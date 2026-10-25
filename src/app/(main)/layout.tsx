@@ -4,6 +4,7 @@
 // Solo las rutas dentro de app/(main)/ renderizan Header y Footer.
 // /admin, /auth, etc. quedan completamente limpios.
 // ─────────────────────────────────────────────────────────────
+import { AvisoAnalitica } from "@/shared/components/analitica/AvisoAnalitica";
 import { getContactoPublico } from "@mpeduardo98/commerce-core/contacto";
 import { getVentaPublica } from "@mpeduardo98/commerce-core/venta";
 import { Header }    from "@/shared/components/header/Header";
@@ -29,6 +30,7 @@ export default async function MainLayout({
           chocar con el header. */}
       <main style={{ minHeight: "100vh" }}>{children}</main>
       <Footer categorias={categorias} contactoActivo={contacto.activo} />
+      <AvisoAnalitica />
     </>
   );
 }

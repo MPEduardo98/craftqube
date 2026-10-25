@@ -1,6 +1,7 @@
 // app/(auth)/registro/components/RegisterForm.tsx
 "use client";
 
+import { AnalyticsRegistrationStart } from "@mpeduardo98/commerce-core/analytics/Analytics";
 import { useState }               from "react";
 import Link                       from "next/link";
 import Image                      from "next/image";
@@ -572,6 +573,7 @@ export function RegisterForm() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} noValidate style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <AnalyticsRegistrationStart />
 
             {/* Nombre + Apellido */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>

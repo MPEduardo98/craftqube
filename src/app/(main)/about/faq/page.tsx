@@ -1,4 +1,5 @@
 // app/(main)/faq/page.tsx
+import { AnalyticsPage } from "@mpeduardo98/commerce-core/analytics/Analytics";
 import type { Metadata } from "next";
 import { FAQHero } from "@/features/marketing/components/faq/FAQHero";
 import { FAQAccordion } from "@/features/marketing/components/faq/FAQAccordion";
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
 export default function FAQPage() {
   return (
     <>
+      <AnalyticsPage page="faq" />
       <FAQHero />
       <FAQAccordion />
     </>

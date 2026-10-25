@@ -9,6 +9,7 @@
 // manipuló la cookie o el token expiró entre el middleware
 // y este render, redirige desde el servidor sin exponer HTML.
 // ─────────────────────────────────────────────────────────────
+import { AnalyticsPage } from "@mpeduardo98/commerce-core/analytics/Analytics";
 import { redirect }       from "next/navigation";
 import { headers }        from "next/headers";
 import type { Metadata }  from "next";
@@ -32,5 +33,10 @@ export default async function CuentaLayout({
     redirect("/login?redirect=/cuenta");
   }
 
-  return <AccountLayout>{children}</AccountLayout>;
+  return (
+    <AccountLayout>
+      <AnalyticsPage page="account" />
+      {children}
+    </AccountLayout>
+  );
 }

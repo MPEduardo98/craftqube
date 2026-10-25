@@ -1,4 +1,5 @@
 // app/(main)/politica-de-reembolso/page.tsx
+import { AnalyticsPage } from "@mpeduardo98/commerce-core/analytics/Analytics";
 import type { Metadata } from "next";
 import { ReembolsoContent } from "@/features/legal/components/ReembolsoContent";
 
@@ -9,5 +10,10 @@ export const metadata: Metadata = {
 };
 
 export default function PoliticaReembolsoPage() {
-  return <ReembolsoContent />;
+  return (
+    <>
+      <AnalyticsPage page="policy_refund" />
+      <ReembolsoContent />
+    </>
+  );
 }

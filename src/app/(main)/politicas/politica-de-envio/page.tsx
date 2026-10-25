@@ -1,4 +1,5 @@
 // app/(main)/politica-de-envio/page.tsx
+import { AnalyticsPage } from "@mpeduardo98/commerce-core/analytics/Analytics";
 import type { Metadata } from "next";
 import { EnvioContent } from "@/features/legal/components/EnvioContent";
 
@@ -9,5 +10,10 @@ export const metadata: Metadata = {
 };
 
 export default function PoliticaEnvioPage() {
-  return <EnvioContent />;
+  return (
+    <>
+      <AnalyticsPage page="policy_shipping" />
+      <EnvioContent />
+    </>
+  );
 }

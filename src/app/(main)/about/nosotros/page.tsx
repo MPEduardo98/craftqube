@@ -1,4 +1,5 @@
 // app/(main)/nosotros/page.tsx
+import { AnalyticsPage } from "@mpeduardo98/commerce-core/analytics/Analytics";
 import type { Metadata } from "next";
 import { NosotrosHero }         from "@/features/marketing/components/nosotros/NosotrosHero";
 import { NosotrosIntro }        from "@/features/marketing/components/nosotros/NosotrosIntro";
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
 export default function NosotrosPage() {
   return (
     <>
+      <AnalyticsPage page="about" />
       <NosotrosHero />
       <NosotrosIntro />
       <NosotrosMisionVision />

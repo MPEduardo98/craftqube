@@ -1,6 +1,7 @@
 // app/(main)/carrito/page.tsx
 "use client";
 
+import { AnalyticsPage } from "@mpeduardo98/commerce-core/analytics/Analytics";
 import Image  from "next/image";
 import Link   from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -137,6 +138,7 @@ export default function CarritoPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "var(--color-cq-bg)" }}>
+      <AnalyticsPage page="cart" />
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-12">
 
         {/* Header */}

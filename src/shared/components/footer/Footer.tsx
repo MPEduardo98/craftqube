@@ -5,6 +5,7 @@ import Link             from "next/link";
 import { motion }       from "framer-motion";
 import { CraftqubeLogo }    from "../header/CraftqubeLogo";
 import { CurrencySwitcher } from "./CurrencySwitcher";
+import { abrirPreferenciasAnalitica } from "../analitica/AvisoAnalitica";
 
 interface CategoriaDB {
   id:              number;
@@ -155,6 +156,17 @@ export function Footer({ categorias, contactoActivo = false }: { categorias: Cat
                 )}
               </span>
             ))}
+            <span aria-hidden="true" style={{ color: "rgba(255,255,255,0.12)", fontSize: "10px" }}>·</span>
+            <motion.button
+              type="button"
+              onClick={abrirPreferenciasAnalitica}
+              className="text-xs whitespace-nowrap"
+              style={{ color: "rgba(255,255,255,0.25)", background: "none", border: 0, padding: 0, cursor: "pointer" }}
+              whileHover={{ color: "rgba(255,255,255,0.55)", x: 2 }}
+              transition={{ duration: 0.15 }}
+            >
+              Analítica
+            </motion.button>
           </nav>
 
           <div className="flex items-center gap-4 order-2 sm:order-3">

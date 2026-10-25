@@ -135,6 +135,7 @@ export function HeroSection() {
             <Link
               href="/catalogo"
               className="btn-primary"
+              data-analytics-click="hero_catalogo"
             >
               Ver catálogo
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -143,6 +144,7 @@ export function HeroSection() {
             </Link>
             <Link
               href="/cotizar"
+              data-analytics-click="hero_cotizar"
               style={{
                 display: "inline-flex",
                 alignItems: "center",

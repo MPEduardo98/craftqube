@@ -1,4 +1,5 @@
 // app/(auth)/registro/page.tsx
+import { AnalyticsPage } from "@mpeduardo98/commerce-core/analytics/Analytics";
 import type { Metadata } from "next";
 import { RegisterForm } from "@/features/auth/components/RegisterForm";
 import { redirectIfAuthenticated } from "@/features/auth/lib/getSessionUser";
@@ -10,5 +11,10 @@ export const metadata: Metadata = {
 
 export default async function RegisterPage() {
   await redirectIfAuthenticated();
-  return <RegisterForm />;
+  return (
+    <>
+      <AnalyticsPage page="register" />
+      <RegisterForm />
+    </>
+  );
 }

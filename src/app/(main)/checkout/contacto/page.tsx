@@ -1,4 +1,5 @@
 // app/(main)/checkout/contacto/page.tsx
+import { AnalyticsPage } from "@mpeduardo98/commerce-core/analytics/Analytics";
 import type { Metadata } from "next";
 import { PasoContacto } from "@/features/checkout/components/pasos/PasoContacto";
 
@@ -7,5 +8,10 @@ export const metadata: Metadata = {
 };
 
 export default function ContactoPage() {
-  return <PasoContacto />;
+  return (
+    <>
+      <AnalyticsPage page="checkout_contact" checkout />
+      <PasoContacto />
+    </>
+  );
 }

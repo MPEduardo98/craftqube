@@ -7,6 +7,7 @@ import { useAuth } from "@/features/auth/context/AuthContext";
 import { authClient }      from "@/features/auth/lib/auth-client";
 import { useAlert }        from "@/shared/context/AlertContext";
 import { LoadingOverlay }  from "@/shared/components/ui/LoadingOverlay";
+import { PreferenciasAnalitica } from "./PreferenciasAnalitica";
 
 function formatDate(dateStr: string | null) {
   if (!dateStr) return "—";
@@ -57,6 +58,7 @@ function Field({
           {value || "—"}
         </p>
       )}
+      <PreferenciasAnalitica />
     </div>
   );
 }

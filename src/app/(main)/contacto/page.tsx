@@ -1,4 +1,5 @@
 // app/contacto/page.tsx
+import { AnalyticsPage } from "@mpeduardo98/commerce-core/analytics/Analytics";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getContactoPublico } from "@mpeduardo98/commerce-core/contacto";
@@ -20,6 +21,7 @@ export default async function ContactoPage() {
   if (!config.activo) notFound();
   return (
     <>
+      <AnalyticsPage page="contact" />
       <ContactHero titulo={config.titulo} descripcion={config.descripcion} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 lg:py-24">
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16">

@@ -1,3 +1,4 @@
+import { AnalyticsPage } from "@mpeduardo98/commerce-core/analytics/Analytics";
 import { getVentaPublica } from "@mpeduardo98/commerce-core/venta";
 // app/(main)/categoria/[slug]/page.tsx
 // ─────────────────────────────────────────────────────────────
@@ -131,6 +132,7 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
 
   return (
     <>
+      <AnalyticsPage page="category" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(categoryJsonLd) }} />
 
