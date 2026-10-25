@@ -65,7 +65,7 @@ src/shared/                ← lo que usan VARIAS features: ui/ (botones, inputs
 - Contacto: se configura en `/admin/ajustes/contacto` y los mensajes se consultan en `/admin/contacto`. Crear la página pública de la tienda con `getContactoPublico()` de `@mpeduardo98/commerce-core/contacto` y `ContactoForm` de `@mpeduardo98/commerce-core/contacto/ContactoForm` (props: `config`, `className`, `privacidadUrl`); darle estilos y enlazarla desde la navegación. Si `activo` es false, ocultar el enlace/formulario. Para diseño propio: `GET /api/contacto` entrega las reglas y `POST /api/contacto` recibe los campos. Correo y mensaje son obligatorios. El núcleo guarda la consulta y manda un acuse al visitante y una notificación al correo configurado de la tienda mediante Resend. No implementar estos envíos en el frontend. Ejecutar instalar y migrar al actualizar.
 - Formato e imágenes: `formatPrice` (`@mpeduardo98/commerce-core/lib`), `resolveImageUrl` (`@mpeduardo98/commerce-core/media/resolveImageUrl`).
 - Los providers (`AlertProvider`, `AuthProvider`, `CartProvider`) van en el `layout.tsx` raíz de la tienda.
-- Analítica: el panel está en `/admin/analitica`. Monta `AnalyticsConsent` de `@mpeduardo98/commerce-core/analytics/Analytics` en el layout público con el enlace real de privacidad, y una sola `AnalyticsPage` por página (`page="home"`, o `page="product" productId={producto.id}`; en la entrada del checkout añade `checkout`). Los nombres son etiquetas constantes, nunca URLs ni datos personales. Marca botones con `data-analytics-click="nombre_estatico"`. Dentro del formulario de registro monta `AnalyticsRegistrationStart`; `AuthProvider.register` mide el éxito y `CartProvider.addItem` mide adiciones automáticamente. Si usas authClient directamente, llama `track("registration_complete")` tras éxito desde `@mpeduardo98/commerce-core/analytics/client`. Añade preferencias para revocar con `setAnalyticsConsent(false)`. `AnalyticsDemographics` es una encuesta opcional para adultos. Sin consentimiento no se mide navegación. Instala rutas y migra antes de activar.
+- Analítica: el panel está en `/admin/dashboard`. Monta `AnalyticsConsent` de `@mpeduardo98/commerce-core/analytics/Analytics` en el layout público con el enlace real de privacidad, y una sola `AnalyticsPage` por página (`page="home"`, o `page="product" productId={producto.id}`; en la entrada del checkout añade `checkout`). Los nombres son etiquetas constantes, nunca URLs ni datos personales. Marca botones con `data-analytics-click="nombre_estatico"`. Dentro del formulario de registro monta `AnalyticsRegistrationStart`; `AuthProvider.register` mide el éxito y `CartProvider.addItem` mide adiciones automáticamente. Si usas authClient directamente, llama `track("registration_complete")` tras éxito desde `@mpeduardo98/commerce-core/analytics/client`. Añade preferencias para revocar con `setAnalyticsConsent(false)`. `AnalyticsDemographics` es una encuesta opcional para adultos. Sin consentimiento no se mide navegación. Instala rutas y migra antes de activar.
 
 **SEO** (`@mpeduardo98/commerce-core/seo`): lo que sale de la base (productos, categorías, sitemap) lo arma el núcleo; aquí sólo se conecta. Las páginas propias de la tienda (inicio, nosotros, landings) escriben su propio `metadata`.
 - Layout raíz: `export const generateMetadata = () => metadataTienda()` → nombre, descripción y favicon de `/admin/ajustes`, y el formato `"Página | Tienda"` para todos los títulos (`plantilla` lo cambia).
@@ -74,6 +74,8 @@ src/shared/                ← lo que usan VARIAS features: ui/ (botones, inputs
 - `app/sitemap.ts`: `export default () => sitemapTienda({ paginas: ["/", …] })`. `app/robots.ts`: `export default () => robotsTienda()`.
 - Las URLs por defecto son `/productos/[slug]` y `/categoria/[slug]`. Si la tienda usa otras, pásalas en `rutas: { producto, categoria }` a cada función.
 - La dirección pública sale de `NEXT_PUBLIC_SITE_URL`: sin ella las URLs canónicas apuntan a localhost.
+
+- Pagos: configura los métodos en `/admin/ajustes/pagos`. En la pantalla pública de pago, filtra las opciones con `metodosPago` de `useCheckout()` (null hasta cargar el resumen; [] bloquea pagar), con `data.metodos_pago` de `POST /api/checkout/resumen` o con `GET /api/pagos` (`data.metodos`). Si el método elegido desaparece, pide otra selección. Ante `metodo_pago_desactivado` vuelve a consultar los métodos. El servidor rechaza métodos apagados antes de crear pedidos. SPEI y OXXO sólo están disponibles en MXN. Los ajustes no cancelan instrucciones de pago ya emitidas. Las claves de Stripe se gestionan en el alojamiento; el panel muestra un diagnóstico local sin exponer secretos.
 
 **APIs públicas del núcleo** (ya existen en esta tienda):
 - `POST /api/analytics`
@@ -91,6 +93,7 @@ src/shared/                ← lo que usan VARIAS features: ui/ (botones, inputs
 - `GET /api/exchange-rate`
 - `GET /api/marcas`
 - `POST /api/orders/send-confirmation`
+- `GET /api/pagos`
 - `POST, GET /api/pedidos`
 - `GET /api/pedidos/[id]`
 - `GET /api/productos`
