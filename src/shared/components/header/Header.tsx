@@ -1,7 +1,7 @@
 // app/global/components/header/Header.tsx
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname }  from "next/navigation";
 import Link             from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,6 +9,7 @@ import { NavMenu }        from "./NavMenu";
 import { CartButton }     from "@/features/cart/components/CartButton";
 import { UserButton }     from "./UserButton";
 import { CraftqubeLogo }  from "./CraftqubeLogo";
+import { MenuMovil }      from "./MenuMovil";
 import type { CategoriaNav } from "@/features/categories/lib/getCategorias";
 
 // Re-export del tipo para consumidores externos
@@ -19,14 +20,6 @@ interface HeaderProps {
   initialCategorias?: CategoriaNav[];
   contactoActivo?: boolean;
 }
-
-const mobileLinks = [
-  { label: "Perfiles",    href: "/productos/perfiles" },
-  { label: "Accesorios",  href: "/productos/accesorios" },
-  { label: "Tornillería", href: "/productos/tornilleria" },
-  { label: "Nosotros",    href: "/nosotros" },
-  { label: "Contacto",    href: "/contacto" },
-];
 
 /* ── Header simplificado solo para checkout ──────────────── */
 function CheckoutOnlyHeader() {
@@ -88,13 +81,12 @@ function FullHeader({ initialCategorias, contactoActivo }: Required<HeaderProps>
       .catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* Cerrar al click fuera del header */
+  /* Cerrar al click fuera del header (el sidebar mobile se cierra con su overlay) */
   useEffect(() => {
     const close = (e: MouseEvent) => {
       if (!headerRef.current?.contains(e.target as Node)) {
         setSearchOpen(false);
         setProductsOpen(false);
-        setMobileOpen(false);
       }
     };
     document.addEventListener("mousedown", close);
@@ -102,6 +94,7 @@ function FullHeader({ initialCategorias, contactoActivo }: Required<HeaderProps>
   }, []);
 
   const toggleProducts = () => setProductsOpen((p) => !p);
+  const cerrarMenu     = useCallback(() => setMobileOpen(false), []);
 
   return (
     <header
@@ -158,16 +151,15 @@ function FullHeader({ initialCategorias, contactoActivo }: Required<HeaderProps>
           {/* Hamburger mobile */}
           <motion.button
             whileTap={{ scale: 0.92 }}
-            onClick={() => { setMobileOpen((p) => !p); setProductsOpen(false); }}
+            onClick={() => { setMobileOpen(true); setProductsOpen(false); setSearchOpen(false); }}
             className="flex md:hidden items-center justify-center w-9 h-9 rounded-lg"
             style={{ background: "transparent", border: "none", cursor: "pointer", color: "white" }}
-            aria-label="Menú"
+            aria-label="Abrir menú"
+            aria-expanded={mobileOpen}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2.2">
-              {mobileOpen
-                ? <><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>
-                : <><path d="M3 12h18"/><path d="M3 6h18"/><path d="M3 18h18"/></>}
+              <path d="M3 12h18"/><path d="M3 6h18"/><path d="M3 18h18"/>
             </svg>
           </motion.button>
         </div>
@@ -322,38 +314,13 @@ function FullHeader({ initialCategorias, contactoActivo }: Required<HeaderProps>
         )}
       </AnimatePresence>
 
-      {/* ── Menú mobile ── */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.nav
-            key="mobile-nav"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.22, ease: "easeInOut" }}
-            style={{
-              overflow: "hidden",
-              borderTop: "1px solid rgba(255,255,255,0.1)",
-              background: "#0f1fa8",
-            }}
-            className="md:hidden"
-          >
-            <div className="flex flex-col px-4 py-4 gap-1">
-              {mobileLinks.filter(link => link.href !== "/contacto" || contactoActivo).map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="px-3 py-2.5 rounded-lg text-sm font-semibold"
-                  style={{ color: "rgba(255,255,255,0.85)", textDecoration: "none" }}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-          </motion.nav>
-        )}
-      </AnimatePresence>
+      {/* ── Sidebar mobile ── */}
+      <MenuMovil
+        abierto={mobileOpen}
+        onCerrar={cerrarMenu}
+        categorias={categorias}
+        contactoActivo={contactoActivo}
+      />
     </header>
   );
 }

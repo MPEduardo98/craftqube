@@ -12,7 +12,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1138.0",
     "@fortawesome/fontawesome-free": "^7.2.0",
-    "@mpeduardo98/commerce-core": "github:MPEduardo98/commerce-core#403e2a5d555bdbf008003469b1c480548226701a",
+    "@mpeduardo98/commerce-core": "github:MPEduardo98/commerce-core#93a3d95acfd26bf867bd26b53d324166465e3d25",
     "@react-email/components": "^1.0.8",
     "@react-email/render": "^2.0.4",
     "@stripe/stripe-js": "^8.9.0",

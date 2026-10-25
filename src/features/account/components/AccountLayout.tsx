@@ -98,7 +98,7 @@ export function AccountLayout({ children }: { children: React.ReactNode }) {
     } else {
       alert.error(result.error ?? "No pudimos cerrar tu sesión", "Sesión cerrada localmente");
     }
-    router.push("/");
+    router.push("/login");
     router.refresh();
   };
 
