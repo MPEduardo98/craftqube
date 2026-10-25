@@ -72,7 +72,7 @@ function FooterNavLink({
   );
 }
 
-export function Footer({ categorias }: { categorias: CategoriaDB[] }) {
+export function Footer({ categorias, contactoActivo = false }: { categorias: CategoriaDB[]; contactoActivo?: boolean }) {
 
   return (
     <footer role="contentinfo" style={{ background: "#0A0F1E", color: "rgba(255,255,255,0.7)" }}>
@@ -119,7 +119,7 @@ export function Footer({ categorias }: { categorias: CategoriaDB[] }) {
                 {section.title}
               </h4>
               <ul className="flex flex-col gap-3">
-                {section.items.map((item) => (
+                {section.items.filter(item => item.href !== "/contacto" || contactoActivo).map((item) => (
                   <li key={item.href}>
                     <FooterNavLink href={item.href}>{item.label}</FooterNavLink>
                   </li>

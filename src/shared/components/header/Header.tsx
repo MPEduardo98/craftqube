@@ -17,6 +17,7 @@ export type { CategoriaNav };
 interface HeaderProps {
   /** Categorías pre-fetched en el Server Component del layout. */
   initialCategorias?: CategoriaNav[];
+  contactoActivo?: boolean;
 }
 
 const mobileLinks = [
@@ -55,14 +56,14 @@ function CheckoutOnlyHeader() {
 }
 
 /* ── Export principal ────────────────────────────────────── */
-export function Header({ initialCategorias = [] }: HeaderProps) {
+export function Header({ initialCategorias = [], contactoActivo = false }: HeaderProps) {
   const pathname = usePathname();
   if (pathname.startsWith("/checkout")) return <CheckoutOnlyHeader />;
-  return <FullHeader initialCategorias={initialCategorias} />;
+  return <FullHeader initialCategorias={initialCategorias} contactoActivo={contactoActivo} />;
 }
 
 /* ── Header completo ─────────────────────────────────────── */
-function FullHeader({ initialCategorias }: Required<HeaderProps>) {
+function FullHeader({ initialCategorias, contactoActivo }: Required<HeaderProps>) {
   const [mobileOpen,   setMobileOpen]   = useState(false);
   const [searchOpen,   setSearchOpen]   = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
@@ -126,6 +127,7 @@ function FullHeader({ initialCategorias }: Required<HeaderProps>) {
         {/* Nav desktop */}
         <nav className="hidden md:flex items-center">
           <NavMenu
+            contactoActivo={contactoActivo}
             productsOpen={productsOpen}
             onToggleProducts={toggleProducts}
           />
@@ -337,7 +339,7 @@ function FullHeader({ initialCategorias }: Required<HeaderProps>) {
             className="md:hidden"
           >
             <div className="flex flex-col px-4 py-4 gap-1">
-              {mobileLinks.map((link) => (
+              {mobileLinks.filter(link => link.href !== "/contacto" || contactoActivo).map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}

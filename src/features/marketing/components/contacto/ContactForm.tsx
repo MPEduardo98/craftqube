@@ -1,374 +1,68 @@
-// app/contacto/components/ContactForm.tsx
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import Link from "next/link";
+import { useRef, useState, type FormEvent } from "react";
+import { CAMPOS_CONTACTO, type ContactoPublico } from "@mpeduardo98/commerce-core/contacto/types";
 
-export function ContactForm() {
-  const [formData, setFormData] = useState({
-    nombre: "",
-    email: "",
-    telefono: "",
-    asunto: "",
-    mensaje: "",
-  });
-
+export function ContactForm({ config }: { config: ContactoPublico }) {
+  const ocupado = useRef(false);
   const [sending, setSending] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setSending(true);
-
-    // Simular envío (aquí iría la integración con tu backend)
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    setSending(false);
-    setSubmitted(true);
-  };
-
-  if (submitted) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="flex flex-col items-center justify-center p-12 rounded-2xl text-center"
-        style={{
-          background: "var(--color-cq-accent-glow)",
-          border: "1px solid rgba(37, 99, 235, 0.2)",
-          minHeight: "500px",
-        }}
-      >
-        <div
-          className="w-16 h-16 rounded-full flex items-center justify-center mb-6"
-          style={{ background: "var(--color-cq-accent)" }}
-        >
-          <svg
-            width="32"
-            height="32"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="white"
-            strokeWidth="2.5"
-          >
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        </div>
-        <h3
-          className="text-display text-2xl mb-3"
-          style={{ color: "var(--color-cq-text)" }}
-        >
-          ¡Mensaje enviado!
-        </h3>
-        <p className="text-sm mb-8" style={{ color: "var(--color-cq-muted)" }}>
-          Gracias por contactarnos. Te responderemos en menos de 24 horas.
-        </p>
-        <motion.button
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={() => {
-            setSubmitted(false);
-            setFormData({
-              nombre: "",
-              email: "",
-              telefono: "",
-              asunto: "",
-              mensaje: "",
-            });
-          }}
-          className="px-6 py-3 rounded-lg text-sm font-bold"
-          style={{
-            background: "var(--color-cq-accent)",
-            color: "white",
-            border: "none",
-            cursor: "pointer",
-            fontFamily: "var(--font-display)",
-            letterSpacing: "0.05em",
-          }}
-        >
-          Enviar otro mensaje
-        </motion.button>
-      </motion.div>
-    );
+    if (ocupado.current) return;
+    ocupado.current = true;
+    const datos = Object.fromEntries(new FormData(e.currentTarget));
+    setSending(true); setError("");
+    try {
+      const res = await fetch("/api/contacto", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(datos),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || "No pudimos enviar tu mensaje. Inténtalo de nuevo.");
+      setSubmitted(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No pudimos conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally { ocupado.current = false; setSending(false); }
   }
 
+  if (!config.activo) return null;
+  if (submitted) return (
+    <div role="status" className="flex flex-col items-center justify-center p-8 sm:p-12 rounded-2xl text-center" style={{ background: "var(--color-cq-accent-glow)", border: "1px solid var(--color-cq-border)", minHeight: 400 }}>
+      <i aria-hidden="true" className="fa-solid fa-circle-check text-5xl mb-6" style={{ color: "var(--color-cq-accent)" }} />
+      <h2 className="text-display text-2xl mb-3">¡Recibimos tu mensaje!</h2>
+      <p className="text-sm leading-relaxed mb-8" style={{ color: "var(--color-cq-muted)" }}>Gracias por contactarnos. Te enviaremos una confirmación por correo y nuestro equipo revisará tu consulta para responderte.</p>
+      <button type="button" onClick={() => setSubmitted(false)} className="px-6 py-3 rounded-lg text-sm font-bold" style={{ background: "var(--color-cq-accent)", color: "white" }}>Enviar otro mensaje</button>
+    </div>
+  );
+
   return (
-    <motion.form
-      onSubmit={handleSubmit}
-      initial={{ opacity: 0, x: 20 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.5 }}
-      className="p-8 rounded-2xl"
-      style={{
-        background: "var(--color-cq-surface)",
-        border: "1px solid var(--color-cq-border)",
-      }}
-    >
-      <h2
-        className="text-display text-2xl mb-6"
-        style={{ color: "var(--color-cq-text)" }}
-      >
-        Envíanos un mensaje
-      </h2>
-
-      <div className="space-y-5">
-        {/* Nombre */}
-        <div>
-          <label
-            htmlFor="nombre"
-            className="block text-xs font-bold mb-2"
-            style={{
-              color: "var(--color-cq-text)",
-              fontFamily: "var(--font-display)",
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-            }}
-          >
-            Nombre completo
-          </label>
-          <input
-            type="text"
-            id="nombre"
-            name="nombre"
-            value={formData.nombre}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all"
-            style={{
-              background: "var(--color-cq-bg)",
-              border: "1.5px solid var(--color-cq-border)",
-              color: "var(--color-cq-text)",
-              fontFamily: "var(--font-body)",
-            }}
-            onFocus={(e) =>
-              (e.target.style.borderColor = "var(--color-cq-accent)")
-            }
-            onBlur={(e) =>
-              (e.target.style.borderColor = "var(--color-cq-border)")
-            }
-          />
+    <form onSubmit={handleSubmit} className="p-5 sm:p-8 rounded-2xl min-w-0" style={{ background: "var(--color-cq-surface)", border: "1px solid var(--color-cq-border)" }} aria-busy={sending}>
+      <h2 className="text-display text-2xl mb-3">Envíanos un mensaje</h2>
+      <p className="text-xs mb-6" style={{ color: "var(--color-cq-muted)" }}>Los campos con * son obligatorios.</p>
+      <fieldset disabled={sending} className="space-y-5 border-0 p-0 m-0 min-w-0">
+        {CAMPOS_CONTACTO.filter(c => config.campos[c.id] !== "oculto").map(c => {
+          const requerido = config.campos[c.id] === "obligatorio";
+          const props = {
+            id: `contacto-${c.id}`, name: c.id, required: requerido, maxLength: c.max,
+            className: "w-full px-4 py-3 rounded-lg text-base sm:text-sm focus:outline-2 focus:outline-offset-2 focus:outline-blue-600 disabled:opacity-60",
+            style: { background: "var(--color-cq-bg)", border: "1.5px solid var(--color-cq-border)", color: "var(--color-cq-text)", fontFamily: "var(--font-body)" },
+          };
+          return <div key={c.id}>
+            <label htmlFor={props.id} className="block text-xs font-bold uppercase tracking-wide mb-2">{c.etiqueta}{requerido ? " *" : " (opcional)"}</label>
+            {c.tipo === "textarea" ? <textarea {...props} rows={6} className={`${props.className} resize-y`} /> :
+              <input {...props} type={c.tipo} autoComplete={c.id === "nombre" ? "name" : c.id === "email" ? "email" : c.id === "telefono" ? "tel" : c.id === "empresa" ? "organization" : "off"} />}
+          </div>;
+        })}
+        <div aria-hidden="true" className="absolute w-px h-px overflow-hidden" style={{ clipPath: "inset(50%)" }}>
+          <label htmlFor="contacto-website">Deja este campo vacío</label><input id="contacto-website" name="website" tabIndex={-1} autoComplete="off" />
         </div>
-
-        {/* Email */}
-        <div>
-          <label
-            htmlFor="email"
-            className="block text-xs font-bold mb-2"
-            style={{
-              color: "var(--color-cq-text)",
-              fontFamily: "var(--font-display)",
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-            }}
-          >
-            Email
-          </label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all"
-            style={{
-              background: "var(--color-cq-bg)",
-              border: "1.5px solid var(--color-cq-border)",
-              color: "var(--color-cq-text)",
-              fontFamily: "var(--font-body)",
-            }}
-            onFocus={(e) =>
-              (e.target.style.borderColor = "var(--color-cq-accent)")
-            }
-            onBlur={(e) =>
-              (e.target.style.borderColor = "var(--color-cq-border)")
-            }
-          />
-        </div>
-
-        {/* Teléfono */}
-        <div>
-          <label
-            htmlFor="telefono"
-            className="block text-xs font-bold mb-2"
-            style={{
-              color: "var(--color-cq-text)",
-              fontFamily: "var(--font-display)",
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-            }}
-          >
-            Teléfono (opcional)
-          </label>
-          <input
-            type="tel"
-            id="telefono"
-            name="telefono"
-            value={formData.telefono}
-            onChange={handleChange}
-            className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all"
-            style={{
-              background: "var(--color-cq-bg)",
-              border: "1.5px solid var(--color-cq-border)",
-              color: "var(--color-cq-text)",
-              fontFamily: "var(--font-body)",
-            }}
-            onFocus={(e) =>
-              (e.target.style.borderColor = "var(--color-cq-accent)")
-            }
-            onBlur={(e) =>
-              (e.target.style.borderColor = "var(--color-cq-border)")
-            }
-          />
-        </div>
-
-        {/* Asunto */}
-        <div>
-          <label
-            htmlFor="asunto"
-            className="block text-xs font-bold mb-2"
-            style={{
-              color: "var(--color-cq-text)",
-              fontFamily: "var(--font-display)",
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-            }}
-          >
-            Asunto
-          </label>
-          <select
-            id="asunto"
-            name="asunto"
-            value={formData.asunto}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all"
-            style={{
-              background: "var(--color-cq-bg)",
-              border: "1.5px solid var(--color-cq-border)",
-              color: "var(--color-cq-text)",
-              fontFamily: "var(--font-body)",
-            }}
-            onFocus={(e) =>
-              (e.target.style.borderColor = "var(--color-cq-accent)")
-            }
-            onBlur={(e) =>
-              (e.target.style.borderColor = "var(--color-cq-border)")
-            }
-          >
-            <option value="">Selecciona una opción</option>
-            <option value="cotizacion">Solicitar cotización</option>
-            <option value="asesoria">Asesoría técnica</option>
-            <option value="soporte">Soporte / Garantía</option>
-            <option value="distribuidor">Ser distribuidor</option>
-            <option value="otro">Otro</option>
-          </select>
-        </div>
-
-        {/* Mensaje */}
-        <div>
-          <label
-            htmlFor="mensaje"
-            className="block text-xs font-bold mb-2"
-            style={{
-              color: "var(--color-cq-text)",
-              fontFamily: "var(--font-display)",
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-            }}
-          >
-            Mensaje
-          </label>
-          <textarea
-            id="mensaje"
-            name="mensaje"
-            value={formData.mensaje}
-            onChange={handleChange}
-            required
-            rows={5}
-            className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all resize-none"
-            style={{
-              background: "var(--color-cq-bg)",
-              border: "1.5px solid var(--color-cq-border)",
-              color: "var(--color-cq-text)",
-              fontFamily: "var(--font-body)",
-            }}
-            onFocus={(e) =>
-              (e.target.style.borderColor = "var(--color-cq-accent)")
-            }
-            onBlur={(e) =>
-              (e.target.style.borderColor = "var(--color-cq-border)")
-            }
-          />
-        </div>
-
-        {/* Submit button */}
-        <motion.button
-          type="submit"
-          disabled={sending}
-          whileHover={!sending ? { scale: 1.02 } : {}}
-          whileTap={!sending ? { scale: 0.98 } : {}}
-          className="w-full px-6 py-4 rounded-lg text-sm font-bold tracking-wide"
-          style={{
-            background: sending
-              ? "var(--color-cq-muted-2)"
-              : "var(--color-cq-accent)",
-            color: "white",
-            border: "none",
-            cursor: sending ? "not-allowed" : "pointer",
-            fontFamily: "var(--font-display)",
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            boxShadow: sending ? "none" : "0 4px 20px rgba(37, 99, 235, 0.3)",
-          }}
-        >
-          {sending ? (
-            <span className="flex items-center justify-center gap-2">
-              <svg
-                className="animate-spin"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeOpacity="0.25"
-                />
-                <path d="M12 2a10 10 0 0 1 10 10" />
-              </svg>
-              Enviando...
-            </span>
-          ) : (
-            "Enviar mensaje"
-          )}
-        </motion.button>
-      </div>
-
-      <p
-        className="text-xs mt-4 text-center"
-        style={{
-          color: "var(--color-cq-muted-2)",
-          fontFamily: "var(--font-mono)",
-        }}
-      >
-        Al enviar este formulario aceptas nuestra política de privacidad
-      </p>
-    </motion.form>
+        {error && <p role="alert" className="text-sm rounded-lg p-3 text-red-800 bg-red-50">{error}</p>}
+        <button type="submit" disabled={sending} className="w-full px-6 py-4 rounded-lg text-sm font-bold uppercase tracking-wide disabled:opacity-60 disabled:cursor-wait" style={{ background: "var(--color-cq-accent)", color: "white", fontFamily: "var(--font-display)" }}>{sending ? "Enviando…" : "Enviar mensaje"}</button>
+      </fieldset>
+      <p className="text-xs mt-5 text-center leading-relaxed" style={{ color: "var(--color-cq-muted)" }}>Consulta cómo tratamos tus datos en nuestra <Link href="/politicas/politica-de-privacidad" className="underline">política de privacidad</Link>.</p>
+    </form>
   );
 }

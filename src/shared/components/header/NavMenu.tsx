@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 
 interface NavMenuProps {
+  contactoActivo: boolean;
   productsOpen: boolean;
   onToggleProducts: () => void;
 }
@@ -14,7 +15,7 @@ const simpleLinks = [
   { label: "Contacto", href: "/contacto" },
 ];
 
-export function NavMenu({ productsOpen, onToggleProducts }: NavMenuProps) {
+export function NavMenu({ productsOpen, onToggleProducts, contactoActivo }: NavMenuProps) {
   return (
     <div className="flex items-center">
 
@@ -42,7 +43,7 @@ export function NavMenu({ productsOpen, onToggleProducts }: NavMenuProps) {
       </button>
 
       {/* Links simples */}
-      {simpleLinks.map((item) => (
+      {simpleLinks.filter(item => item.href !== "/contacto" || contactoActivo).map((item) => (
         <Link
           key={item.href}
           href={item.href}

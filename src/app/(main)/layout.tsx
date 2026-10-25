@@ -4,6 +4,7 @@
 // Solo las rutas dentro de app/(main)/ renderizan Header y Footer.
 // /admin, /auth, etc. quedan completamente limpios.
 // ─────────────────────────────────────────────────────────────
+import { getContactoPublico } from "@mpeduardo98/commerce-core/contacto";
 import { getVentaPublica } from "@mpeduardo98/commerce-core/venta";
 import { Header }    from "@/shared/components/header/Header";
 import { Footer }    from "@/shared/components/footer/Footer";
@@ -15,19 +16,19 @@ export default async function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const venta = await getVentaPublica();
+  const [venta, contacto] = await Promise.all([getVentaPublica(), getContactoPublico()]);
   const categorias = await getCategorias().catch(() => []);
 
   return (
     <>
-      <Header initialCategorias={categorias} />
+      <Header initialCategorias={categorias} contactoActivo={contacto.activo} />
       {venta.ventaEnLinea && <CartDrawer />}
       {/* min-h reserva el alto de la ventana para el contenido: sin
           esto, cualquier página que renderice poco (o nada, durante
           un instante de la hidratación) deja subir el footer hasta
           chocar con el header. */}
       <main style={{ minHeight: "100vh" }}>{children}</main>
-      <Footer categorias={categorias} />
+      <Footer categorias={categorias} contactoActivo={contacto.activo} />
     </>
   );
 }

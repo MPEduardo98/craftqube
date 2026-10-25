@@ -74,7 +74,11 @@ const socialLinks = [
   },
 ];
 
-export function ContactInfo() {
+export function ContactInfo({ email, telefono }: { email: string; telefono: string }) {
+  const metodos = contactMethods.map(method => method.title === "Email"
+    ? { ...method, value: email, href: `mailto:${email}`, description: "Escr?benos para resolver tus dudas" }
+    : method.title === "Teléfono" ? { ...method, value: telefono, href: `tel:${telefono.replace(/[^+0-9]/g, "")}` }
+    : method).filter(method => !!method.value);
   return (
     <div>
       <motion.h2
@@ -101,7 +105,7 @@ export function ContactInfo() {
 
       {/* Contact methods */}
       <div className="space-y-6 mb-12">
-        {contactMethods.map((method, index) => (
+        {metodos.map((method, index) => (
           <motion.div
             key={method.title}
             initial={{ opacity: 0, x: -20 }}

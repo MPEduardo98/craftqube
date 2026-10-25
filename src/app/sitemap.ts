@@ -5,6 +5,7 @@
 // producto activo.
 // ─────────────────────────────────────────────────────────────
 import type { MetadataRoute } from "next";
+import { getContactoPublico } from "@mpeduardo98/commerce-core/contacto";
 import { getAllProductoSlugs, getAllCategoriaSlugs } from "@mpeduardo98/commerce-core/catalogo";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.mx";
@@ -24,13 +25,14 @@ const PAGINAS_FIJAS = [
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [productos, categorias] = await Promise.all([
+  const [productos, categorias, contacto] = await Promise.all([
     getAllProductoSlugs().catch(() => []),
     getAllCategoriaSlugs().catch(() => []),
+    getContactoPublico(),
   ]);
 
   return [
-    ...PAGINAS_FIJAS.map((ruta) => ({ url: `${SITE_URL}${ruta}` })),
+    ...PAGINAS_FIJAS.filter(ruta => ruta !== "/contacto" || contacto.activo).map((ruta) => ({ url: `${SITE_URL}${ruta}` })),
     ...categorias.map(({ slug }) => ({ url: `${SITE_URL}/categoria/${slug}` })),
     ...productos.map(({ slug, updated_at }) => ({
       url:          `${SITE_URL}/producto/${slug}`,
