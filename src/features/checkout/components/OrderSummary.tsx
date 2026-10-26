@@ -152,7 +152,7 @@ export function OrderSummary({ compact = false, resumen = null }: Props) {
                     esAtributoVisible(a.atributo, a.valor)
                   );
                   return (
-                    <div key={item.varianteId} className="flex items-center gap-3">
+                    <div key={item.lineKey} className="flex items-center gap-3">
                       <div className="relative shrink-0 rounded-lg overflow-hidden"
                         style={{ width: 52, height: 52, background: "var(--color-cq-surface-2)", border: "1px solid var(--color-cq-border)" }}>
                         {imageSrc ? (

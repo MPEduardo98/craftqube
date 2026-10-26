@@ -13,6 +13,9 @@ import { useCurrency }            from "@/shared/context/CurrencyContext";
 import { ProductVariantSelector } from "./ProductVariantSelector";
 import { ProductSpecs }           from "./ProductSpecs";
 import { ShareButton }            from "./ShareButton";
+import { PlanCorte }              from "./PlanCorte";
+import { usePlanCorte, textoTramos } from "@/features/products/hooks/usePlanCorte";
+import { useTopeFijo }            from "@/features/products/hooks/useTopeFijo";
 import type { ProductoDetalle, ProductoVariante } from "@/features/products/types/product-detail";
 import { resolveImageUrl }        from "@/features/media/lib/resolveImageUrl";
 import { sanitizeRichText, hasRichTextContent } from "@/shared/lib/rich-text";
@@ -84,12 +87,21 @@ export function ProductDetailClient({ producto }: Props) {
   const [added,    setAdded]    = useState(false);
   const [cantidad, setCantidad] = useState(1);
 
-  const precio         = Number(selectedVariante?.precio_final    ?? 0);
+  const configTramos   = producto.personalizacion?.tipo === "tramos" ? producto.personalizacion.config : null;
+  const planCorte      = usePlanCorte(configTramos);
+  // 112px = header + aire. Sólo aplica en escritorio, donde la columna es sticky.
+  const [refInfo, topInfo] = useTopeFijo<HTMLDivElement>(112);
+  const corte          = configTramos && planCorte.plan ? textoTramos(planCorte.plan.tramos, configTramos.unidad) : null;
+
+  const precioBase     = Number(selectedVariante?.precio_final    ?? 0);
+  // Por pieza, con los cortes del plan: el servidor cobra lo mismo.
+  const precio         = precioBase + planCorte.cargo;
   const precioOriginal = Number(selectedVariante?.precio_original ?? 0);
   const stock          = selectedVariante?.stock           ?? 0;
   const tieneStock     = stock > 0 || (selectedVariante?.vender_sin_existencia === 1);
-  const tieneDescuento = mostrarPrecios && precioOriginal > precio && precioOriginal > 0;
-  const descuento      = tieneDescuento ? Math.round(((precioOriginal - precio) / precioOriginal) * 100) : 0;
+  const tieneDescuento = mostrarPrecios && precioOriginal > precioBase && precioOriginal > 0;
+  const descuento      = tieneDescuento ? Math.round(((precioOriginal - precioBase) / precioOriginal) * 100) : 0;
+  const puedeComprar   = tieneStock;
   const wished         = isWished(producto.id);
   const tieneEspecificaciones = producto.metacampos.length > 0 || selectedVariante !== null ||
     Boolean(producto.envio && (producto.envio.largo || producto.envio.ancho || producto.envio.alto || producto.envio.peso));
@@ -102,7 +114,7 @@ export function ProductDetailClient({ producto }: Props) {
   const decrementar = () => setCantidad((c) => Math.max(1, c - 1));
 
   const handleAgregarCarrito = () => {
-    if (!ventaEnLinea || !tieneStock || !selectedVariante) return;
+    if (!ventaEnLinea || !puedeComprar || !selectedVariante) return;
     addItem({
       productoId:   producto.id,
       varianteId:   selectedVariante.id,
@@ -113,7 +125,11 @@ export function ProductDetailClient({ producto }: Props) {
       cantidad,
       imagenNombre: imagenActiva?.url ?? null,
       imagenAlt:    imagenActiva?.alt ?? null,
-      atributos:    selectedVariante.atributos.map((a) => ({ atributo: a.atributo, valor: a.valor })),
+      atributos:    [
+        ...selectedVariante.atributos.map((a) => ({ atributo: a.atributo, valor: a.valor })),
+        ...(corte ? [{ atributo: "Corte", valor: corte }] : []),
+      ],
+      personalizacion: planCorte.solicitud,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
@@ -125,7 +141,7 @@ export function ProductDetailClient({ producto }: Props) {
       varianteId:   selectedVariante?.id ?? null,
       slug:         producto.slug,
       titulo:       producto.titulo,
-      precio,
+      precio:       precioBase,
       imagenNombre: imagenActiva?.url ?? null,
       imagenAlt:    imagenActiva?.alt ?? null,
       marca:        producto.marca ?? null,
@@ -135,10 +151,12 @@ export function ProductDetailClient({ producto }: Props) {
   return (
     <main>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-16 sm:pt-20 pb-10">
-        <div className="flex flex-col lg:flex-row gap-10 lg:gap-16">
+        {/* En escritorio la info queda fija a la derecha mientras la
+            columna izquierda (galería + especificaciones) se desplaza. */}
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-x-16 lg:gap-y-14">
 
           {/* ── Galería ── */}
-          <div className="w-full lg:w-1/2 flex flex-col gap-3">
+          <div className="flex min-w-0 flex-col gap-3 lg:col-start-1 lg:row-start-1">
             <div className="relative">
             <motion.div
               {...fadeUp(0)}
@@ -220,7 +238,8 @@ export function ProductDetailClient({ producto }: Props) {
           </div>
 
           {/* ── Info ── */}
-          <div className="w-full lg:w-1/2 flex flex-col gap-5">
+          <div ref={refInfo} style={{ top: topInfo }}
+            className="flex min-w-0 flex-col gap-5 lg:sticky lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start">
 
             {/* Badges */}
             <motion.div {...fadeUp(0)} className="flex flex-wrap gap-2">
@@ -260,7 +279,7 @@ export function ProductDetailClient({ producto }: Props) {
               <div className="flex items-center gap-3 flex-wrap">
                 {mostrarPrecios && precio > 0 ? (
                   <span className="text-display" style={{ fontSize: "clamp(2rem, 5vw, 2.75rem)", color: "var(--color-cq-text)" }}>
-                    {format(precio)}
+                    {format(precioBase)}
                   </span>
                 ) : (
                   <span className="text-base" style={{ fontFamily: "var(--font-mono)", letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--color-cq-muted)" }}>
@@ -291,11 +310,18 @@ export function ProductDetailClient({ producto }: Props) {
               </motion.div>
             )}
 
+            {/* Plan de corte */}
+            {configTramos && (
+              <motion.div {...fadeUp(0.32)}>
+                <PlanCorte config={configTramos} estado={planCorte} precioBase={precioBase} mostrarPrecios={mostrarPrecios} format={format} />
+              </motion.div>
+            )}
+
             {/* Cantidad + CTA */}
             <motion.div {...fadeUp(0.35)} className="flex flex-col gap-1.5">
               <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-cq-muted)" }}>
-                Cantidad
-                {mostrarPrecios && precio > 0 && cantidad > 1 && (
+                {planCorte.plan ? "Piezas con este plan" : "Cantidad"}
+                {mostrarPrecios && precio > 0 && (cantidad > 1 || planCorte.cargo > 0) && (
                   <span style={{ marginLeft: "0.75rem", color: "var(--color-cq-accent)", letterSpacing: "0.04em" }}>
                     = {format(precio * cantidad)}
                   </span>
@@ -321,20 +347,20 @@ export function ProductDetailClient({ producto }: Props) {
                 </div>
 
                 {!ventaEnLinea ? (
-                  <BotonCotizacion className="h-[52px] min-w-[160px] flex-1" producto={producto.titulo} slug={producto.slug} detalle={[selectedVariante?.sku, selectedVariante?.atributos.map(a => `${a.atributo}: ${a.valor}`).join(", "), `Cantidad: ${cantidad}`].filter(Boolean).join(" ? ")} />
+                  <BotonCotizacion className="h-[52px] min-w-[160px] flex-1" producto={producto.titulo} slug={producto.slug} detalle={[selectedVariante?.sku, selectedVariante?.atributos.map(a => `${a.atributo}: ${a.valor}`).join(", "), corte && `Corte: ${corte}`, `Cantidad: ${cantidad}`].filter(Boolean).join(" ? ")} />
                 ) : <motion.button
                   onClick={handleAgregarCarrito}
-                  disabled={!tieneStock}
-                  whileHover={tieneStock ? { scale: 1.02 } : {}}
-                  whileTap={tieneStock ? { scale: 0.98 } : {}}
+                  disabled={!puedeComprar}
+                  whileHover={puedeComprar ? { scale: 1.02 } : {}}
+                  whileTap={puedeComprar ? { scale: 0.98 } : {}}
                   className="flex-1 flex items-center justify-center gap-2 rounded-xl font-bold transition-all"
                   style={{
                     height:     "52px",
                     minWidth:   "160px",
-                    background: tieneStock ? (added ? "rgba(22,163,74,0.9)" : "var(--color-cq-accent)") : "var(--color-cq-surface-2)",
-                    color:      tieneStock ? "#fff" : "var(--color-cq-muted-2)",
+                    background: puedeComprar ? (added ? "rgba(22,163,74,0.9)" : "var(--color-cq-accent)") : "var(--color-cq-surface-2)",
+                    color:      puedeComprar ? "#fff" : "var(--color-cq-muted-2)",
                     border:     "none",
-                    cursor:     tieneStock ? "pointer" : "not-allowed",
+                    cursor:     puedeComprar ? "pointer" : "not-allowed",
                     fontSize:   "0.9rem",
                     letterSpacing: "0.02em",
                     fontFamily: "var(--font-display)",
@@ -368,24 +394,23 @@ export function ProductDetailClient({ producto }: Props) {
               </button>
             )}
           </div>
-        </div>
+
         {tieneEspecificaciones && (
           <section
             id="especificaciones"
             aria-labelledby="titulo-especificaciones"
             tabIndex={-1}
-            className="mt-16 border-t pt-10 sm:mt-20 sm:pt-14"
+            className="min-w-0 border-t pt-10 sm:pt-14 lg:col-start-1 lg:row-start-2 lg:border-t-0 lg:pt-0"
             style={{ borderColor: "var(--color-cq-border)", scrollMarginTop: "9rem" }}
           >
             <h2 id="titulo-especificaciones" className="text-display mb-6 text-2xl sm:text-3xl"
               style={{ color: "var(--color-cq-text)" }}>
               Especificaciones del producto
             </h2>
-            <div className="w-full max-w-3xl">
-              <ProductSpecs metacampos={producto.metacampos} varianteActiva={selectedVariante} envio={producto.envio} />
-            </div>
+            <ProductSpecs metacampos={producto.metacampos} varianteActiva={selectedVariante} envio={producto.envio} />
           </section>
         )}
+        </div>
       </div>
     </main>
   );

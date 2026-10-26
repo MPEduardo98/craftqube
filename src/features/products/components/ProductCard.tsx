@@ -45,7 +45,8 @@ export function ProductCard({ producto, imageSizes }: ProductCardProps) {
   const varianteId    = producto.variante_id;
   const itemEnCarrito = varianteId == null
     ? undefined
-    : items.find(item => item.varianteId === varianteId);
+    // Sólo la línea sin plan de corte: es la que la tarjeta agrega.
+    : items.find(item => item.varianteId === varianteId && !item.personalizacion);
   /* Sin variante no hay nada que cotizar: el botón se comporta como
      si no hubiera stock en vez de envenenar el carrito. */
   const puedeAgregar  = ventaEnLinea && tieneStock && varianteId != null;

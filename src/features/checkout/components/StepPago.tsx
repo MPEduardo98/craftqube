@@ -382,7 +382,11 @@ export function StepPago({
         },
         envio: envioData,
         // Sólo qué y cuánto: los precios los pone el servidor.
-        items: items.map((i) => ({ variante_id: i.varianteId, cantidad: i.cantidad })),
+        items: items.map((i) => ({
+          variante_id:     i.varianteId,
+          cantidad:        i.cantidad,
+          personalizacion: i.personalizacion ?? undefined,
+        })),
         cupon_codigo: cuponCodigo || undefined,
         notas:        data.notas || undefined,
       }),

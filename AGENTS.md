@@ -50,6 +50,7 @@ src/shared/                ← lo que usan VARIAS features: ui/ (botones, inputs
 - `getProductosCatalogo({ q, cat, marca, soloStock, sort, page, limit })` → `{ productos, total, pages }`. `sort`: `reciente | precio_asc | precio_desc | az | za`.
 - `getProductoBySlug(slug)` → detalle con variantes, imágenes, atributos (o `null`).
 - `getCategorias()`, `getCategoriaBySlug(slug)`.
+- `getProductosRelacionados(slug, { limit })` → tarjetas para "También te puede interesar" en la ficha, ya elegidas según lo que configuró el admin en el producto (automáticas por categoría/marca/nombre, manuales en su orden, u ocultas: entonces devuelve `[]` y no se pinta la sección). Misma forma que el catálogo. En cliente: `GET /api/productos/relacionados?producto=<slug>&limit=4`; no uses la forma vieja `?categoria=`, que ignora la config.
 - `getAllProductoSlugs()`, `getAllCategoriaSlugs()` → para `generateStaticParams` y el sitemap.
 - Al carrito se agrega la **variante** (`producto.variante_id`), no el `id` del producto.
 

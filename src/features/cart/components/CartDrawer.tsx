@@ -74,7 +74,7 @@ function DrawerItem({ item }: { item: ReturnType<typeof useCart>["items"][number
           <div className="flex items-center gap-2">
             <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--color-cq-border)", height: 32 }}>
               <button
-                onClick={() => item.cantidad <= 1 ? removeItem(item.varianteId) : updateQty(item.varianteId, item.cantidad - 1)}
+                onClick={() => item.cantidad <= 1 ? removeItem(item.lineKey) : updateQty(item.lineKey, item.cantidad - 1)}
                 className="flex items-center justify-center transition-colors hover:bg-red-500/10"
                 style={{ width: 32, height: 32, color: item.cantidad <= 1 ? "#EF4444" : "var(--color-cq-muted)", cursor: "pointer" }}
               >
@@ -88,7 +88,7 @@ function DrawerItem({ item }: { item: ReturnType<typeof useCart>["items"][number
                 {item.cantidad}
               </span>
               <button
-                onClick={() => updateQty(item.varianteId, item.cantidad + 1)}
+                onClick={() => updateQty(item.lineKey, item.cantidad + 1)}
                 className="flex items-center justify-center transition-colors hover:bg-blue-500/10"
                 style={{ width: 32, height: 32, color: "var(--color-cq-muted)", cursor: "pointer" }}
               >
@@ -176,7 +176,7 @@ export function CartDrawer() {
                     </Link>
                   </motion.div>
                 ) : (
-                  items.map((item) => <DrawerItem key={item.varianteId} item={item} />)
+                  items.map((item) => <DrawerItem key={item.lineKey} item={item} />)
                 )}
               </AnimatePresence>
             </div>

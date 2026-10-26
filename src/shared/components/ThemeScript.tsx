@@ -2,6 +2,10 @@
 // Script INLINE en <head> — se ejecuta de forma síncrona ANTES de que React
 // hidrate, evitando el FOUC (flash of unstyled content / wrong theme).
 // NUNCA convertir esto en "use client" — debe ser un Server Component.
+// Usa next/script con beforeInteractive: un <script> JSX directo hace que
+// React 19 avise "Encountered a script tag while rendering React component".
+
+import Script from "next/script";
 
 export function ThemeScript() {
   const script = `
@@ -18,9 +22,10 @@ export function ThemeScript() {
   `;
 
   return (
-    <script
+    <Script
+      id="cq-theme"
+      strategy="beforeInteractive"
       dangerouslySetInnerHTML={{ __html: script }}
-      suppressHydrationWarning
     />
   );
 }
