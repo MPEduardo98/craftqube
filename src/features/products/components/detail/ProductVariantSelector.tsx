@@ -3,29 +3,23 @@
 
 import { useVenta } from "@/shared/context/ContextoVenta";
 import { motion } from "framer-motion";
+import { varianteDisponible, type OpcionAtributo } from "@mpeduardo98/commerce-core/ficha";
 import type { ProductoVariante } from "@/features/products/types/product-detail";
 
 interface Props {
   variantes:       ProductoVariante[];
   selectedId:      number;
+  /** Atributos agrupados por `useFichaProducto` */
+  opciones:        OpcionAtributo[];
   onSelect:        (variante: ProductoVariante) => void;
 }
 
-export function ProductVariantSelector({ variantes, selectedId, onSelect }: Props) {
+export function ProductVariantSelector({ variantes, selectedId, opciones, onSelect }: Props) {
   const { ventaEnLinea } = useVenta();
   if (variantes.length <= 1) return null;
 
-  // Group unique atributos across all variantes
-  const atributosMap = new Map<string, Set<string>>();
-  for (const v of variantes) {
-    for (const a of v.atributos) {
-      if (!atributosMap.has(a.atributo)) atributosMap.set(a.atributo, new Set());
-      atributosMap.get(a.atributo)!.add(a.valor);
-    }
-  }
-
   // If no atributos defined, just show SKU buttons
-  if (atributosMap.size === 0) {
+  if (opciones.length === 0) {
     return (
       <div className="flex flex-col gap-3">
         <span
@@ -42,7 +36,7 @@ export function ProductVariantSelector({ variantes, selectedId, onSelect }: Prop
         <div className="flex flex-wrap gap-2">
           {variantes.map((v) => {
             const isSelected = v.id === selectedId;
-            const sinStock   = ventaEnLinea && v.stock === 0 && !v.vender_sin_existencia;
+            const sinStock   = !varianteDisponible(v, ventaEnLinea);
             return (
               <motion.button
                 key={v.id}
@@ -71,12 +65,9 @@ export function ProductVariantSelector({ variantes, selectedId, onSelect }: Prop
     );
   }
 
-  const selected = variantes.find((v) => v.id === selectedId);
-
   return (
     <div className="flex flex-col gap-4">
-      {Array.from(atributosMap.entries()).map(([atributo, valores]) => {
-        const currentValor = selected?.atributos.find((a) => a.atributo === atributo)?.valor;
+      {opciones.map(({ atributo, seleccionado: currentValor, valores }) => {
 
         return (
           <div key={atributo} className="flex flex-col gap-2">
@@ -107,13 +98,9 @@ export function ProductVariantSelector({ variantes, selectedId, onSelect }: Prop
               )}
             </div>
             <div className="flex flex-wrap gap-2">
-              {Array.from(valores).map((valor) => {
-                // Find which variante has this value for this atributo
-                const matchVariante = variantes.find((v) =>
-                  v.atributos.some((a) => a.atributo === atributo && a.valor === valor)
-                );
-                const isSelected = matchVariante?.id === selectedId;
-                const sinStock   = ventaEnLinea && matchVariante ? matchVariante.stock === 0 && !matchVariante.vender_sin_existencia : false;
+              {valores.map(({ valor, variante: matchVariante, seleccionado: isSelected, disponible }) => {
+                // La variante ya conserva el resto de la selección si hay existencia.
+                const sinStock   = !disponible;
 
                 return (
                   <motion.button
@@ -121,7 +108,7 @@ export function ProductVariantSelector({ variantes, selectedId, onSelect }: Prop
                     onClick={() => matchVariante && !sinStock && onSelect(matchVariante)}
                     whileHover={!sinStock ? { scale: 1.04 } : {}}
                     whileTap={!sinStock ? { scale: 0.96 } : {}}
-                    disabled={sinStock || !matchVariante}
+                    disabled={sinStock}
                     className="px-4 py-2 rounded-xl text-sm font-semibold transition-all relative"
                     style={{
                       fontFamily:     "var(--font-body)",

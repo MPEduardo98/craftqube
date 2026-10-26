@@ -4,6 +4,7 @@
 import { useVenta } from "@/shared/context/ContextoVenta";
 import { BotonCotizacion } from "@/shared/ui/BotonCotizacion";
 import { useState }               from "react";
+import { useFichaProducto }       from "@mpeduardo98/commerce-core/ficha";
 import Link                       from "next/link";
 import Image                      from "next/image";
 import { motion }                 from "framer-motion";
@@ -14,9 +15,8 @@ import { ProductVariantSelector } from "./ProductVariantSelector";
 import { ProductSpecs }           from "./ProductSpecs";
 import { ShareButton }            from "./ShareButton";
 import { PlanCorte }              from "./PlanCorte";
-import { usePlanCorte, textoTramos } from "@/features/products/hooks/usePlanCorte";
 import { useTopeFijo }            from "@/features/products/hooks/useTopeFijo";
-import type { ProductoDetalle, ProductoVariante } from "@/features/products/types/product-detail";
+import type { ProductoDetalle } from "@/features/products/types/product-detail";
 import { resolveImageUrl }        from "@/features/media/lib/resolveImageUrl";
 import { sanitizeRichText, hasRichTextContent } from "@/shared/lib/rich-text";
 
@@ -78,59 +78,30 @@ export function ProductDetailClient({ producto }: Props) {
   const { toggleItem, isWished } = useWishlist();
   const { format }               = useCurrency();
 
-  const defaultVariante =
-    producto.variantes.find((v) => v.es_default === 1) ??
-    producto.variantes[0] ??
-    null;
+  // Variante, precios, existencia, cantidad y plan de corte: la lógica es del core.
+  const ficha = useFichaProducto(producto, { ventaEnLinea, mostrarPrecios });
+  const [added, setAdded] = useState(false);
 
-  const [selectedVariante, setSelectedVariante] = useState<ProductoVariante | null>(defaultVariante);
-  const [added,    setAdded]    = useState(false);
-  const [cantidad, setCantidad] = useState(1);
-
-  const configTramos   = producto.personalizacion?.tipo === "tramos" ? producto.personalizacion.config : null;
-  const planCorte      = usePlanCorte(configTramos);
   // 112px = header + aire. Sólo aplica en escritorio, donde la columna es sticky.
   const [refInfo, topInfo] = useTopeFijo<HTMLDivElement>(112);
-  const corte          = configTramos && planCorte.plan ? textoTramos(planCorte.plan.tramos, configTramos.unidad) : null;
 
-  const precioBase     = Number(selectedVariante?.precio_final    ?? 0);
-  // Por pieza, con los cortes del plan: el servidor cobra lo mismo.
-  const precio         = precioBase + planCorte.cargo;
-  const precioOriginal = Number(selectedVariante?.precio_original ?? 0);
-  const stock          = selectedVariante?.stock           ?? 0;
-  const tieneStock     = stock > 0 || (selectedVariante?.vender_sin_existencia === 1);
-  const tieneDescuento = mostrarPrecios && precioOriginal > precioBase && precioOriginal > 0;
-  const descuento      = tieneDescuento ? Math.round(((precioOriginal - precioBase) / precioOriginal) * 100) : 0;
+  const {
+    variante: selectedVariante, imagen: imagenActiva, plan: planCorte,
+    precioBase, precioOriginal, stock, tieneDescuento, descuento, cantidad,
+  } = ficha;
+  const configTramos   = planCorte.config;
+  const precio         = ficha.precioUnitario;
+  const tieneStock     = ficha.disponible;
   const puedeComprar   = tieneStock;
   const wished         = isWished(producto.id);
   const tieneEspecificaciones = producto.metacampos.length > 0 || selectedVariante !== null ||
     Boolean(producto.envio && (producto.envio.largo || producto.envio.ancho || producto.envio.alto || producto.envio.peso));
 
-  const imagenActiva = selectedVariante
-    ? (producto.imagenes.find((img) => img.variante_id === selectedVariante.id) ?? producto.imagenes[0])
-    : producto.imagenes[0];
-
-  const incrementar = () => setCantidad((c) => (ventaEnLinea && stock > 0 ? Math.min(c + 1, stock) : c + 1));
-  const decrementar = () => setCantidad((c) => Math.max(1, c - 1));
+  const { incrementar, decrementar } = ficha;
 
   const handleAgregarCarrito = () => {
-    if (!ventaEnLinea || !puedeComprar || !selectedVariante) return;
-    addItem({
-      productoId:   producto.id,
-      varianteId:   selectedVariante.id,
-      titulo:       producto.titulo,
-      slug:         producto.slug,
-      sku:          selectedVariante.sku,
-      precio,
-      cantidad,
-      imagenNombre: imagenActiva?.url ?? null,
-      imagenAlt:    imagenActiva?.alt ?? null,
-      atributos:    [
-        ...selectedVariante.atributos.map((a) => ({ atributo: a.atributo, valor: a.valor })),
-        ...(corte ? [{ atributo: "Corte", valor: corte }] : []),
-      ],
-      personalizacion: planCorte.solicitud,
-    });
+    if (!ficha.lineaCarrito) return;
+    addItem(ficha.lineaCarrito);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
@@ -207,11 +178,7 @@ export function ProductDetailClient({ producto }: Props) {
                   return (
                     <button
                       key={img.id}
-                      onClick={() => setSelectedVariante(
-                        img.variante_id
-                          ? (producto.variantes.find((v) => v.id === img.variante_id) ?? selectedVariante)
-                          : selectedVariante
-                      )}
+                      onClick={() => ficha.seleccionarImagen(img)}
                       className="relative rounded-xl overflow-hidden shrink-0 transition-all"
                       style={{
                         width:  "64px",
@@ -306,7 +273,7 @@ export function ProductDetailClient({ producto }: Props) {
             {/* Variantes */}
             {selectedVariante && (
               <motion.div {...fadeUp(0.28)}>
-                <ProductVariantSelector variantes={producto.variantes} selectedId={selectedVariante.id} onSelect={setSelectedVariante} />
+                <ProductVariantSelector variantes={producto.variantes} selectedId={selectedVariante.id} opciones={ficha.opcionesAtributos} onSelect={ficha.seleccionarVariante} />
               </motion.div>
             )}
 
@@ -323,7 +290,7 @@ export function ProductDetailClient({ producto }: Props) {
                 {planCorte.plan ? "Piezas con este plan" : "Cantidad"}
                 {mostrarPrecios && precio > 0 && (cantidad > 1 || planCorte.cargo > 0) && (
                   <span style={{ marginLeft: "0.75rem", color: "var(--color-cq-accent)", letterSpacing: "0.04em" }}>
-                    = {format(precio * cantidad)}
+                    = {format(ficha.total)}
                   </span>
                 )}
               </span>
@@ -347,7 +314,7 @@ export function ProductDetailClient({ producto }: Props) {
                 </div>
 
                 {!ventaEnLinea ? (
-                  <BotonCotizacion className="h-[52px] min-w-[160px] flex-1" producto={producto.titulo} slug={producto.slug} detalle={[selectedVariante?.sku, selectedVariante?.atributos.map(a => `${a.atributo}: ${a.valor}`).join(", "), corte && `Corte: ${corte}`, `Cantidad: ${cantidad}`].filter(Boolean).join(" ? ")} />
+                  <BotonCotizacion className="h-[52px] min-w-[160px] flex-1" producto={producto.titulo} slug={producto.slug} detalle={ficha.resumen.join(" · ")} />
                 ) : <motion.button
                   onClick={handleAgregarCarrito}
                   disabled={!puedeComprar}

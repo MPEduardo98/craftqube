@@ -8,8 +8,8 @@ import { Modal } from "@/shared/components/ui/Modal";
 import type { ConfigTramos } from "@mpeduardo98/commerce-core/personalizacion/types";
 import { longitudUtil } from "@mpeduardo98/commerce-core/personalizacion/tramos";
 import {
-  formatoMedida, textoTramos, type EstadoPlanCorte,
-} from "@/features/products/hooks/usePlanCorte";
+  formatoMedida, textoTramos, type EstadoPlanTramos as EstadoPlanCorte,
+} from "@mpeduardo98/commerce-core/ficha";
 
 interface Props {
   config:         ConfigTramos;
