@@ -24,7 +24,9 @@ import { getAllCategoriaSlugs } from "@/features/products/lib/getAllSlugs";
 import { getProductosCatalogo } from "@/features/catalog/lib/getProductosCatalogo";
 import { getCategorias }        from "@/features/categories/lib/getCategorias";
 import { CatalogClient }        from "@/features/catalog/components/CatalogClient";
-import { buildBreadcrumbJsonLd, buildCategoryJsonLd } from "@/shared/lib/seo/jsonld";
+import { buildBreadcrumbJsonLd, buildCategoryJsonLd, imagenSocial } from "@/shared/lib/seo/jsonld";
+import { indexacionListado }    from "@/shared/lib/seo/listado";
+import { resolveImageUrl }      from "@/features/media/lib/resolveImageUrl";
 
 const SITE_URL  = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.mx";
 const PAGE_SIZE = 24;
@@ -41,8 +43,9 @@ export async function generateStaticParams() {
 }
 
 // ── Metadata dinámica ─────────────────────────────────────────
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { slug }  = await params;
+  const sp        = await searchParams;
   const categoria = await getCategoriaBySlug(slug);
 
   if (!categoria) return { title: "Categoría no encontrada" };
@@ -53,16 +56,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     categoria.descripcion ??
     `Explora nuestra selección de ${categoria.nombre} en CraftQube México. Perfiles de aluminio y accesorios industriales de alta calidad con entrega rápida.`;
   const canonicalUrl = `${SITE_URL}/categoria/${slug}`;
+  // Misma resolución que la tarjeta de categoría del inicio.
   const imageUrl     = categoria.imagen
-    ? `/uploads/categorias/${categoria.imagen}`
-    : "/og-default.jpg";
+    ? resolveImageUrl(categoria.imagen, undefined)
+      ?? (categoria.imagen.startsWith("/") ? categoria.imagen : `/categorias/${categoria.imagen}`)
+    : imagenSocial(null);
 
   return {
     title,
     description,
-    // Canonical siempre sin query params: las variantes filtradas
-    // (?marca=, ?sort=, ?page=) consolidan en la URL limpia.
-    alternates: { canonical: canonicalUrl },
+    // Filtros → noindex; paginación → canónica propia (ver listado.ts).
+    ...indexacionListado(sp, canonicalUrl),
     openGraph: {
       // og:title no pasa por el template del layout: va completo.
       title:    `${categoria.nombre} — CraftQube`,

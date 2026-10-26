@@ -8,7 +8,7 @@ import { ProductDetailClient }     from "@/features/products/components/detail/P
 import { RelatedProducts }         from "@/features/products/components/RelatedProducts";
 import { getProductoBySlug }       from "@/features/products/lib/getProductoBySlug";
 import { getAllProductoSlugs }      from "@/features/products/lib/getAllSlugs";
-import { buildBreadcrumbJsonLd } from "@/shared/lib/seo/jsonld";
+import { buildBreadcrumbJsonLd, imagenSocial } from "@/shared/lib/seo/jsonld";
 import { richTextToPlain }         from "@/shared/lib/rich-text";
 import { resolveImageUrl }         from "@/features/media/lib/resolveImageUrl";
 
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug }   = await params;
   const producto   = await getProductoBySlug(slug);
 
-  if (!producto) return { title: "Producto no encontrado — Craftqube" };
+  if (!producto) return { title: "Producto no encontrado" };
 
   // `absolute`: el template del layout raíz añadiría otro " — CraftQube".
   const title        = producto.meta_titulo      ?? `${producto.titulo} — CraftQube`;
@@ -38,7 +38,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const imagenPrincipal = producto.imagenes[0];
   const ogImageUrl =
-    resolveImageUrl(imagenPrincipal?.url, producto.id) ?? "/og-default.jpg";
+    resolveImageUrl(imagenPrincipal?.url, producto.id) ?? imagenSocial(null);
 
   const varianteDefault = producto.variantes.find((v) => v.es_default) ?? producto.variantes[0];
   const precio          = varianteDefault?.precio_final;

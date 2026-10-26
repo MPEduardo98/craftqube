@@ -4,7 +4,7 @@ import { ForgotPasswordForm } from "@/features/auth/components/ForgotPasswordFor
 import { redirectIfAuthenticated } from "@/features/auth/lib/getSessionUser";
 
 export const metadata: Metadata = {
-  title: "Recuperar contraseña — Craftqube",
+  title: "Recuperar contraseña",
   description: "Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.",
 };
 

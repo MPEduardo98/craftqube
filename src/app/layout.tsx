@@ -13,7 +13,8 @@ import { WishlistProvider } from "@/features/wishlist/context/WishlistContext";
 import { AuthProvider }     from "@/features/auth/context/AuthContext";
 import { AlertProvider }    from "@/shared/context/AlertContext";
 import { AlertContainer }   from "@/shared/components/alerts/AlertContainer";
-import { buildOrganizationJsonLd } from "@/shared/lib/seo/jsonld";
+import { toCdnUrl } from "@mpeduardo98/commerce-core/media/cdn";
+import { buildOrganizationJsonLd, buildWebSiteJsonLd, imagenSocial } from "@/shared/lib/seo/jsonld";
 import { ThemeScript }      from "@/shared/components/ThemeScript";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 
@@ -40,54 +41,65 @@ const jetbrainsMono = JetBrains_Mono({
   display:  "swap",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: {
-    default:  "CraftQube — Perfiles de Aluminio & Automatización Industrial",
-    template: "%s — CraftQube",
-  },
-  description:
-    "Distribuidor premium de perfiles estructurales de aluminio, tornillería, escuadras y sistemas de automatización industrial en México.",
-  keywords: [
-    "perfil aluminio",
-    "perfiles estructurales aluminio",
-    "automatización industrial",
-    "tornillería industrial",
-    "escuadras aluminio",
-    "Craftqube",
-    "Mexico",
-  ],
-  openGraph: {
-    type:        "website",
-    siteName:    "CraftQube",
-    locale:      "es_MX",
-    url:         SITE_URL,
-    title:       "CraftQube — Perfiles de Aluminio & Automatización Industrial",
-    description: "Distribuidor premium de perfiles estructurales de aluminio, tornillería y accesorios industriales en México.",
-    images: [{ url: "/og-default.jpg", width: 1200, height: 630, alt: "CraftQube — Perfiles de Aluminio" }],
-  },
-  twitter: {
-    card:        "summary_large_image",
-    title:       "CraftQube — Perfiles de Aluminio & Automatización Industrial",
-    description: "Distribuidor premium de perfiles estructurales de aluminio y accesorios industriales en México.",
-    images:      ["/og-default.jpg"],
-  },
-  robots: {
-    index:  true,
-    follow: true,
-    googleBot: {
-      index:               true,
-      follow:              true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet":       -1,
+export async function generateMetadata(): Promise<Metadata> {
+  const tienda = await getStoreConfig();
+  const imagen = imagenSocial(toCdnUrl(tienda.logoUrl));
+
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default:  "CraftQube — Perfiles de Aluminio & Automatización Industrial",
+      template: "%s — CraftQube",
     },
-  },
-};
+    description:
+      "Distribuidor premium de perfiles estructurales de aluminio, tornillería, escuadras y sistemas de automatización industrial en México.",
+    keywords: [
+      "perfil aluminio",
+      "perfiles estructurales aluminio",
+      "automatización industrial",
+      "tornillería industrial",
+      "escuadras aluminio",
+      "Craftqube",
+      "Mexico",
+    ],
+    openGraph: {
+      type:        "website",
+      siteName:    "CraftQube",
+      locale:      "es_MX",
+      url:         SITE_URL,
+      title:       "CraftQube — Perfiles de Aluminio & Automatización Industrial",
+      description: "Distribuidor premium de perfiles estructurales de aluminio, tornillería y accesorios industriales en México.",
+      images: [{ url: imagen, alt: "CraftQube — Perfiles de Aluminio" }],
+    },
+    twitter: {
+      card:        "summary_large_image",
+      title:       "CraftQube — Perfiles de Aluminio & Automatización Industrial",
+      description: "Distribuidor premium de perfiles estructurales de aluminio y accesorios industriales en México.",
+      images:      [imagen],
+    },
+    robots: {
+      index:  true,
+      follow: true,
+      googleBot: {
+        index:               true,
+        follow:              true,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet":       -1,
+      },
+    },
+  };
+}
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const [venta, tienda] = await Promise.all([getVentaPublica(), getStoreConfig()]);
-  const organizationLd = buildOrganizationJsonLd();
+  const organizationLd = buildOrganizationJsonLd({
+    nombre:   tienda.nombre,
+    logo:     imagenSocial(toCdnUrl(tienda.logoUrl)),
+    email:    tienda.email,
+    telefono: tienda.telefono,
+  });
+  const webSiteLd = buildWebSiteJsonLd(tienda.nombre);
 
   return (
     // suppressHydrationWarning: ThemeScript agrega data-theme a <html>
@@ -100,6 +112,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteLd) }}
         />
 
         <ProveedorVenta venta={{ ...venta, telefono: tienda.telefono, email: tienda.email, sitioUrl: SITE_URL }}>

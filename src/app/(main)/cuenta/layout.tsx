@@ -17,7 +17,7 @@ import { auth }           from "@/features/auth/lib/auth";
 import { AccountLayout }  from "@/features/account/components/AccountLayout";
 
 export const metadata: Metadata = {
-  title: "Mi Cuenta — Craftqube",
+  title: "Mi Cuenta",
   description: "Gestiona tu perfil, pedidos, favoritos y direcciones de envío",
 };
 

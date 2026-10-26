@@ -6,7 +6,7 @@ import { LoginForm } from "@/features/auth/components/LoginForm";
 import { redirectIfAuthenticated } from "@/features/auth/lib/getSessionUser";
 
 export const metadata: Metadata = {
-  title: "Iniciar sesión — Craftqube",
+  title: "Iniciar sesión",
   description: "Accede a tu cuenta Craftqube para gestionar pedidos y más.",
 };
 

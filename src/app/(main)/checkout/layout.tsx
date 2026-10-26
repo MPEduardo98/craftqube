@@ -10,7 +10,7 @@ import type { Metadata } from "next";
 import { CheckoutShell } from "@/features/checkout/components/CheckoutShell";
 
 export const metadata: Metadata = {
-  title:       "Checkout — Craftqube",
+  title:       "Checkout",
   description: "Finaliza tu compra de manera segura.",
 };
 

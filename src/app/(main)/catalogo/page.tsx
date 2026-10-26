@@ -15,29 +15,31 @@ import type { Metadata }      from "next";
 import { CatalogClient }      from "@/features/catalog/components/CatalogClient";
 import { getProductosCatalogo } from "@/features/catalog/lib/getProductosCatalogo";
 import { getCategorias }      from "@/features/categories/lib/getCategorias";
+import { indexacionListado }  from "@/shared/lib/seo/listado";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://craftqube.mx";
-
-export const metadata: Metadata = {
-  title:       "Catálogo | Perfiles de Aluminio y Accesorios Industriales",
-  description:
-    "Explora nuestro catálogo completo de perfiles de aluminio, tornillería industrial y accesorios. Filtros por categoría, marca y disponibilidad.",
-  alternates: {
-    canonical: `${SITE_URL}/catalogo`,
-  },
-  openGraph: {
-    title:       "Catálogo — CraftQube | Perfiles de Aluminio y Accesorios",
-    description: "Explora nuestro catálogo completo de perfiles de aluminio, tornillería industrial y accesorios.",
-    url:         `${SITE_URL}/catalogo`,
-    type:        "website",
-  },
-};
 
 interface PageProps {
   searchParams: Promise<{
     cat?: string; marca?: string; sort?: string;
     stock?: string; q?: string; page?: string;
   }>;
+}
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  return {
+    title:       "Catálogo de Perfiles de Aluminio y Accesorios",
+    description:
+      "Explora nuestro catálogo completo de perfiles de aluminio, tornillería industrial y accesorios. Filtros por categoría, marca y disponibilidad.",
+    // Búsquedas y filtros → noindex; paginación → canónica propia.
+    ...indexacionListado(await searchParams, `${SITE_URL}/catalogo`),
+    openGraph: {
+      title:       "Catálogo — CraftQube | Perfiles de Aluminio y Accesorios",
+      description: "Explora nuestro catálogo completo de perfiles de aluminio, tornillería industrial y accesorios.",
+      url:         `${SITE_URL}/catalogo`,
+      type:        "website",
+    },
+  };
 }
 
 export default async function CatalogoPage({ searchParams }: PageProps) {

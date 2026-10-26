@@ -4,7 +4,8 @@ import type { Metadata } from "next";
 import { EnvioContent } from "@/features/legal/components/EnvioContent";
 
 export const metadata: Metadata = {
-  title: "Política de Envíos — CraftQube",
+  alternates: { canonical: "/politicas/politica-de-envio" },
+  title: "Política de Envíos",
   description:
     "Conoce los términos de envío de CraftQube México: cobertura, tiempos de entrega, costos y condiciones para perfiles de aluminio y accesorios industriales.",
 };

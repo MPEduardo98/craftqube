@@ -108,18 +108,55 @@ export function buildCategoryJsonLd(
 }
 
 // ── Organization Schema (una sola vez en layout) ─────────────
-export function buildOrganizationJsonLd(): object {
+// OnlineStore es el subtipo de Organization que Google recomienda
+// para tiendas. La política de devoluciones va aquí, a nivel tienda,
+// para que aplique a todos los productos sin repetirla en cada uno.
+export function buildOrganizationJsonLd(tienda: {
+  nombre: string; logo: string; email: string; telefono: string;
+}): object {
   return {
     "@context": "https://schema.org",
-    "@type":    "Organization",
-    name:       SITE_NAME,
+    "@type":    "OnlineStore",
+    "@id":      `${SITE_URL}/#organizacion`,
+    name:       tienda.nombre || SITE_NAME,
     url:        SITE_URL,
-    logo:       `${SITE_URL}/logo.png`,
-    sameAs:     [],
+    logo:       tienda.logo,
+    ...(tienda.email    && { email:     tienda.email }),
+    ...(tienda.telefono && { telephone: tienda.telefono }),
     contactPoint: {
       "@type":           "ContactPoint",
       contactType:       "customer service",
       availableLanguage: "Spanish",
+      areaServed:        "MX",
+      ...(tienda.email    && { email:     tienda.email }),
+      ...(tienda.telefono && { telephone: tienda.telefono }),
+    },
+    // Debe coincidir con /politicas/politica-de-reembolso: por regla
+    // general no se aceptan devoluciones.
+    hasMerchantReturnPolicy: {
+      "@type":              "MerchantReturnPolicy",
+      applicableCountry:    "MX",
+      returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
+      merchantReturnLink:   `${SITE_URL}/politicas/politica-de-reembolso`,
     },
   };
+}
+
+// ── WebSite Schema (nombre del sitio en los resultados) ──────
+export function buildWebSiteJsonLd(nombre: string): object {
+  return {
+    "@context":  "https://schema.org",
+    "@type":     "WebSite",
+    "@id":       `${SITE_URL}/#sitio`,
+    name:        nombre || SITE_NAME,
+    url:         SITE_URL,
+    inLanguage:  "es-MX",
+    publisher:   { "@id": `${SITE_URL}/#organizacion` },
+  };
+}
+
+// ── Imagen al compartir cuando la página no tiene una propia ──
+// Es el logo configurado en /admin/ajustes; sin él, el del repo.
+export function imagenSocial(logoUrl: string | null): string {
+  return logoUrl || `${SITE_URL}/Logo.png`;
 }

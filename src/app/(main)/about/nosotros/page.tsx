@@ -8,7 +8,8 @@ import { NosotrosValores }      from "@/features/marketing/components/nosotros/N
 import { NosotrosCTA }          from "@/features/marketing/components/nosotros/NosotrosCTA";
 
 export const metadata: Metadata = {
-  title: "Nosotros — CraftQube",
+  alternates: { canonical: "/about/nosotros" },
+  title: "Nosotros",
   description:
     "Conoce a CraftQube: la primera tienda en línea en México para perfiles de aluminio y componentes modulares. Misión, visión y valores.",
 };

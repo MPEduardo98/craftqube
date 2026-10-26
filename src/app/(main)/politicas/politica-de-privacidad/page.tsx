@@ -4,7 +4,8 @@ import type { Metadata } from "next";
 import { PrivacidadContent } from "@/features/legal/components/PrivacidadContent";
 
 export const metadata: Metadata = {
-  title: "Política de Privacidad — CraftQube",
+  alternates: { canonical: "/politicas/politica-de-privacidad" },
+  title: "Política de Privacidad",
   description:
     "Conoce cómo CraftQube México recopila, usa y protege tus datos personales conforme a la LFPDPPP.",
 };

@@ -5,7 +5,7 @@ import { RegisterForm } from "@/features/auth/components/RegisterForm";
 import { redirectIfAuthenticated } from "@/features/auth/lib/getSessionUser";
 
 export const metadata: Metadata = {
-  title: "Crear cuenta — Craftqube",
+  title: "Crear cuenta",
   description: "Regístrate en Craftqube para gestionar pedidos, guardar direcciones y más.",
 };
 

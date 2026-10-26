@@ -4,7 +4,8 @@ import type { Metadata } from "next";
 import { ReembolsoContent } from "@/features/legal/components/ReembolsoContent";
 
 export const metadata: Metadata = {
-  title: "Política de Reembolso — CraftQube",
+  alternates: { canonical: "/politicas/politica-de-reembolso" },
+  title: "Política de Reembolso",
   description:
     "Consulta la política de devoluciones y reembolsos de CraftQube México. Conoce los casos en que aplica, requisitos y procedimiento.",
 };

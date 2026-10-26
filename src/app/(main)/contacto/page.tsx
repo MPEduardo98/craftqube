@@ -9,7 +9,8 @@ import { ContactInfo } from "@/features/marketing/components/contacto/ContactInf
 import { ContactHero } from "@/features/marketing/components/contacto/ContactHero";
 
 export const metadata: Metadata = {
-  title: "Contacto — Craftqube",
+  alternates: { canonical: "/contacto" },
+  title: "Contacto",
   description:
     "Contáctanos para cotizaciones, asesoría técnica o cualquier consulta sobre perfiles de aluminio y accesorios industriales.",
 };

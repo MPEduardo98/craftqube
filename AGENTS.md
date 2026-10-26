@@ -70,9 +70,10 @@ src/shared/                ← lo que usan VARIAS features: ui/ (botones, inputs
 
 **SEO** (`@mpeduardo98/commerce-core/seo`): lo que sale de la base (productos, categorías, sitemap) lo arma el núcleo; aquí sólo se conecta. Las páginas propias de la tienda (inicio, nosotros, landings) escriben su propio `metadata`.
 - Layout raíz: `export const generateMetadata = () => metadataTienda()` → nombre, descripción y favicon de `/admin/ajustes`, y el formato `"Página | Tienda"` para todos los títulos (`plantilla` lo cambia).
-- Producto: `generateMetadata` devuelve `metadataProducto(producto)`, y la página incluye `<JsonLd datos={await jsonLdProducto(producto)} />` (precio, disponibilidad y estrellas para Google).
+- Producto: `generateMetadata` devuelve `metadataProducto(producto)`, y la página incluye `<JsonLd datos={await jsonLdProducto(producto)} />` (una oferta por variante con precio, rebaja, envío por estado y estrellas para Google).
 - Categoría: `generateMetadata` devuelve `metadataCategoria(categoria)`.
 - `app/sitemap.ts`: `export default () => sitemapTienda({ paginas: ["/", …] })`. `app/robots.ts`: `export default () => robotsTienda()`.
+- Google Merchant Center: `app/feeds/google.xml/route.ts` con `export const revalidate = 3600; export const GET = () => feedGoogleMerchant()` (`@mpeduardo98/commerce-core/seo/merchant`) → un artículo por variante con precio, rebaja, existencias, fotos, marca, GTIN y peso. En Merchant Center se añade como "enlace a tu archivo" con `https://<tienda>/feeds/google.xml`. En modo catálogo con precios ocultos sale vacío.
 - Las URLs por defecto son `/productos/[slug]` y `/categoria/[slug]`. Si la tienda usa otras, pásalas en `rutas: { producto, categoria }` a cada función.
 - La dirección pública sale de `NEXT_PUBLIC_SITE_URL`: sin ella las URLs canónicas apuntan a localhost.
 

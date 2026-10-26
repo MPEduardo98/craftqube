@@ -5,7 +5,7 @@ import { ResetPasswordForm } from "@/features/auth/components/ResetPasswordForm"
 import { redirectIfAuthenticated } from "@/features/auth/lib/getSessionUser";
 
 export const metadata: Metadata = {
-  title: "Nueva contraseña — Craftqube",
+  title: "Nueva contraseña",
   description: "Establece una nueva contraseña para tu cuenta.",
 };
 

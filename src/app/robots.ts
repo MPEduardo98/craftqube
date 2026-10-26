@@ -26,8 +26,8 @@ export default function robots(): MetadataRoute.Robots {
           "/checkout/",
           "/cuenta/",
           "/admin/",
-          "/login",
-          "/registro",
+          // /login y /registro no van aquí: llevan noindex (ver el
+          // layout de (auth)) y Google necesita rastrearlas para verlo.
           // Ni /_next/ (CSS, JS e imágenes optimizadas: sin ellos Google
           // no puede renderizar) ni /catalogo?cat= (si se bloquea, Google
           // no ve el 301 a /categoria/ y no transfiere el ranking).
