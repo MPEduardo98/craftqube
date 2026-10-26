@@ -6,6 +6,7 @@
 import { useCallback, useState } from "react";
 import { Modal } from "@/shared/components/ui/Modal";
 import type { ConfigTramos } from "@mpeduardo98/commerce-core/personalizacion/types";
+import { longitudUtil } from "@mpeduardo98/commerce-core/personalizacion/tramos";
 import {
   formatoMedida, textoTramos, type EstadoPlanCorte,
 } from "@/features/products/hooks/usePlanCorte";
@@ -27,15 +28,25 @@ const etiqueta = {
   color:         "var(--color-cq-muted)",
 };
 
-/** Barra proporcional: tramos, cortes y sobrante sobre la pieza. */
+/** Rayado del desperdicio: material de la pieza que no se vende. */
+const RAYADO_DESPERDICIO =
+  "repeating-linear-gradient(135deg, rgba(239,68,68,0.18) 0 4px, rgba(239,68,68,0.32) 4px 8px)";
+
+/**
+ * Barra proporcional: tramos, cortes, sobrante y desperdicio sobre la
+ * pieza. Los tramos se reparten en la longitud útil (pieza menos
+ * desperdicio); el desperdicio se dibuja al final.
+ */
 function BarraPieza({ config, estado }: { config: ConfigTramos; estado: EstadoPlanCorte }) {
   const u = config.unidad;
+  const util        = longitudUtil(config);
+  const desperdicio = config.longitud - util;
   const valores = estado.medidas.map((m) => Number(m.replace(",", "."))).filter((n) => Number.isFinite(n) && n > 0);
   const cortes  = estado.borrador.plan ? estado.borrador.plan.cortes : valores.length;
   const uso     = valores.reduce((s, n) => s + n, 0) + cortes * config.ancho_corte;
   const escala  = Math.max(config.longitud, uso);
-  const excede  = uso > config.longitud + 0.005;
-  const sobrante = Math.max(0, config.longitud - uso);
+  const excede  = uso > util + 0.005;
+  const sobrante = Math.max(0, util - uso);
   const pct = (n: number) => `${(n / escala) * 100}%`;
 
   return (
@@ -53,6 +64,10 @@ function BarraPieza({ config, estado }: { config: ConfigTramos; estado: EstadoPl
             : `Pieza de ${formatoMedida(config.longitud)} ${u}`
         }
       >
+        {desperdicio > 0 && (
+          <div className="absolute inset-y-0" title={`Desperdicio ${formatoMedida(desperdicio)} ${u}`}
+            style={{ left: pct(util), width: pct(desperdicio), minWidth: 3, background: RAYADO_DESPERDICIO }} />
+        )}
         {valores.map((v, i) => {
           const conCorte = i < cortes;
           return (
@@ -77,7 +92,7 @@ function BarraPieza({ config, estado }: { config: ConfigTramos; estado: EstadoPl
           );
         })}
         {excede && (
-          <div className="absolute inset-y-0" style={{ left: pct(config.longitud), right: 0, background: "rgba(239,68,68,0.35)" }} />
+          <div className="absolute inset-y-0" style={{ left: pct(util), right: 0, background: "rgba(239,68,68,0.35)" }} />
         )}
       </div>
       <div className="flex justify-between" style={{ fontFamily: "var(--font-mono)", fontSize: "0.62rem", color: "var(--color-cq-muted-2)" }}>
@@ -85,7 +100,10 @@ function BarraPieza({ config, estado }: { config: ConfigTramos; estado: EstadoPl
         {valores.length > 0 && !excede && sobrante > 0 && (
           <span>Sobrante {formatoMedida(sobrante)} {u}</span>
         )}
-        {excede && <span style={{ color: "#EF4444" }}>Excede por {formatoMedida(uso - config.longitud)} {u}</span>}
+        {excede && <span style={{ color: "#EF4444" }}>Excede por {formatoMedida(uso - util)} {u}</span>}
+        {!excede && desperdicio > 0 && (
+          <span>Desperdicio {formatoMedida(desperdicio)} {u}</span>
+        )}
         <span>{formatoMedida(config.longitud)} {u}</span>
       </div>
     </div>
@@ -101,11 +119,16 @@ function Configurador({ config, estado, mostrarPrecios, format }: Omit<Props, "p
     `hasta ${config.max_tramos} tramos`,
     config.ancho_corte > 0 && `cada corte consume ${formatoMedida(config.ancho_corte)} ${u}`,
   ].filter(Boolean).join(" · ");
+  const util = longitudUtil(config);
 
   return (
     <div className="-mx-1 flex max-h-[calc(100dvh-15rem)] flex-col gap-4 overflow-y-auto px-1">
       <p className="text-sm" style={{ color: "var(--color-cq-muted)" }}>
-        Pieza de {formatoMedida(config.longitud)} {u}. Escribe la medida de cada tramo en el orden en que los necesitas.
+        Pieza de {formatoMedida(config.longitud)} {u}
+        {config.desperdicio > 0 && (
+          <> ({formatoMedida(util)} {u} aprovechables; {formatoMedida(config.desperdicio)} {u} se van en refilado y ajuste)</>
+        )}
+        . Escribe la medida de cada tramo en el orden en que los necesitas.
       </p>
 
       <BarraPieza config={config} estado={estado} />
@@ -234,7 +257,8 @@ export function PlanCorte({ config, estado, precioBase, mostrarPrecios, format }
             </>
           ) : (
             <p className="text-sm" style={{ color: "var(--color-cq-muted)" }}>
-              Pieza completa de {formatoMedida(config.longitud)} {u}. También te la cortamos a la medida.
+              Pieza completa de {formatoMedida(config.longitud)} {u}. También te la cortamos a la medida
+              {config.desperdicio > 0 && ` (hasta ${formatoMedida(longitudUtil(config))} ${u} aprovechables)`}.
             </p>
           )}
         </div>
