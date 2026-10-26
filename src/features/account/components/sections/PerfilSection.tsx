@@ -58,7 +58,6 @@ function Field({
           {value || "—"}
         </p>
       )}
-      <PreferenciasAnalitica />
     </div>
   );
 }
@@ -442,6 +441,9 @@ export function PerfilSection() {
           </div>
         ))}
       </div>
+
+      {/* ── 5. Analítica ── */}
+      <PreferenciasAnalitica />
 
     </div>
   );
